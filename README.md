@@ -1,77 +1,63 @@
-Klug Media
+# Klug Media
+
 Klug Media is a self-hosted media tracking and analytics platform.
-It is designed as a full replacement for third-party tracking services, providing complete ownership of watch history, metadata, analytics, and integrations.
-The system supports movies and TV, with a database-first architecture and API integrations for metadata and automation.
-________________________________________
-Goals
-•	Full ownership of watch history and collection data
-•	Advanced analytics and reporting
-•	API-driven integrations (Radarr, Sonarr, Jellyfin, etc.)
-•	Modular and extensible architecture
-•	Clean internal schema without legacy naming constraints
-•	Exportable and portable data
-________________________________________
-Architecture (Planned)
-Backend
-•	Python (FastAPI or Flask TBD)
-•	REST API
-•	Background workers for sync tasks
-Database
-•	postegresql
-•	Clean schema with normalized tables
-•	Views for reporting and analytics
-Integrations
-•	TMDB API
-•	Jellyfin webhook sync
-•	Radarr/Sonarr list import
-•	Optional Trakt import (one-time migration)
-Frontend (Phase 2)
-•	Web dashboard
-•	Statistics & visualizations
-•	Manual watch logging
-•	List management
-________________________________________
-Core Features (Phase 1)
-•	User accounts
-•	Watch logging (movies & TV episodes)
-•	Ratings
-•	Collection tracking
-•	Metadata enrichment (TMDB)
-•	Import existing watch history
-•	API-first design
-________________________________________
-Planned Features (Phase 2+)
-•	Advanced analytics dashboard
-•	Custom lists
-•	Tagging system
-•	Smart filters
-•	CSV export
-•	Yearly statistics
-•	Automated backups
-•	HorrorFest tracking module
+The goal is complete ownership of watch history, metadata, analytics, and integrations.
 
-Database Design Philosophy
-•	No external service naming in schema
-•	Clear, concise table names (klug_user, media_item, watch_log)
-•	Strict foreign key relationships
-•	Views used for reporting, not application logic
-•	All timestamps stored in UTC
+## Current Stack
 
-Roadmap
-•	Define database schema
-•	Implement core models
-•	Build watch logging API
-•	TMDB metadata sync
-•	Import legacy data
-•	Basic CLI interface
-•	Web frontend MVP
+- Python 3.12+
+- FastAPI + uvicorn
+- PostgreSQL
+- SQLAlchemy 2.x
+- Alembic
+- Pydantic v2 + pydantic-settings
+- httpx
+- pytest
 
-Philosophy
+## Project Status
 
-Klug Media exists to provide clarity, ownership, and flexibility in media tracking.
+Phase 1 backend scaffolding is in progress.
+The repository currently includes:
 
-No feature restrictions.
-No data lock-in.
-No subscription volatility.
+- FastAPI app entrypoint
+- Versioned API prefix (`/api/v1`)
+- Health endpoint (`GET /api/v1/health`)
+- Config wiring via `pydantic-settings`
+- SQLAlchemy engine/session module scaffold
 
-Just structured data, clean design, and long-term control.
+## Architecture Direction
+
+- `app/main.py` for app factory and router mounting
+- `app/api/` for thin endpoints
+- `app/services/` for business logic
+- `app/db/` for database session and models
+- `app/schemas/` for request/response DTOs
+
+## Planned Integrations
+
+- TMDB metadata sync
+- Jellyfin webhook sync
+- Radarr/Sonarr import
+- One-time Trakt import workflow
+
+## Local Development
+
+1. Create environment:
+```bash
+uv venv --python 3.12
+```
+
+2. Install dependencies:
+```bash
+uv sync
+```
+
+3. Run API:
+```bash
+uv run uvicorn app.main:app --reload
+```
+
+4. Run tests:
+```bash
+uv run pytest -q
+```

@@ -1,0 +1,1 @@
+"""Klug Media application package."""

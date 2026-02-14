@@ -1,7 +1,23 @@
 [project]
 name = "klugmedia"
 version = "0.1.0"
-description = "Add your description here"
+description = "Self-hosted media tracking API"
 readme = "README.md"
-requires-python = ">=3.11"
-dependencies = []
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.18.4",
+    "fastapi>=0.129.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.12.0",
+    "psycopg[binary]>=3.2.12",
+    "sqlalchemy>=2.0.46",
+    "uvicorn[standard]>=0.40.0",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.2",
+    "ruff>=0.15.1",
+]
