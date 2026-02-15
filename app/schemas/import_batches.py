@@ -35,3 +35,24 @@ class ImportBatchRead(BaseModel):
     tags_added: int
     errors_count: int
     notes: str | None
+
+
+class ImportBatchErrorCreateRequest(BaseModel):
+    severity: str = Field(default="error", min_length=1, max_length=20)
+    entity_type: str | None = Field(default=None, max_length=100)
+    entity_ref: str | None = Field(default=None, max_length=255)
+    message: str = Field(min_length=1)
+    details: dict = Field(default_factory=dict)
+
+
+class ImportBatchErrorRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    import_batch_error_id: UUID
+    import_batch_id: UUID
+    occurred_at: datetime
+    severity: str
+    entity_type: str | None
+    entity_ref: str | None
+    message: str
+    details: dict

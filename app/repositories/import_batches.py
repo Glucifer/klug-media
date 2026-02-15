@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models.entities import ImportBatch
+from app.db.models.entities import ImportBatch, ImportBatchError
 
 
 def list_import_batches(session: Session, *, limit: int) -> list[ImportBatch]:
@@ -62,3 +62,43 @@ def finish_import_batch(
     session.flush()
     session.refresh(import_batch)
     return import_batch
+
+
+def list_import_batch_errors(
+    session: Session,
+    *,
+    import_batch_id: UUID,
+    limit: int,
+) -> list[ImportBatchError]:
+    statement = (
+        select(ImportBatchError)
+        .where(ImportBatchError.import_batch_id == import_batch_id)
+        .order_by(ImportBatchError.occurred_at.desc())
+        .limit(limit)
+    )
+    return list(session.scalars(statement))
+
+
+def create_import_batch_error(
+    session: Session,
+    *,
+    import_batch: ImportBatch,
+    severity: str,
+    entity_type: str | None,
+    entity_ref: str | None,
+    message: str,
+    details: dict,
+) -> ImportBatchError:
+    error = ImportBatchError(
+        import_batch_id=import_batch.import_batch_id,
+        severity=severity,
+        entity_type=entity_type,
+        entity_ref=entity_ref,
+        message=message,
+        details=details,
+    )
+    session.add(error)
+    import_batch.errors_count = (import_batch.errors_count or 0) + 1
+    session.flush()
+    session.refresh(error)
+    return error
