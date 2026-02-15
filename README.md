@@ -77,3 +77,13 @@ uv run pytest -q
 ```bash
 KLUG_TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/klug_media_test uv run pytest -q tests/integration
 ```
+
+6. Run legacy-source watch-event import script:
+```bash
+uv run python -m app.scripts.import_watch_events --input ./path/to/export.json --mode bootstrap
+```
+
+Dry run example:
+```bash
+uv run python -m app.scripts.import_watch_events --input ./path/to/export.csv --mode incremental --dry-run
+```
