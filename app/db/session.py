@@ -12,7 +12,9 @@ engine = create_engine(
     pool_pre_ping=True,
 )
 
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, class_=Session)
+SessionLocal = sessionmaker(
+    bind=engine, autoflush=False, autocommit=False, class_=Session
+)
 
 
 def get_db_session() -> Generator[Session, None, None]:

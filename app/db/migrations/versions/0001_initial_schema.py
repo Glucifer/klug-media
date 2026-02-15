@@ -35,7 +35,14 @@ def upgrade() -> None:
         """
     )
 
-    media_type = postgresql.ENUM("movie", "show", "episode", name="media_type", schema="public", create_type=False)
+    media_type = postgresql.ENUM(
+        "movie",
+        "show",
+        "episode",
+        name="media_type",
+        schema="public",
+        create_type=False,
+    )
 
     op.create_table(
         "import_batch",
@@ -47,15 +54,49 @@ def upgrade() -> None:
         ),
         sa.Column("source", sa.Text(), nullable=False),
         sa.Column("source_detail", sa.Text(), nullable=True),
-        sa.Column("started_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "started_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("status", sa.Text(), server_default=sa.text("'running'::text"), nullable=False),
-        sa.Column("watch_events_inserted", sa.Integer(), server_default=sa.text("0"), nullable=False),
-        sa.Column("media_items_inserted", sa.Integer(), server_default=sa.text("0"), nullable=False),
-        sa.Column("media_versions_inserted", sa.Integer(), server_default=sa.text("0"), nullable=False),
-        sa.Column("tags_added", sa.Integer(), server_default=sa.text("0"), nullable=False),
-        sa.Column("errors_count", sa.Integer(), server_default=sa.text("0"), nullable=False),
-        sa.Column("parameters", postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
+        sa.Column(
+            "status",
+            sa.Text(),
+            server_default=sa.text("'running'::text"),
+            nullable=False,
+        ),
+        sa.Column(
+            "watch_events_inserted",
+            sa.Integer(),
+            server_default=sa.text("0"),
+            nullable=False,
+        ),
+        sa.Column(
+            "media_items_inserted",
+            sa.Integer(),
+            server_default=sa.text("0"),
+            nullable=False,
+        ),
+        sa.Column(
+            "media_versions_inserted",
+            sa.Integer(),
+            server_default=sa.text("0"),
+            nullable=False,
+        ),
+        sa.Column(
+            "tags_added", sa.Integer(), server_default=sa.text("0"), nullable=False
+        ),
+        sa.Column(
+            "errors_count", sa.Integer(), server_default=sa.text("0"), nullable=False
+        ),
+        sa.Column(
+            "parameters",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default=sa.text("'{}'::jsonb"),
+            nullable=False,
+        ),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.PrimaryKeyConstraint("import_batch_id", name="import_batch_pkey"),
         schema=APP_SCHEMA,
@@ -80,7 +121,12 @@ def upgrade() -> None:
         sa.Column("episode_number", sa.Integer(), nullable=True),
         sa.Column("jellyfin_item_id", sa.Text(), nullable=True),
         sa.Column("kodi_item_id", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("base_runtime_seconds", sa.Integer(), nullable=True),
         sa.Column("metadata_source", sa.Text(), nullable=True),
         sa.Column("metadata_updated_at", sa.DateTime(timezone=True), nullable=True),
@@ -103,7 +149,12 @@ def upgrade() -> None:
         sa.Column("version_name", sa.Text(), nullable=False),
         sa.Column("runtime_seconds", sa.Integer(), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(
             ["media_item_id"],
             [f"{APP_SCHEMA}.media_item.media_item_id"],
@@ -111,7 +162,9 @@ def upgrade() -> None:
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("media_version_id", name="media_version_pkey"),
-        sa.UniqueConstraint("media_item_id", "media_version_id", name="media_version_item_version_uk"),
+        sa.UniqueConstraint(
+            "media_item_id", "media_version_id", name="media_version_item_version_uk"
+        ),
         sa.UniqueConstraint("media_item_id", "version_key", name="uq_media_version"),
         schema=APP_SCHEMA,
     )
@@ -149,19 +202,36 @@ def upgrade() -> None:
         sa.Column("tmdb_id", sa.Integer(), nullable=False),
         sa.Column("sub_key", sa.Text(), nullable=False),
         sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-        sa.Column("fetched_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "fetched_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("etag", sa.Text(), nullable=True),
         sa.Column("source_url", sa.Text(), nullable=True),
-        sa.PrimaryKeyConstraint("tmdb_type", "tmdb_id", "sub_key", name="tmdb_metadata_cache_pkey"),
+        sa.PrimaryKeyConstraint(
+            "tmdb_type", "tmdb_id", "sub_key", name="tmdb_metadata_cache_pkey"
+        ),
         schema=APP_SCHEMA,
     )
 
     op.create_table(
         "users",
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), nullable=False),
+        sa.Column(
+            "user_id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            nullable=False,
+        ),
         sa.Column("username", postgresql.CITEXT(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("user_id", name="users_pkey"),
         sa.UniqueConstraint("username", name="users_username_key"),
         schema=APP_SCHEMA,
@@ -176,25 +246,47 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("import_batch_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("occurred_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("severity", sa.Text(), server_default=sa.text("'error'::text"), nullable=False),
+        sa.Column(
+            "occurred_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "severity",
+            sa.Text(),
+            server_default=sa.text("'error'::text"),
+            nullable=False,
+        ),
         sa.Column("entity_type", sa.Text(), nullable=True),
         sa.Column("entity_ref", sa.Text(), nullable=True),
         sa.Column("message", sa.Text(), nullable=False),
-        sa.Column("details", postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
+        sa.Column(
+            "details",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default=sa.text("'{}'::jsonb"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(
             ["import_batch_id"],
             [f"{APP_SCHEMA}.import_batch.import_batch_id"],
             name="import_batch_error_import_batch_id_fkey",
             ondelete="CASCADE",
         ),
-        sa.PrimaryKeyConstraint("import_batch_error_id", name="import_batch_error_pkey"),
+        sa.PrimaryKeyConstraint(
+            "import_batch_error_id", name="import_batch_error_pkey"
+        ),
         schema=APP_SCHEMA,
     )
 
     op.create_table(
         "watch_event",
-        sa.Column("watch_id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), nullable=False),
+        sa.Column(
+            "watch_id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            nullable=False,
+        ),
         sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("media_item_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("watched_at", sa.DateTime(timezone=True), nullable=False),
@@ -202,12 +294,21 @@ def upgrade() -> None:
         sa.Column("total_seconds", sa.Integer(), nullable=True),
         sa.Column("watched_seconds", sa.Integer(), nullable=True),
         sa.Column("progress_percent", sa.Numeric(precision=5, scale=2), nullable=True),
-        sa.Column("completed", sa.Boolean(), server_default=sa.text("true"), nullable=False),
+        sa.Column(
+            "completed", sa.Boolean(), server_default=sa.text("true"), nullable=False
+        ),
         sa.Column("rating_value", sa.Numeric(precision=4, scale=2), nullable=True),
         sa.Column("rating_scale", sa.Text(), nullable=True),
         sa.Column("import_batch_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("rewatch", sa.Boolean(), server_default=sa.text("false"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "rewatch", sa.Boolean(), server_default=sa.text("false"), nullable=False
+        ),
         sa.Column("media_version_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("dedupe_hash", sa.Text(), nullable=True),
         sa.Column("created_by", sa.Text(), nullable=True),
@@ -238,7 +339,10 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(
             ["media_item_id", "media_version_id"],
-            [f"{APP_SCHEMA}.media_version.media_item_id", f"{APP_SCHEMA}.media_version.media_version_id"],
+            [
+                f"{APP_SCHEMA}.media_version.media_item_id",
+                f"{APP_SCHEMA}.media_version.media_version_id",
+            ],
             name="watch_event_version_matches_item",
             deferrable=True,
             initially="DEFERRED",
@@ -267,9 +371,21 @@ def upgrade() -> None:
         schema=APP_SCHEMA,
     )
 
-    op.create_index("ix_import_batch_started_at", "import_batch", [sa.text("started_at DESC")], schema=APP_SCHEMA)
-    op.create_index("ix_import_batch_status", "import_batch", ["status"], schema=APP_SCHEMA)
-    op.create_index("ix_import_batch_error_batch", "import_batch_error", ["import_batch_id"], schema=APP_SCHEMA)
+    op.create_index(
+        "ix_import_batch_started_at",
+        "import_batch",
+        [sa.text("started_at DESC")],
+        schema=APP_SCHEMA,
+    )
+    op.create_index(
+        "ix_import_batch_status", "import_batch", ["status"], schema=APP_SCHEMA
+    )
+    op.create_index(
+        "ix_import_batch_error_batch",
+        "import_batch_error",
+        ["import_batch_id"],
+        schema=APP_SCHEMA,
+    )
     op.create_index(
         "ix_import_batch_error_time",
         "import_batch_error",
@@ -277,9 +393,21 @@ def upgrade() -> None:
         schema=APP_SCHEMA,
     )
     op.create_index("ix_media_item_tmdb", "media_item", ["tmdb_id"], schema=APP_SCHEMA)
-    op.create_index("ix_media_version_item", "media_version", ["media_item_id"], schema=APP_SCHEMA)
-    op.create_index("ix_tmdb_cache_expires_at", "tmdb_metadata_cache", ["expires_at"], schema=APP_SCHEMA)
-    op.create_index("ix_tmdb_cache_fetched_at", "tmdb_metadata_cache", [sa.text("fetched_at DESC")], schema=APP_SCHEMA)
+    op.create_index(
+        "ix_media_version_item", "media_version", ["media_item_id"], schema=APP_SCHEMA
+    )
+    op.create_index(
+        "ix_tmdb_cache_expires_at",
+        "tmdb_metadata_cache",
+        ["expires_at"],
+        schema=APP_SCHEMA,
+    )
+    op.create_index(
+        "ix_tmdb_cache_fetched_at",
+        "tmdb_metadata_cache",
+        [sa.text("fetched_at DESC")],
+        schema=APP_SCHEMA,
+    )
     op.create_index(
         "ix_watch_event_source_event",
         "watch_event",
@@ -288,8 +416,18 @@ def upgrade() -> None:
         schema=APP_SCHEMA,
         postgresql_where=sa.text("source_event_id IS NOT NULL"),
     )
-    op.create_index("ix_watch_event_user_time", "watch_event", ["user_id", sa.text("watched_at DESC")], schema=APP_SCHEMA)
-    op.create_index("ix_watch_event_watched_at", "watch_event", [sa.text("watched_at DESC")], schema=APP_SCHEMA)
+    op.create_index(
+        "ix_watch_event_user_time",
+        "watch_event",
+        ["user_id", sa.text("watched_at DESC")],
+        schema=APP_SCHEMA,
+    )
+    op.create_index(
+        "ix_watch_event_watched_at",
+        "watch_event",
+        [sa.text("watched_at DESC")],
+        schema=APP_SCHEMA,
+    )
     op.create_index(
         "ux_watch_event_dedupe_hash",
         "watch_event",
@@ -445,25 +583,53 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("DROP TRIGGER IF EXISTS trg_watch_event_set_dedupe_hash ON app.watch_event")
-    op.execute("DROP TRIGGER IF EXISTS trg_create_default_media_version ON app.media_item")
+    op.execute(
+        "DROP TRIGGER IF EXISTS trg_watch_event_set_dedupe_hash ON app.watch_event"
+    )
+    op.execute(
+        "DROP TRIGGER IF EXISTS trg_create_default_media_version ON app.media_item"
+    )
     op.execute("DROP VIEW IF EXISTS app.watch_event_enriched")
     op.execute("DROP VIEW IF EXISTS app.tmdb_movie_basic")
     op.execute("DROP FUNCTION IF EXISTS app.set_watch_event_dedupe_hash()")
     op.execute("DROP FUNCTION IF EXISTS app.create_default_media_version()")
 
-    op.drop_index("ux_watch_event_dedupe_hash", table_name="watch_event", schema=APP_SCHEMA)
-    op.drop_index("ix_watch_event_watched_at", table_name="watch_event", schema=APP_SCHEMA)
-    op.drop_index("ix_watch_event_user_time", table_name="watch_event", schema=APP_SCHEMA)
-    op.drop_index("ix_watch_event_source_event", table_name="watch_event", schema=APP_SCHEMA)
-    op.drop_index("ix_tmdb_cache_fetched_at", table_name="tmdb_metadata_cache", schema=APP_SCHEMA)
-    op.drop_index("ix_tmdb_cache_expires_at", table_name="tmdb_metadata_cache", schema=APP_SCHEMA)
-    op.drop_index("ix_media_version_item", table_name="media_version", schema=APP_SCHEMA)
+    op.drop_index(
+        "ux_watch_event_dedupe_hash", table_name="watch_event", schema=APP_SCHEMA
+    )
+    op.drop_index(
+        "ix_watch_event_watched_at", table_name="watch_event", schema=APP_SCHEMA
+    )
+    op.drop_index(
+        "ix_watch_event_user_time", table_name="watch_event", schema=APP_SCHEMA
+    )
+    op.drop_index(
+        "ix_watch_event_source_event", table_name="watch_event", schema=APP_SCHEMA
+    )
+    op.drop_index(
+        "ix_tmdb_cache_fetched_at", table_name="tmdb_metadata_cache", schema=APP_SCHEMA
+    )
+    op.drop_index(
+        "ix_tmdb_cache_expires_at", table_name="tmdb_metadata_cache", schema=APP_SCHEMA
+    )
+    op.drop_index(
+        "ix_media_version_item", table_name="media_version", schema=APP_SCHEMA
+    )
     op.drop_index("ix_media_item_tmdb", table_name="media_item", schema=APP_SCHEMA)
-    op.drop_index("ix_import_batch_error_time", table_name="import_batch_error", schema=APP_SCHEMA)
-    op.drop_index("ix_import_batch_error_batch", table_name="import_batch_error", schema=APP_SCHEMA)
-    op.drop_index("ix_import_batch_status", table_name="import_batch", schema=APP_SCHEMA)
-    op.drop_index("ix_import_batch_started_at", table_name="import_batch", schema=APP_SCHEMA)
+    op.drop_index(
+        "ix_import_batch_error_time", table_name="import_batch_error", schema=APP_SCHEMA
+    )
+    op.drop_index(
+        "ix_import_batch_error_batch",
+        table_name="import_batch_error",
+        schema=APP_SCHEMA,
+    )
+    op.drop_index(
+        "ix_import_batch_status", table_name="import_batch", schema=APP_SCHEMA
+    )
+    op.drop_index(
+        "ix_import_batch_started_at", table_name="import_batch", schema=APP_SCHEMA
+    )
 
     op.drop_table("watch_event_tag", schema=APP_SCHEMA)
     op.drop_table("watch_event", schema=APP_SCHEMA)

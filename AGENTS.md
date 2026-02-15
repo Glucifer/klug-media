@@ -2,81 +2,104 @@
 
 You are an AI coding agent working in this repository. Follow these rules strictly.
 
-## 1) Goals and scope
-- Build a self-hosted media tracking app ("Klug Media") with a Python backend.
-- Prioritize correctness, maintainability, and small incremental commits.
-- Default to implementing the smallest working slice, then iterate.
+## 1) Project goal
+Build a self-hosted media tracking app (“Klug Media”) with a Python backend.
+Optimize for correctness, maintainability, and incremental delivery.
 
-## 2) Tech stack (authoritative)
-- Language: Python 3.12+
+## 2) Authoritative tech stack
+- Python: 3.12+
 - Web framework: FastAPI
-- ASGI server: uvicorn
+- Server: uvicorn
+- Dependency manager: uv
 - Database: PostgreSQL
-- ORM: SQLAlchemy 2.x (typed) OR SQLModel (pick one and stick to it)
+- ORM: SQLAlchemy 2.x (2.0 style)
 - Migrations: Alembic
-- Validation/settings: Pydantic v2 + pydantic-settings
+- Data validation / settings: Pydantic v2 + pydantic-settings
 - HTTP client: httpx
-- Testing: pytest (+ pytest-asyncio if needed)
+- Testing: pytest (add pytest-asyncio only if needed)
 
-If the repo already contains tooling choices (poetry/uv/pip-tools/ruff/etc.), match the repo.
-Do NOT introduce alternative stacks unless explicitly asked.
+Do NOT introduce alternative frameworks/tools (e.g., Django, Prisma, Tortoise, asyncpg-only, etc.)
+unless explicitly asked.
 
-## 3) Repository boundaries / do-not-touch
-- Do not modify files in `/db` except when explicitly instructed.
-  - The schema backup file is a source artifact; treat it as read-only.
-- Do not rename the project or introduce "trakt" naming anywhere.
-  - Use "klug" for internal identifiers where needed.
+## 3) Naming + repo boundaries
+- Do NOT use the word “trakt” anywhere in code, identifiers, packages, or docs.
+- Prefer “klug” for internal identifiers (schemas, app names, env vars).
+- Treat `/db` as read-only unless explicitly instructed.
+  - The schema backup file in `/db` is a source artifact. Do not edit/format/rename it.
 
 ## 4) Coding standards
-- Prefer explicit, readable code over cleverness.
-- Use type hints everywhere (public functions, models, DB access).
-- Keep functions small. Avoid huge modules.
-- Add docstrings to non-trivial functions and modules.
+- Be explicit and readable. Avoid cleverness.
+- Use type hints everywhere for public functions and important internals.
+- Keep modules small and focused.
+- Avoid broad exception catches; handle expected failure modes cleanly.
+- Log useful context; do not log secrets.
 
 ### Formatting & linting
-- Use ruff for linting/formatting if present; otherwise keep formatting PEP8-clean.
-- Do not reformat unrelated files in the same change.
+- If the repo includes ruff/black/etc., follow it.
+- Otherwise: keep formatting clean and consistent; do not reformat unrelated files.
 
-## 5) Architecture conventions
-- Keep the app modular:
-  - `app/main.py` for FastAPI app creation
-  - `app/api/` for routers/endpoints
-  - `app/core/` for config, logging, security helpers
-  - `app/db/` for engine/session, models, migrations hooks
-  - `app/services/` for business logic (importers/sync/jobs)
-  - `app/schemas/` for Pydantic request/response models
-- Separate concerns:
-  - Endpoints should be thin.
-  - Business logic goes in `services/`.
-  - DB access stays in `db/` or repository modules.
+## 5) Architecture conventions (preferred layout)
+Keep the backend modular and boring (boring is good):
+
+- `app/main.py` — FastAPI app factory + router mounting
+- `app/api/` — routers (thin endpoints only)
+- `app/core/` — settings, logging, constants, utilities
+- `app/db/`
+  - `session.py` (engine + sessionmaker)
+  - `models/` (SQLAlchemy ORM models)
+  - `migrations/` (Alembic)
+- `app/schemas/` — Pydantic v2 request/response DTOs
+- `app/services/` — business logic (imports/sync/jobs), no FastAPI dependency
+- `app/repositories/` — optional: DB query layer if it helps keep services clean
+
+Rules:
+- Endpoints call services.
+- Services call repositories/DB helpers.
+- DB models are not returned directly from API responses; map to Pydantic schemas.
 
 ## 6) Database rules
-- PostgreSQL is the source of truth.
-- Enforce constraints in the DB when possible (FKs, uniques).
-- Prefer UUID primary keys unless schema requires otherwise.
-- All timestamps should be timezone-aware (UTC).
+- PostgreSQL is the source of truth; prefer constraints in the DB (FKs, unique, checks).
+- Use timezone-aware timestamps in UTC.
+- Prefer UUID primary keys unless the existing schema dictates otherwise.
+- For SQLAlchemy 2.x:
+  - Use `Mapped[]` typing and `mapped_column()`
+  - Use `select()` + session.execute patterns
+- Avoid implicit autocommit behavior; use explicit transactions.
 
-## 7) Safety rules for agent actions
-- Before making large edits, summarize the plan and the files you will change.
-- Prefer small diffs. If changes exceed ~300 lines, break into multiple steps.
-- When running commands, explain what you are running and why.
-- Never delete data or drop tables unless explicitly instructed.
+## 7) Agent safety + workflow rules
+- Before large edits: summarize the plan and list files to change.
+- Keep diffs small:
+  - If a change is > ~300 lines, split into steps/commits.
+- Never delete data, drop tables, or do destructive migrations unless explicitly instructed.
+- When running commands, state exactly what you ran and why.
+- Prefer tests or a quick “smoke run” for verification.
 
-## 8) “Done” definition for a task
-A task is only "done" when:
-- Code runs (or tests pass) locally with the documented commands.
-- New endpoints include minimal request/response models.
-- Errors are handled cleanly (no bare exceptions).
-- Any new config values are documented in README (or a sample env file).
-- You provide a short summary of what changed and how to verify it.
+## 8) Definition of done
+A task is “done” only when:
+- The app runs locally with documented commands, OR tests pass for that unit.
+- New endpoints have minimal request/response Pydantic models.
+- Errors are handled cleanly (no raw stack traces to users).
+- New config values are documented (README or `.env.example`).
+- Provide a short summary + how to verify.
 
-## 9) Default commands (update if repo differs)
-- Create venv: `python -m venv .venv`
-- Install: `pip install -r requirements.txt` (or use poetry/uv if configured)
-- Run API: `uvicorn app.main:app --reload`
-- Tests: `pytest -q`
+## 9) Local dev commands (uv)
+Assume a `.venv` in the repo root.
+
+- Create venv:
+  - `uv venv`
+- Install deps (if requirements exist):
+  - `uv pip install -r requirements.txt`
+- Add a dependency:
+  - `uv pip install <package>`
+  - (then update requirements via `uv pip freeze > requirements.txt` if this repo uses requirements files)
+- Run API:
+  - `uv run uvicorn app.main:app --reload`
+- Tests:
+  - `uv run pytest -q`
+
+If the repo uses `pyproject.toml` + locked deps, follow that instead of requirements.txt.
 
 ## 10) Communication style
-- Be concise and explicit.
-- If a requirement is unclear, make a reasonable assumption and state it.
-- When you add a new file, explain its purpose in one sentence.
+- Be concise and specific.
+- If something is ambiguous, make a reasonable assumption and state it.
+- For each new file: give a one-line purpose explanation.

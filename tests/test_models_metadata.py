@@ -15,4 +15,3 @@ def test_baseline_tables_registered() -> None:
         "app.watch_event_tag",
     }
     assert expected_tables.issubset(Base.metadata.tables.keys())
-
