@@ -29,6 +29,7 @@ class WatchEventImportResult:
     inserted_count: int
     skipped_count: int
     error_count: int
+    rejected_before_import: int = 0
     cursor_before: dict | None = None
     cursor_after: dict | None = None
 
@@ -171,6 +172,7 @@ class WatchEventImportService:
                 inserted_count=inserted_count,
                 skipped_count=skipped_count,
                 error_count=error_count,
+                rejected_before_import=payload.rejected_before_import,
                 cursor_before=cursor_before,
                 cursor_after=cursor_after,
             )
@@ -184,6 +186,7 @@ class WatchEventImportService:
                 "mode": payload.mode.value,
                 "resume_from_latest": payload.resume_from_latest,
                 "cursor_before": cursor_before,
+                "rejected_before_import": payload.rejected_before_import,
             },
         )
 
@@ -267,6 +270,7 @@ class WatchEventImportService:
             parameters_patch={
                 "cursor_before": cursor_before,
                 "cursor": cursor_after,
+                "rejected_before_import": payload.rejected_before_import,
             },
         )
 
@@ -278,6 +282,7 @@ class WatchEventImportService:
             inserted_count=inserted_count,
             skipped_count=skipped_count,
             error_count=error_count,
+            rejected_before_import=payload.rejected_before_import,
             cursor_before=cursor_before,
             cursor_after=cursor_after,
         )
@@ -297,6 +302,7 @@ class WatchEventImportService:
             resume_from_latest=payload.resume_from_latest,
             source_detail=payload.source_detail,
             notes=payload.notes,
+            rejected_before_import=payload.rejected_before_import,
             events=internal_events,
         )
         return WatchEventImportService.run_import(session, payload=internal_payload)

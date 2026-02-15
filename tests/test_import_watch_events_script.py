@@ -87,6 +87,7 @@ def test_run_executes_import_service(monkeypatch, tmp_path: Path) -> None:
     def fake_run_legacy_source_import(session, *, payload):
         assert payload.dry_run is True
         assert payload.resume_from_latest is True
+        assert payload.rejected_before_import == 0
         assert len(payload.rows) == 1
         assert session is not None
         return expected_result
@@ -146,7 +147,11 @@ def test_run_legacy_backup_writes_error_report(monkeypatch, tmp_path: Path) -> N
     monkeypatch.setattr(
         import_watch_events.WatchEventImportService,
         "run_legacy_source_import",
-        lambda *_args, **_kwargs: expected_result,
+        lambda _session, *, payload: (
+            expected_result
+            if payload.rejected_before_import == 0
+            else (_ for _ in ()).throw(AssertionError("unexpected rejected count"))
+        ),
     )
 
     exit_code = import_watch_events.run(

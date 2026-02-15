@@ -33,6 +33,7 @@ def import_watch_events(
         inserted_count=result.inserted_count,
         skipped_count=result.skipped_count,
         error_count=result.error_count,
+        rejected_before_import=result.rejected_before_import,
         cursor_before=result.cursor_before,
         cursor_after=result.cursor_after,
     )
@@ -52,6 +53,7 @@ def import_legacy_source_watch_events(
         inserted_count=result.inserted_count,
         skipped_count=result.skipped_count,
         error_count=result.error_count,
+        rejected_before_import=result.rejected_before_import,
         cursor_before=result.cursor_before,
         cursor_after=result.cursor_after,
     )

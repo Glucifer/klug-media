@@ -19,6 +19,7 @@ def _payload(*, dry_run: bool = False) -> WatchEventImportRequest:
         source="legacy_source_export",
         mode=ImportMode.bootstrap,
         dry_run=dry_run,
+        rejected_before_import=1,
         events=[
             ImportedWatchEvent(
                 user_id=uuid4(),
@@ -86,6 +87,7 @@ def test_run_import_all_success(monkeypatch) -> None:
     assert result.inserted_count == 2
     assert result.skipped_count == 0
     assert result.error_count == 0
+    assert result.rejected_before_import == 1
 
 
 def test_run_import_partial_failure_and_duplicate_skip(monkeypatch) -> None:
@@ -143,6 +145,7 @@ def test_run_import_partial_failure_and_duplicate_skip(monkeypatch) -> None:
     assert result.inserted_count == 0
     assert result.skipped_count == 1
     assert result.error_count == 1
+    assert result.rejected_before_import == 1
     assert calls["errors"] == 1
 
 
@@ -167,6 +170,7 @@ def test_run_import_dry_run_skips_db_writes(monkeypatch) -> None:
     assert result.inserted_count == 2
     assert result.skipped_count == 0
     assert result.error_count == 0
+    assert result.rejected_before_import == 1
 
 
 def test_run_legacy_source_import_maps_rows(monkeypatch) -> None:
@@ -175,6 +179,7 @@ def test_run_legacy_source_import_maps_rows(monkeypatch) -> None:
     payload = LegacySourceWatchEventImportRequest(
         mode=ImportMode.incremental,
         dry_run=True,
+        rejected_before_import=9,
         rows=[
             LegacySourceWatchEventRow(
                 user_id=uuid4(),
@@ -192,6 +197,7 @@ def test_run_legacy_source_import_maps_rows(monkeypatch) -> None:
         captured["source"] = payload.source
         captured["mode"] = payload.mode
         captured["dry_run"] = payload.dry_run
+        captured["rejected_before_import"] = payload.rejected_before_import
         captured["playback_source"] = payload.events[0].playback_source
         return type(
             "Result",
@@ -218,6 +224,7 @@ def test_run_legacy_source_import_maps_rows(monkeypatch) -> None:
     assert captured["mode"] == ImportMode.incremental
     assert captured["dry_run"] is True
     assert captured["playback_source"] == "jellyfin"
+    assert captured["rejected_before_import"] == 9
 
 
 def test_run_incremental_resume_skips_rows_before_cursor(monkeypatch) -> None:
@@ -246,6 +253,7 @@ def test_run_incremental_resume_skips_rows_before_cursor(monkeypatch) -> None:
         mode=ImportMode.incremental,
         resume_from_latest=True,
         source_detail="incremental",
+        rejected_before_import=2,
         events=[
             ImportedWatchEvent(
                 user_id=uuid4(),
@@ -308,6 +316,7 @@ def test_run_incremental_resume_skips_rows_before_cursor(monkeypatch) -> None:
     assert result.inserted_count == 1
     assert result.skipped_count == 2
     assert result.error_count == 0
+    assert result.rejected_before_import == 2
 
 
 def test_run_incremental_skips_existing_source_event_id(monkeypatch) -> None:
@@ -324,6 +333,7 @@ def test_run_incremental_skips_existing_source_event_id(monkeypatch) -> None:
         source="legacy_source_export",
         mode=ImportMode.incremental,
         source_detail="incremental",
+        rejected_before_import=3,
         events=[
             ImportedWatchEvent(
                 user_id=uuid4(),
@@ -365,3 +375,4 @@ def test_run_incremental_skips_existing_source_event_id(monkeypatch) -> None:
     result = WatchEventImportService.run_import(session_obj, payload=payload)
     assert result.inserted_count == 0
     assert result.skipped_count == 1
+    assert result.rejected_before_import == 3

@@ -357,6 +357,7 @@ def run(argv: list[str] | None = None) -> int:
             resume_from_latest=args.resume_from_latest,
             source_detail=args.source_detail,
             notes=args.notes,
+            rejected_before_import=len(rejected_rows),
             rows=rows_for_validation,
         )
     except (ValueError, ValidationError, json.JSONDecodeError) as exc:
@@ -393,10 +394,9 @@ def run(argv: list[str] | None = None) -> int:
     print(f"  inserted: {result.inserted_count}")
     print(f"  skipped: {result.skipped_count}")
     print(f"  errors: {result.error_count}")
+    print(f"  rejected_before_import: {result.rejected_before_import}")
     print(f"  cursor_before: {result.cursor_before}")
     print(f"  cursor_after: {result.cursor_after}")
-    if rejected_rows:
-        print(f"  rejected_before_import: {len(rejected_rows)}")
     return 0
 
 

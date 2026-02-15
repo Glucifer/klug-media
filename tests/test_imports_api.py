@@ -16,6 +16,7 @@ def test_import_watch_events_returns_summary(monkeypatch) -> None:
         inserted_count=1,
         skipped_count=1,
         error_count=1,
+        rejected_before_import=2,
     )
 
     def fake_run_import(_session, *, payload):
@@ -47,6 +48,7 @@ def test_import_watch_events_returns_summary(monkeypatch) -> None:
     assert payload["inserted_count"] == 1
     assert payload["skipped_count"] == 1
     assert payload["error_count"] == 1
+    assert payload["rejected_before_import"] == 2
 
 
 def test_import_watch_events_unsupported_source_returns_422(monkeypatch) -> None:
@@ -84,6 +86,7 @@ def test_import_legacy_source_watch_events_endpoint(monkeypatch) -> None:
         inserted_count=1,
         skipped_count=0,
         error_count=0,
+        rejected_before_import=4,
     )
 
     def fake_run_legacy_source_import(_session, *, payload):
@@ -116,3 +119,4 @@ def test_import_legacy_source_watch_events_endpoint(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["status"] == "dry_run"
+    assert response.json()["rejected_before_import"] == 4
