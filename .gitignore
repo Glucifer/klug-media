@@ -16,3 +16,8 @@ venv/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Environment files / secrets
+.env
+.env.*
+!.env.example
