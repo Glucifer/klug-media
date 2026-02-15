@@ -76,6 +76,7 @@ def test_run_executes_import_service(monkeypatch, tmp_path: Path) -> None:
 
     def fake_run_legacy_source_import(session, *, payload):
         assert payload.dry_run is True
+        assert payload.resume_from_latest is True
         assert len(payload.rows) == 1
         assert session is not None
         return expected_result
@@ -87,7 +88,14 @@ def test_run_executes_import_service(monkeypatch, tmp_path: Path) -> None:
     )
 
     exit_code = import_watch_events.run(
-        ["--input", str(input_path), "--mode", "incremental", "--dry-run"]
+        [
+            "--input",
+            str(input_path),
+            "--mode",
+            "incremental",
+            "--dry-run",
+            "--resume-from-latest",
+        ]
     )
 
     assert exit_code == 0

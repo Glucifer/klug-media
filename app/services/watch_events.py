@@ -93,3 +93,16 @@ class WatchEventService:
             raise WatchEventConstraintError(
                 "Watch event failed database constraints"
             ) from exc
+
+    @staticmethod
+    def source_event_exists(
+        session: Session,
+        *,
+        playback_source: str,
+        source_event_id: str,
+    ) -> bool:
+        return watch_event_repository.source_event_exists(
+            session,
+            playback_source=playback_source,
+            source_event_id=source_event_id,
+        )

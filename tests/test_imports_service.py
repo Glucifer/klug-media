@@ -218,3 +218,150 @@ def test_run_legacy_source_import_maps_rows(monkeypatch) -> None:
     assert captured["mode"] == ImportMode.incremental
     assert captured["dry_run"] is True
     assert captured["playback_source"] == "jellyfin"
+
+
+def test_run_incremental_resume_skips_rows_before_cursor(monkeypatch) -> None:
+    session_obj = object()
+    batch_id = uuid4()
+
+    class DummyBatch:
+        def __init__(
+            self,
+            import_batch_id: UUID,
+            status: str = "running",
+            parameters: dict | None = None,
+        ) -> None:
+            self.import_batch_id = import_batch_id
+            self.status = status
+            self.parameters = parameters or {}
+
+    cursor = {
+        "watched_at": "2025-01-01T12:00:00+00:00",
+        "source_event_id": "evt-2",
+    }
+    current_batch = DummyBatch(batch_id)
+
+    payload = WatchEventImportRequest(
+        source="legacy_source_export",
+        mode=ImportMode.incremental,
+        resume_from_latest=True,
+        source_detail="incremental",
+        events=[
+            ImportedWatchEvent(
+                user_id=uuid4(),
+                media_item_id=uuid4(),
+                watched_at=datetime.fromisoformat("2025-01-01T11:00:00+00:00"),
+                playback_source="jellyfin",
+                source_event_id="evt-1",
+            ),
+            ImportedWatchEvent(
+                user_id=uuid4(),
+                media_item_id=uuid4(),
+                watched_at=datetime.fromisoformat("2025-01-01T12:00:00+00:00"),
+                playback_source="jellyfin",
+                source_event_id="evt-2",
+            ),
+            ImportedWatchEvent(
+                user_id=uuid4(),
+                media_item_id=uuid4(),
+                watched_at=datetime.fromisoformat("2025-01-01T13:00:00+00:00"),
+                playback_source="jellyfin",
+                source_event_id="evt-3",
+            ),
+        ],
+    )
+
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.get_latest_import_batch_for_source",
+        lambda *_args, **_kwargs: DummyBatch(uuid4(), parameters={"cursor": cursor}),
+    )
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.start_import_batch",
+        lambda *_args, **_kwargs: current_batch,
+    )
+    monkeypatch.setattr(
+        "app.services.imports.WatchEventService.source_event_exists",
+        lambda *_args, **_kwargs: False,
+    )
+    monkeypatch.setattr(
+        "app.services.imports.WatchEventService.create_watch_event",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.add_import_batch_error",
+        lambda *_args, **_kwargs: None,
+    )
+
+    def fake_finish_import_batch(_session: Session, **kwargs):
+        assert kwargs["watch_events_inserted"] == 1
+        assert kwargs["errors_count"] == 0
+        assert kwargs["parameters_patch"]["cursor_before"] == cursor
+        assert kwargs["parameters_patch"]["cursor"]["source_event_id"] == "evt-3"
+        return DummyBatch(batch_id, status="completed")
+
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.finish_import_batch",
+        fake_finish_import_batch,
+    )
+
+    result = WatchEventImportService.run_import(session_obj, payload=payload)
+    assert result.inserted_count == 1
+    assert result.skipped_count == 2
+    assert result.error_count == 0
+
+
+def test_run_incremental_skips_existing_source_event_id(monkeypatch) -> None:
+    session_obj = object()
+    batch_id = uuid4()
+
+    class DummyBatch:
+        def __init__(self, import_batch_id: UUID, status: str = "running") -> None:
+            self.import_batch_id = import_batch_id
+            self.status = status
+            self.parameters = {}
+
+    payload = WatchEventImportRequest(
+        source="legacy_source_export",
+        mode=ImportMode.incremental,
+        source_detail="incremental",
+        events=[
+            ImportedWatchEvent(
+                user_id=uuid4(),
+                media_item_id=uuid4(),
+                watched_at=datetime.now(UTC),
+                playback_source="jellyfin",
+                source_event_id="evt-1",
+            )
+        ],
+    )
+
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.get_latest_import_batch_for_source",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.start_import_batch",
+        lambda *_args, **_kwargs: DummyBatch(batch_id),
+    )
+    monkeypatch.setattr(
+        "app.services.imports.WatchEventService.source_event_exists",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        "app.services.imports.WatchEventService.create_watch_event",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("create_watch_event should not be called")
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.add_import_batch_error",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.finish_import_batch",
+        lambda *_args, **_kwargs: DummyBatch(batch_id, status="completed"),
+    )
+
+    result = WatchEventImportService.run_import(session_obj, payload=payload)
+    assert result.inserted_count == 0
+    assert result.skipped_count == 1

@@ -37,6 +37,7 @@ class ImportBatchService:
         source: str,
         source_detail: str | None,
         notes: str | None,
+        parameters: dict | None = None,
     ) -> ImportBatch:
         normalized_source = source.strip()
         normalized_source_detail = source_detail.strip() if source_detail else None
@@ -50,6 +51,7 @@ class ImportBatchService:
                 source=normalized_source,
                 source_detail=normalized_source_detail,
                 notes=notes,
+                parameters=parameters,
             )
             session.commit()
             return batch
@@ -69,6 +71,7 @@ class ImportBatchService:
         tags_added: int,
         errors_count: int,
         notes: str | None,
+        parameters_patch: dict | None = None,
     ) -> ImportBatch:
         normalized_status = status.strip()
         if not normalized_status:
@@ -91,6 +94,7 @@ class ImportBatchService:
                 tags_added=tags_added,
                 errors_count=errors_count,
                 notes=notes,
+                parameters_patch=parameters_patch,
             )
             session.commit()
             return updated_batch
@@ -162,3 +166,16 @@ class ImportBatchService:
             raise ImportBatchConstraintError(
                 "Failed to add import batch error"
             ) from exc
+
+    @staticmethod
+    def get_latest_import_batch_for_source(
+        session: Session,
+        *,
+        source: str,
+        source_detail: str | None,
+    ) -> ImportBatch | None:
+        return import_batch_repository.get_latest_import_batch_for_source(
+            session,
+            source=source,
+            source_detail=source_detail,
+        )

@@ -30,6 +30,7 @@ class WatchEventImportRequest(BaseModel):
     source: str = Field(min_length=1, max_length=100)
     mode: ImportMode
     dry_run: bool = False
+    resume_from_latest: bool = False
     source_detail: str | None = Field(default=None, max_length=255)
     notes: str | None = None
     events: list[ImportedWatchEvent] = Field(min_length=1)
@@ -43,6 +44,8 @@ class WatchEventImportResponse(BaseModel):
     inserted_count: int
     skipped_count: int
     error_count: int
+    cursor_before: dict | None = None
+    cursor_after: dict | None = None
 
 
 class LegacySourceWatchEventRow(BaseModel):
@@ -62,6 +65,7 @@ class LegacySourceWatchEventRow(BaseModel):
 class LegacySourceWatchEventImportRequest(BaseModel):
     mode: ImportMode
     dry_run: bool = False
+    resume_from_latest: bool = False
     source_detail: str | None = Field(default=None, max_length=255)
     notes: str | None = None
     rows: list[LegacySourceWatchEventRow] = Field(min_length=1)

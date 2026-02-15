@@ -41,6 +41,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Validate and summarize without writing to the database",
     )
+    parser.add_argument(
+        "--resume-from-latest",
+        action="store_true",
+        help="For incremental mode, resume from latest stored cursor",
+    )
     return parser.parse_args(argv)
 
 
@@ -105,6 +110,7 @@ def run(argv: list[str] | None = None) -> int:
         payload = LegacySourceWatchEventImportRequest(
             mode=ImportMode(args.mode),
             dry_run=args.dry_run,
+            resume_from_latest=args.resume_from_latest,
             source_detail=args.source_detail,
             notes=args.notes,
             rows=rows,
@@ -132,6 +138,8 @@ def run(argv: list[str] | None = None) -> int:
     print(f"  inserted: {result.inserted_count}")
     print(f"  skipped: {result.skipped_count}")
     print(f"  errors: {result.error_count}")
+    print(f"  cursor_before: {result.cursor_before}")
+    print(f"  cursor_after: {result.cursor_after}")
     return 0
 
 

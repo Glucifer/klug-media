@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from app.db.models.entities import ImportBatch, ImportBatchError
@@ -25,12 +25,14 @@ def create_import_batch(
     source: str,
     source_detail: str | None,
     notes: str | None,
+    parameters: dict | None = None,
 ) -> ImportBatch:
     batch = ImportBatch(
         source=source,
         source_detail=source_detail,
         notes=notes,
         status="running",
+        parameters=parameters or {},
     )
     session.add(batch)
     session.flush()
@@ -49,6 +51,7 @@ def finish_import_batch(
     tags_added: int,
     errors_count: int,
     notes: str | None,
+    parameters_patch: dict | None = None,
 ) -> ImportBatch:
     import_batch.status = status
     import_batch.finished_at = datetime.now(UTC)
@@ -58,6 +61,10 @@ def finish_import_batch(
     import_batch.tags_added = tags_added
     import_batch.errors_count = errors_count
     import_batch.notes = notes
+    if parameters_patch:
+        merged_parameters = dict(import_batch.parameters or {})
+        merged_parameters.update(parameters_patch)
+        import_batch.parameters = merged_parameters
 
     session.flush()
     session.refresh(import_batch)
@@ -102,3 +109,19 @@ def create_import_batch_error(
     session.flush()
     session.refresh(error)
     return error
+
+
+def get_latest_import_batch_for_source(
+    session: Session,
+    *,
+    source: str,
+    source_detail: str | None,
+) -> ImportBatch | None:
+    statement: Select[tuple[ImportBatch]] = select(ImportBatch).where(
+        ImportBatch.source == source
+    )
+    if source_detail is not None:
+        statement = statement.where(ImportBatch.source_detail == source_detail)
+
+    statement = statement.order_by(ImportBatch.started_at.desc()).limit(1)
+    return session.scalar(statement)

@@ -65,3 +65,16 @@ def create_watch_event(
     session.flush()
     session.refresh(watch_event)
     return watch_event
+
+
+def source_event_exists(
+    session: Session,
+    *,
+    playback_source: str,
+    source_event_id: str,
+) -> bool:
+    statement = select(WatchEvent.watch_id).where(
+        WatchEvent.playback_source == playback_source,
+        WatchEvent.source_event_id == source_event_id,
+    )
+    return session.scalar(statement) is not None

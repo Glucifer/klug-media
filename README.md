@@ -87,3 +87,8 @@ Dry run example:
 ```bash
 uv run python -m app.scripts.import_watch_events --input ./path/to/export.csv --mode incremental --dry-run
 ```
+
+Incremental resume example:
+```bash
+uv run python -m app.scripts.import_watch_events --input ./path/to/export.csv --mode incremental --resume-from-latest
+```
