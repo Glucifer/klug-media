@@ -1,0 +1,100 @@
+from datetime import UTC, datetime
+from decimal import Decimal
+from uuid import uuid4
+
+from fastapi.testclient import TestClient
+
+from app.main import app
+from app.services.watch_events import WatchEventConstraintError, WatchEventService
+
+
+class DummyWatchEvent:
+    def __init__(self) -> None:
+        self.watch_id = uuid4()
+        self.user_id = uuid4()
+        self.media_item_id = uuid4()
+        self.watched_at = datetime.now(UTC)
+        self.playback_source = "jellyfin"
+        self.total_seconds = 7200
+        self.watched_seconds = 7200
+        self.progress_percent = Decimal("100.00")
+        self.completed = True
+        self.rating_value = Decimal("4.50")
+        self.rating_scale = "5-star"
+        self.media_version_id = None
+        self.import_batch_id = None
+        self.created_at = datetime.now(UTC)
+        self.rewatch = False
+        self.dedupe_hash = "abc123"
+        self.created_by = None
+        self.source_event_id = "evt-1"
+
+
+def test_list_watch_events_returns_items(monkeypatch) -> None:
+    event = DummyWatchEvent()
+
+    def fake_list_watch_events(_session, **_kwargs):
+        return [event]
+
+    monkeypatch.setattr(WatchEventService, "list_watch_events", fake_list_watch_events)
+
+    client = TestClient(app)
+    response = client.get("/api/v1/watch-events")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) == 1
+    assert payload[0]["playback_source"] == "jellyfin"
+
+
+def test_create_watch_event_returns_201(monkeypatch) -> None:
+    event = DummyWatchEvent()
+
+    def fake_create_watch_event(_session, **kwargs):
+        assert kwargs["playback_source"] == "jellyfin"
+        return event
+
+    monkeypatch.setattr(
+        WatchEventService, "create_watch_event", fake_create_watch_event
+    )
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/watch-events",
+        json={
+            "user_id": str(event.user_id),
+            "media_item_id": str(event.media_item_id),
+            "watched_at": event.watched_at.isoformat(),
+            "playback_source": "jellyfin",
+            "completed": True,
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["playback_source"] == "jellyfin"
+
+
+def test_create_watch_event_constraint_error_returns_409(monkeypatch) -> None:
+    event = DummyWatchEvent()
+
+    def fake_create_watch_event(_session, **_kwargs):
+        raise WatchEventConstraintError("Watch event failed database constraints")
+
+    monkeypatch.setattr(
+        WatchEventService, "create_watch_event", fake_create_watch_event
+    )
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/watch-events",
+        json={
+            "user_id": str(event.user_id),
+            "media_item_id": str(event.media_item_id),
+            "watched_at": event.watched_at.isoformat(),
+            "playback_source": "jellyfin",
+            "completed": True,
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Watch event failed database constraints"
