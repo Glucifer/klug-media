@@ -61,3 +61,8 @@ uv run uvicorn app.main:app --reload
 ```bash
 uv run pytest -q
 ```
+
+5. Run integration tests (PostgreSQL):
+```bash
+KLUG_TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/klug_media_test uv run pytest -q tests/integration
+```
