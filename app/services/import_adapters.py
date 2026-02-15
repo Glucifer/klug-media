@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from app.schemas.imports import ImportedWatchEvent
+from app.schemas.imports import ImportedWatchEvent, LegacySourceWatchEventRow
 
 
 @dataclass(frozen=True)
@@ -40,6 +40,24 @@ class WatchEventImportAdapter:
             rating_scale=event.rating_scale,
             media_version_id=event.media_version_id,
             source_event_id=event.source_event_id,
+        )
+
+
+class LegacySourceWatchEventImportAdapter:
+    def to_internal_event(self, row: LegacySourceWatchEventRow) -> ImportedWatchEvent:
+        return ImportedWatchEvent(
+            user_id=row.user_id,
+            media_item_id=row.media_item_id,
+            watched_at=row.watched_at,
+            playback_source=row.player,
+            total_seconds=row.total_seconds,
+            watched_seconds=row.watched_seconds,
+            progress_percent=row.progress_percent,
+            completed=row.completed,
+            rating_value=row.rating,
+            rating_scale="legacy_source_rating",
+            media_version_id=row.media_version_id,
+            source_event_id=row.source_event_id,
         )
 
 

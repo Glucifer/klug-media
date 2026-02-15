@@ -13,6 +13,10 @@ class WatchEventConstraintError(Exception):
     """Raised when a watch event violates database constraints."""
 
 
+class WatchEventDuplicateError(WatchEventConstraintError):
+    """Raised when a watch event is a duplicate."""
+
+
 class WatchEventService:
     @staticmethod
     def list_watch_events(
@@ -77,6 +81,15 @@ class WatchEventService:
             return watch_event
         except IntegrityError as exc:
             session.rollback()
+            sqlstate = getattr(exc.orig, "sqlstate", None) or getattr(
+                exc.orig, "pgcode", None
+            )
+            constraint_name = getattr(
+                getattr(exc.orig, "diag", None), "constraint_name", None
+            )
+            if sqlstate == "23505" and constraint_name == "ux_watch_event_dedupe_hash":
+                raise WatchEventDuplicateError("Watch event already exists") from exc
+
             raise WatchEventConstraintError(
                 "Watch event failed database constraints"
             ) from exc

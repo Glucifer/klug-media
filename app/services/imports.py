@@ -3,18 +3,30 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.schemas.imports import WatchEventImportRequest
-from app.services.import_adapters import get_watch_event_import_adapter
+from app.schemas.imports import (
+    LegacySourceWatchEventImportRequest,
+    WatchEventImportRequest,
+)
+from app.services.import_adapters import (
+    LegacySourceWatchEventImportAdapter,
+    get_watch_event_import_adapter,
+)
 from app.services.import_batches import ImportBatchService
-from app.services.watch_events import WatchEventConstraintError, WatchEventService
+from app.services.watch_events import (
+    WatchEventConstraintError,
+    WatchEventDuplicateError,
+    WatchEventService,
+)
 
 
 @dataclass(frozen=True)
 class WatchEventImportResult:
     import_batch_id: UUID
     status: str
+    dry_run: bool
     processed_count: int
     inserted_count: int
+    skipped_count: int
     error_count: int
 
 
@@ -27,6 +39,27 @@ class WatchEventImportService:
     ) -> WatchEventImportResult:
         adapter = get_watch_event_import_adapter(payload.source)
 
+        inserted_count = 0
+        skipped_count = 0
+        error_count = 0
+
+        if payload.dry_run:
+            for event in payload.events:
+                mapped = adapter.to_watch_event_create_args(event)
+                if not mapped.playback_source.strip():
+                    error_count += 1
+                else:
+                    inserted_count += 1
+            return WatchEventImportResult(
+                import_batch_id=UUID("00000000-0000-0000-0000-000000000000"),
+                status="dry_run",
+                dry_run=True,
+                processed_count=len(payload.events),
+                inserted_count=inserted_count,
+                skipped_count=0,
+                error_count=error_count,
+            )
+
         source_detail = payload.source_detail or payload.mode.value
         batch = ImportBatchService.start_import_batch(
             session,
@@ -34,9 +67,6 @@ class WatchEventImportService:
             source_detail=source_detail,
             notes=payload.notes,
         )
-
-        inserted_count = 0
-        error_count = 0
 
         for index, event in enumerate(payload.events):
             mapped = adapter.to_watch_event_create_args(event)
@@ -57,6 +87,8 @@ class WatchEventImportService:
                     source_event_id=mapped.source_event_id,
                 )
                 inserted_count += 1
+            except WatchEventDuplicateError:
+                skipped_count += 1
             except (WatchEventConstraintError, ValueError) as exc:
                 error_count += 1
                 ImportBatchService.add_import_batch_error(
@@ -85,7 +117,27 @@ class WatchEventImportService:
         return WatchEventImportResult(
             import_batch_id=finalized_batch.import_batch_id,
             status=finalized_batch.status,
+            dry_run=False,
             processed_count=len(payload.events),
             inserted_count=inserted_count,
+            skipped_count=skipped_count,
             error_count=error_count,
         )
+
+    @staticmethod
+    def run_legacy_source_import(
+        session: Session,
+        *,
+        payload: LegacySourceWatchEventImportRequest,
+    ) -> WatchEventImportResult:
+        adapter = LegacySourceWatchEventImportAdapter()
+        internal_events = [adapter.to_internal_event(row) for row in payload.rows]
+        internal_payload = WatchEventImportRequest(
+            source="legacy_source_export",
+            mode=payload.mode,
+            dry_run=payload.dry_run,
+            source_detail=payload.source_detail,
+            notes=payload.notes,
+            events=internal_events,
+        )
+        return WatchEventImportService.run_import(session, payload=internal_payload)

@@ -1,15 +1,24 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
+
 from sqlalchemy.orm import Session
 
-from app.schemas.imports import ImportMode, ImportedWatchEvent, WatchEventImportRequest
+from app.schemas.imports import (
+    ImportMode,
+    ImportedWatchEvent,
+    LegacySourceWatchEventImportRequest,
+    LegacySourceWatchEventRow,
+    WatchEventImportRequest,
+)
 from app.services.imports import WatchEventImportService
+from app.services.watch_events import WatchEventDuplicateError
 
 
-def _payload() -> WatchEventImportRequest:
+def _payload(*, dry_run: bool = False) -> WatchEventImportRequest:
     return WatchEventImportRequest(
         source="legacy_source_export",
         mode=ImportMode.bootstrap,
+        dry_run=dry_run,
         events=[
             ImportedWatchEvent(
                 user_id=uuid4(),
@@ -75,10 +84,11 @@ def test_run_import_all_success(monkeypatch) -> None:
 
     assert result.status == "completed"
     assert result.inserted_count == 2
+    assert result.skipped_count == 0
     assert result.error_count == 0
 
 
-def test_run_import_partial_failure(monkeypatch) -> None:
+def test_run_import_partial_failure_and_duplicate_skip(monkeypatch) -> None:
     session_obj = object()
     batch_id = uuid4()
 
@@ -94,6 +104,8 @@ def test_run_import_partial_failure(monkeypatch) -> None:
 
     def fake_create_watch_event(_session: Session, **_kwargs):
         calls["create"] += 1
+        if calls["create"] == 1:
+            raise WatchEventDuplicateError("Watch event already exists")
         if calls["create"] == 2:
             raise ValueError("bad row")
         return None
@@ -104,7 +116,7 @@ def test_run_import_partial_failure(monkeypatch) -> None:
         return None
 
     def fake_finish_import_batch(_session: Session, **kwargs):
-        assert kwargs["watch_events_inserted"] == 1
+        assert kwargs["watch_events_inserted"] == 0
         assert kwargs["errors_count"] == 1
         return DummyBatch(batch_id, status="completed_with_errors")
 
@@ -128,6 +140,81 @@ def test_run_import_partial_failure(monkeypatch) -> None:
     result = WatchEventImportService.run_import(session_obj, payload=_payload())
 
     assert result.status == "completed_with_errors"
-    assert result.inserted_count == 1
+    assert result.inserted_count == 0
+    assert result.skipped_count == 1
     assert result.error_count == 1
     assert calls["errors"] == 1
+
+
+def test_run_import_dry_run_skips_db_writes(monkeypatch) -> None:
+    session_obj = object()
+
+    def fail_if_called(*_args, **_kwargs):
+        raise AssertionError("DB write should not be called for dry_run")
+
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.start_import_batch",
+        fail_if_called,
+    )
+
+    result = WatchEventImportService.run_import(
+        session_obj,
+        payload=_payload(dry_run=True),
+    )
+
+    assert result.status == "dry_run"
+    assert result.dry_run is True
+    assert result.inserted_count == 2
+    assert result.skipped_count == 0
+    assert result.error_count == 0
+
+
+def test_run_legacy_source_import_maps_rows(monkeypatch) -> None:
+    session_obj = object()
+
+    payload = LegacySourceWatchEventImportRequest(
+        mode=ImportMode.incremental,
+        dry_run=True,
+        rows=[
+            LegacySourceWatchEventRow(
+                user_id=uuid4(),
+                media_item_id=uuid4(),
+                watched_at=datetime.now(UTC),
+                player="jellyfin",
+                source_event_id="legacy-evt-1",
+            )
+        ],
+    )
+
+    captured = {}
+
+    def fake_run_import(_session: Session, *, payload: WatchEventImportRequest):
+        captured["source"] = payload.source
+        captured["mode"] = payload.mode
+        captured["dry_run"] = payload.dry_run
+        captured["playback_source"] = payload.events[0].playback_source
+        return type(
+            "Result",
+            (),
+            {
+                "import_batch_id": UUID("00000000-0000-0000-0000-000000000000"),
+                "status": "dry_run",
+                "dry_run": True,
+                "processed_count": 1,
+                "inserted_count": 1,
+                "skipped_count": 0,
+                "error_count": 0,
+            },
+        )()
+
+    monkeypatch.setattr(
+        "app.services.imports.WatchEventImportService.run_import",
+        fake_run_import,
+    )
+
+    WatchEventImportService.run_legacy_source_import(session_obj, payload=payload)
+
+    assert captured["source"] == "legacy_source_export"
+    assert captured["mode"] == ImportMode.incremental
+    assert captured["dry_run"] is True
+    assert captured["playback_source"] == "jellyfin"

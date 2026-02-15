@@ -2,7 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db_session
-from app.schemas.imports import WatchEventImportRequest, WatchEventImportResponse
+from app.schemas.imports import (
+    LegacySourceWatchEventImportRequest,
+    WatchEventImportRequest,
+    WatchEventImportResponse,
+)
 from app.services.imports import WatchEventImportService
 
 router = APIRouter(prefix="/imports", tags=["imports"])
@@ -24,7 +28,26 @@ def import_watch_events(
     return WatchEventImportResponse(
         import_batch_id=result.import_batch_id,
         status=result.status,
+        dry_run=result.dry_run,
         processed_count=result.processed_count,
         inserted_count=result.inserted_count,
+        skipped_count=result.skipped_count,
+        error_count=result.error_count,
+    )
+
+
+@router.post("/watch-events/legacy-source", response_model=WatchEventImportResponse)
+def import_legacy_source_watch_events(
+    payload: LegacySourceWatchEventImportRequest,
+    session: Session = Depends(get_db_session),
+) -> WatchEventImportResponse:
+    result = WatchEventImportService.run_legacy_source_import(session, payload=payload)
+    return WatchEventImportResponse(
+        import_batch_id=result.import_batch_id,
+        status=result.status,
+        dry_run=result.dry_run,
+        processed_count=result.processed_count,
+        inserted_count=result.inserted_count,
+        skipped_count=result.skipped_count,
         error_count=result.error_count,
     )
