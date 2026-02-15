@@ -80,15 +80,15 @@ KLUG_TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/klu
 
 6. Run legacy-source watch-event import script:
 ```bash
-uv run python -m app.scripts.import_watch_events --input ./path/to/export.json --mode bootstrap
+uv run python -m app.scripts.import_watch_events --input ./path/to/export.json --input-schema legacy_backup --user-id <your-user-uuid> --mode bootstrap
 ```
 
 Dry run example:
 ```bash
-uv run python -m app.scripts.import_watch_events --input ./path/to/export.csv --mode incremental --dry-run
+uv run python -m app.scripts.import_watch_events --input ./path/to/export.csv --input-schema legacy_backup --user-id <your-user-uuid> --mode incremental --dry-run
 ```
 
 Incremental resume example:
 ```bash
-uv run python -m app.scripts.import_watch_events --input ./path/to/export.csv --mode incremental --resume-from-latest
+uv run python -m app.scripts.import_watch_events --input ./path/to/export.csv --input-schema legacy_backup --user-id <your-user-uuid> --mode incremental --resume-from-latest --error-report ./import_errors.json
 ```

@@ -31,3 +31,31 @@ def create_media_item(
     session.flush()
     session.refresh(media_item)
     return media_item
+
+
+def find_media_item_by_external_ids(
+    session: Session,
+    *,
+    media_type: str,
+    tmdb_id: int | None,
+    imdb_id: str | None,
+) -> MediaItem | None:
+    if tmdb_id is not None:
+        statement = select(MediaItem).where(
+            MediaItem.type == media_type,
+            MediaItem.tmdb_id == tmdb_id,
+        )
+        found = session.scalar(statement)
+        if found is not None:
+            return found
+
+    if imdb_id:
+        statement = select(MediaItem).where(
+            MediaItem.type == media_type,
+            MediaItem.imdb_id == imdb_id,
+        )
+        found = session.scalar(statement)
+        if found is not None:
+            return found
+
+    return None

@@ -46,3 +46,18 @@ class MediaItemService:
         except IntegrityError as exc:
             session.rollback()
             raise MediaItemAlreadyExistsError("Duplicate media reference") from exc
+
+    @staticmethod
+    def find_media_item_by_external_ids(
+        session: Session,
+        *,
+        media_type: str,
+        tmdb_id: int | None,
+        imdb_id: str | None,
+    ) -> MediaItem | None:
+        return media_item_repository.find_media_item_by_external_ids(
+            session,
+            media_type=media_type,
+            tmdb_id=tmdb_id,
+            imdb_id=imdb_id,
+        )
