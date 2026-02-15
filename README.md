@@ -1,5 +1,16 @@
 # Klug Media
 
+![Status: Personal Use Only](https://img.shields.io/badge/Status-Personal_Use_Only-red)
+![Maintenance: Experimental](https://img.shields.io/badge/Maintenance-Experimental-orange)
+
+> [!WARNING]
+> **This is a personal hobby project, not a consumer product.**
+>
+> Klug Media is built specifically for my local home server environment (Unraid, PostgreSQL, Node-RED). It is currently under active, messy development. I am sharing the code for transparency and inspiration, but I do **not** provide support, installation guides, or guarantees that it will work for anyone else.
+>
+> **Non-goal:** this is not a supported drop-in replacement for any third-party tracking service.
+> There are no releases, no migration guarantees, and no backward-compatibility promise.
+
 Klug Media is a self-hosted media tracking and analytics platform.
 The goal is complete ownership of watch history, metadata, analytics, and integrations.
 
@@ -40,7 +51,7 @@ The repository currently includes:
 - Radarr/Sonarr import
 - One-time Trakt import workflow
 
-## Local Development
+## Local Development (Contributor/Personal Use)
 
 1. Create environment:
 ```bash
