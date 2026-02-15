@@ -10,7 +10,9 @@ from typing import Any
 from uuid import UUID
 
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 
+from app.db.models.entities import MediaItem
 from app.db.session import SessionLocal
 from app.schemas.imports import ImportMode, LegacySourceWatchEventImportRequest
 from app.services.imports import WatchEventImportService
@@ -221,6 +223,85 @@ def _extract_external_ids(
     return _extract_nested_ids(row)
 
 
+def _extract_media_title(row: dict[str, Any], media_type: str) -> str | None:
+    title_value = row.get("title")
+    if isinstance(title_value, str) and title_value.strip():
+        return title_value.strip()
+
+    nested = row.get(media_type)
+    if isinstance(nested, dict):
+        nested_title = nested.get("title")
+        if isinstance(nested_title, str) and nested_title.strip():
+            return nested_title.strip()
+
+    show_value = row.get("show")
+    if isinstance(show_value, dict):
+        show_title = show_value.get("title")
+        if isinstance(show_title, str) and show_title.strip():
+            return show_title.strip()
+
+    return None
+
+
+def _extract_media_year(row: dict[str, Any], media_type: str) -> int | None:
+    year_value = _parse_int(row.get("year"))
+    if year_value is not None:
+        return year_value
+
+    nested = row.get(media_type)
+    if isinstance(nested, dict):
+        nested_year = _parse_int(nested.get("year"))
+        if nested_year is not None:
+            return nested_year
+
+    show_value = row.get("show")
+    if isinstance(show_value, dict):
+        return _parse_int(show_value.get("year"))
+
+    return None
+
+
+def _extract_tvdb_id(row: dict[str, Any], media_type: str) -> int | None:
+    top_tvdb = _parse_int(row.get("tvdb_id"))
+    if top_tvdb is not None:
+        return top_tvdb
+
+    nested = row.get(media_type)
+    if isinstance(nested, dict):
+        ids = nested.get("ids")
+        if isinstance(ids, dict):
+            return _parse_int(ids.get("tvdb"))
+
+    return None
+
+
+def _create_media_item_from_backup_row(
+    session: Any,
+    *,
+    row: dict[str, Any],
+    media_type: str,
+    tmdb_id: int | None,
+    imdb_id: str | None,
+) -> MediaItem:
+    title = _extract_media_title(row, media_type)
+    if not title:
+        fallback_id = tmdb_id or imdb_id or row.get("id") or "unknown"
+        title = f"{media_type}:{fallback_id}"
+
+    media_item = MediaItem(
+        type=media_type,
+        title=title,
+        year=_extract_media_year(row, media_type),
+        tmdb_id=tmdb_id,
+        imdb_id=imdb_id,
+        tvdb_id=_extract_tvdb_id(row, media_type),
+        metadata_source="legacy_backup",
+    )
+    session.add(media_item)
+    session.flush()
+    return media_item
+
+
 def _build_mapped_rows_from_legacy_backup(
     raw_rows: list[dict[str, Any]],
     *,
@@ -229,6 +310,7 @@ def _build_mapped_rows_from_legacy_backup(
     session = SessionLocal()
     mapped_rows: list[dict[str, Any]] = []
     rejected_rows: list[dict[str, Any]] = []
+    created_media_items = 0
 
     try:
         for index, row in enumerate(raw_rows):
@@ -264,19 +346,37 @@ def _build_mapped_rows_from_legacy_backup(
                 imdb_id=imdb_id,
             )
             if media_item is None:
-                rejected_rows.append(
-                    {
-                        "row_index": index,
-                        "reason": "no matching media_item for external ids",
-                        "row": row,
-                        "lookup": {
-                            "media_type": media_type,
-                            "tmdb_id": tmdb_id,
-                            "imdb_id": imdb_id,
-                        },
-                    }
-                )
-                continue
+                try:
+                    media_item = _create_media_item_from_backup_row(
+                        session,
+                        row=row,
+                        media_type=media_type,
+                        tmdb_id=tmdb_id,
+                        imdb_id=imdb_id,
+                    )
+                    created_media_items += 1
+                except IntegrityError:
+                    session.rollback()
+                    media_item = MediaItemService.find_media_item_by_external_ids(
+                        session,
+                        media_type=media_type,
+                        tmdb_id=tmdb_id,
+                        imdb_id=imdb_id,
+                    )
+                    if media_item is None:
+                        rejected_rows.append(
+                            {
+                                "row_index": index,
+                                "reason": "no matching media_item for external ids",
+                                "row": row,
+                                "lookup": {
+                                    "media_type": media_type,
+                                    "tmdb_id": tmdb_id,
+                                    "imdb_id": imdb_id,
+                                },
+                            }
+                        )
+                        continue
 
             source_event_id = row.get("source_event_id") or row.get("id")
             if source_event_id is not None:
@@ -305,6 +405,8 @@ def _build_mapped_rows_from_legacy_backup(
                     "source_event_id": source_event_id,
                 }
             )
+        if created_media_items > 0:
+            session.commit()
     finally:
         session.close()
 

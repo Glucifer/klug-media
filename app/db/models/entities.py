@@ -17,12 +17,20 @@ from sqlalchemy import (
     String,
 )
 from sqlalchemy import UniqueConstraint, text
-from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID as PGUUID
+from sqlalchemy.dialects.postgresql import CITEXT, ENUM, JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
 APP_SCHEMA = "app"
+MEDIA_TYPE_ENUM = ENUM(
+    "movie",
+    "show",
+    "episode",
+    name="media_type",
+    schema="public",
+    create_type=False,
+)
 
 
 class ImportBatch(Base):
@@ -115,7 +123,7 @@ class MediaItem(Base):
     media_item_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
-    type: Mapped[str] = mapped_column(String, nullable=False)
+    type: Mapped[str] = mapped_column(MEDIA_TYPE_ENUM, nullable=False)
     title: Mapped[str] = mapped_column(String, nullable=False)
     year: Mapped[int | None] = mapped_column(Integer)
     tmdb_id: Mapped[int | None] = mapped_column(Integer)
@@ -170,7 +178,8 @@ class MediaVersion(Base):
 
     media_item: Mapped[MediaItem] = relationship(back_populates="media_versions")
     watch_events: Mapped[list[WatchEvent]] = relationship(
-        back_populates="media_version"
+        back_populates="media_version",
+        foreign_keys="WatchEvent.media_version_id",
     )
 
 
@@ -308,7 +317,8 @@ class WatchEvent(Base):
     user: Mapped[User] = relationship(back_populates="watch_events")
     media_item: Mapped[MediaItem] = relationship(back_populates="watch_events")
     media_version: Mapped[MediaVersion | None] = relationship(
-        back_populates="watch_events"
+        back_populates="watch_events",
+        foreign_keys=[media_version_id],
     )
     import_batch: Mapped[ImportBatch | None] = relationship(
         back_populates="watch_events"

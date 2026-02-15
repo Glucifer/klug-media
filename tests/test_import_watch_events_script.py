@@ -174,7 +174,7 @@ def test_run_legacy_backup_writes_error_report(monkeypatch, tmp_path: Path) -> N
 def test_run_legacy_backup_rejected_rows_write_report(
     monkeypatch, tmp_path: Path
 ) -> None:
-    rows = [_backup_row_dict()]
+    rows = [{"id": "legacy-evt-1", "type": "movie"}]
     input_path = tmp_path / "backup.json"
     report_path = tmp_path / "reports" / "errors.json"
     input_path.write_text(json.dumps(rows), encoding="utf-8")
@@ -184,12 +184,6 @@ def test_run_legacy_backup_rejected_rows_write_report(
             return None
 
     monkeypatch.setattr(import_watch_events, "SessionLocal", lambda: DummySession())
-    monkeypatch.setattr(
-        import_watch_events.MediaItemService,
-        "find_media_item_by_external_ids",
-        lambda *_args, **_kwargs: None,
-    )
-
     exit_code = import_watch_events.run(
         [
             "--input",
@@ -207,6 +201,44 @@ def test_run_legacy_backup_rejected_rows_write_report(
     assert report_path.exists()
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["rejected_count"] == 1
+
+
+def test_legacy_backup_creates_missing_media_item(monkeypatch) -> None:
+    class DummySession:
+        def __init__(self) -> None:
+            self.created = 0
+            self.commits = 0
+
+        def add(self, media_item) -> None:
+            media_item.media_item_id = uuid4()
+            self.created += 1
+
+        def flush(self) -> None:
+            return None
+
+        def commit(self) -> None:
+            self.commits += 1
+
+        def close(self) -> None:
+            return None
+
+    dummy_session = DummySession()
+    monkeypatch.setattr(import_watch_events, "SessionLocal", lambda: dummy_session)
+    monkeypatch.setattr(
+        import_watch_events.MediaItemService,
+        "find_media_item_by_external_ids",
+        lambda *_args, **_kwargs: None,
+    )
+
+    mapped_rows, rejected_rows = import_watch_events._build_mapped_rows_from_legacy_backup(
+        [_backup_row_dict()],
+        user_id=uuid4(),
+    )
+
+    assert not rejected_rows
+    assert len(mapped_rows) == 1
+    assert dummy_session.created == 1
+    assert dummy_session.commits == 1
 
 
 def test_run_returns_2_for_missing_file() -> None:
