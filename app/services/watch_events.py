@@ -87,7 +87,10 @@ class WatchEventService:
             constraint_name = getattr(
                 getattr(exc.orig, "diag", None), "constraint_name", None
             )
-            if sqlstate == "23505" and constraint_name == "ux_watch_event_dedupe_hash":
+            if sqlstate == "23505" and constraint_name in {
+                "ux_watch_event_dedupe_hash",
+                "ux_watch_event_source_event",
+            }:
                 raise WatchEventDuplicateError("Watch event already exists") from exc
 
             raise WatchEventConstraintError(
