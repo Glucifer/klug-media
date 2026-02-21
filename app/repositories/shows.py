@@ -1,4 +1,6 @@
-from sqlalchemy import select
+from uuid import UUID
+
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.db.models.entities import Show
@@ -56,3 +58,33 @@ def create_show(
     session.flush()
     session.refresh(show)
     return show
+
+
+def list_shows(session: Session) -> list[Show]:
+    statement = select(Show).order_by(Show.title.asc(), Show.created_at.asc())
+    return list(session.scalars(statement))
+
+
+def list_show_progress(
+    session: Session,
+    *,
+    user_id: UUID | None,
+) -> list[dict]:
+    statement = """
+        SELECT
+            show_id,
+            show_tmdb_id,
+            show_title,
+            user_id,
+            total_episodes,
+            watched_episodes,
+            watched_percent
+        FROM app.v_show_progress
+    """
+    params: dict[str, object] = {}
+    if user_id is not None:
+        statement += " WHERE user_id = :user_id"
+        params["user_id"] = user_id
+    statement += " ORDER BY show_title ASC, user_id ASC"
+    rows = session.execute(text(statement), params).mappings().all()
+    return [dict(row) for row in rows]

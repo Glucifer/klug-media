@@ -1,5 +1,6 @@
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from uuid import UUID
 
 from app.db.models.entities import Show
 from app.repositories import shows as show_repository
@@ -49,3 +50,15 @@ class ShowService:
             if found is None:
                 raise
             return found
+
+    @staticmethod
+    def list_shows(session: Session) -> list[Show]:
+        return show_repository.list_shows(session)
+
+    @staticmethod
+    def list_show_progress(
+        session: Session,
+        *,
+        user_id: UUID | None,
+    ) -> list[dict]:
+        return show_repository.list_show_progress(session, user_id=user_id)
