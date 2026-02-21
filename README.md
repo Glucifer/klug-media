@@ -72,6 +72,7 @@ export KLUG_API_KEY=replace-with-long-random-value
 export KLUG_API_AUTH_MODE=write
 export KLUG_SESSION_PASSWORD=replace-with-login-password
 export KLUG_SESSION_SECRET=replace-with-session-signing-secret
+export KLUG_IMPORT_UPLOAD_MAX_MB=25
 ```
 
 `KLUG_API_AUTH_MODE` options:

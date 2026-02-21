@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     klug_session_password: str | None = None
     klug_session_secret: str | None = None
     klug_session_ttl_seconds: int = 60 * 60 * 24 * 30
+    klug_import_upload_max_mb: int = 25
     database_url: str = (
         "postgresql+psycopg://postgres:postgres@localhost:5432/klug_media"
     )

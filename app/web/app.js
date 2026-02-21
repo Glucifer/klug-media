@@ -46,6 +46,8 @@ const IMPORT_PREF_KEYS = {
   resume: "klug.import_resume",
   lastCursor: "klug.import_last_cursor",
 };
+const IMPORT_UPLOAD_MAX_MB = 25;
+const IMPORT_UPLOAD_MAX_BYTES = IMPORT_UPLOAD_MAX_MB * 1024 * 1024;
 
 let historyOffset = 0;
 let historyLimit = Number.parseInt(historyLimitSelect.value, 10);
@@ -378,6 +380,9 @@ function parseApiError(payload) {
     if (detail.includes("user_id is required")) {
       return "User UUID is required for legacy backup imports.";
     }
+    if (detail.includes("exceeds max size")) {
+      return detail;
+    }
     return detail;
   }
 
@@ -411,6 +416,10 @@ async function runImport(event) {
   const inferredFormat = inferFileFormat(selectedFile.name);
   if (!inferredFormat) {
     importStatus.textContent = "Unsupported file type. Use a .json or .csv file.";
+    return;
+  }
+  if (selectedFile.size > IMPORT_UPLOAD_MAX_BYTES) {
+    importStatus.textContent = `File exceeds ${IMPORT_UPLOAD_MAX_MB} MB limit.`;
     return;
   }
 

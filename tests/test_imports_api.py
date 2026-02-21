@@ -208,3 +208,29 @@ def test_import_upload_legacy_backup_requires_user_id() -> None:
 
     assert response.status_code == 422
     assert "user_id is required" in response.json()["detail"]
+
+
+def test_import_upload_rejects_oversized_file(monkeypatch) -> None:
+    monkeypatch.setenv("KLUG_IMPORT_UPLOAD_MAX_MB", "1")
+    oversized_payload = "x" * (1024 * 1024 + 1)
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/imports/watch-events/legacy-source/upload",
+        data={
+            "input_schema": "mapped_rows",
+            "file_format": "json",
+            "mode": "bootstrap",
+            "dry_run": "true",
+        },
+        files={
+            "input_file": (
+                "history.json",
+                oversized_payload,
+                "application/json",
+            )
+        },
+    )
+
+    assert response.status_code == 413
+    assert "exceeds max size" in response.json()["detail"]

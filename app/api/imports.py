@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.auth import require_request_auth
+from app.core.config import Settings, get_settings
 from app.db.session import get_db_session
 from app.scripts import import_watch_events as import_watch_events_script
 from app.schemas.imports import (
@@ -134,6 +135,7 @@ async def import_legacy_source_watch_events_upload(
     source_detail: str | None = Form(default=None),
     notes: str | None = Form(default=None),
     session: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
 ) -> WatchEventImportResponse:
     rejected_rows: list[dict] = []
     media_items_created = 0
@@ -142,6 +144,15 @@ async def import_legacy_source_watch_events_upload(
         raw_bytes = await input_file.read()
         if not raw_bytes:
             raise ValueError("Uploaded file is empty")
+        max_upload_bytes = max(1, settings.klug_import_upload_max_mb) * 1024 * 1024
+        if len(raw_bytes) > max_upload_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail=(
+                    f"Uploaded file exceeds max size of "
+                    f"{settings.klug_import_upload_max_mb} MB"
+                ),
+            )
 
         file_text = raw_bytes.decode("utf-8")
         detected_format = _detect_upload_format(input_file.filename, file_format)
@@ -178,6 +189,8 @@ async def import_legacy_source_watch_events_upload(
             shows_created=shows_created,
             rows=rows_for_validation,
         )
+    except HTTPException:
+        raise
     except (
         ValueError,
         UnicodeDecodeError,
