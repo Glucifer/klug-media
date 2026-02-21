@@ -14,7 +14,11 @@ const importUserId = document.getElementById("import-user-id");
 const importMode = document.getElementById("import-mode");
 const importDryRun = document.getElementById("import-dry-run");
 const importResume = document.getElementById("import-resume");
+const importUseLatestCursor = document.getElementById("import-use-latest-cursor");
 const importStatus = document.getElementById("import-status");
+const importCursorBefore = document.getElementById("import-cursor-before");
+const importCursorAfter = document.getElementById("import-cursor-after");
+const importLastCursor = document.getElementById("import-last-cursor");
 const importSummary = document.getElementById("import-summary");
 const importErrorsStatus = document.getElementById("import-errors-status");
 const importErrorsList = document.getElementById("import-errors-list");
@@ -38,6 +42,7 @@ const IMPORT_PREF_KEYS = {
   mode: "klug.import_mode",
   dryRun: "klug.import_dry_run",
   resume: "klug.import_resume",
+  lastCursor: "klug.import_last_cursor",
 };
 
 let historyOffset = 0;
@@ -195,6 +200,23 @@ function formatImportSummary(summary) {
   ].join("\n");
 }
 
+function formatCursor(cursor) {
+  if (!cursor) {
+    return "none";
+  }
+  return JSON.stringify(cursor);
+}
+
+function renderImportCursorInfo(summary) {
+  importCursorBefore.textContent = `Cursor before: ${formatCursor(summary.cursor_before)}`;
+  importCursorAfter.textContent = `Cursor after: ${formatCursor(summary.cursor_after)}`;
+}
+
+function renderLastLocalCursor() {
+  const cursor = window.localStorage.getItem(IMPORT_PREF_KEYS.lastCursor);
+  importLastCursor.textContent = `Last successful local cursor: ${cursor || "none"}`;
+}
+
 function clearImportErrorsUi() {
   importErrorsStatus.textContent = "";
   importErrorsList.innerHTML = "";
@@ -241,6 +263,7 @@ function loadImportPreferences() {
 
   importDryRun.checked = window.localStorage.getItem(IMPORT_PREF_KEYS.dryRun) !== "false";
   importResume.checked = window.localStorage.getItem(IMPORT_PREF_KEYS.resume) === "true";
+  renderLastLocalCursor();
 }
 
 function saveImportPreferences() {
@@ -248,6 +271,13 @@ function saveImportPreferences() {
   window.localStorage.setItem(IMPORT_PREF_KEYS.mode, importMode.value);
   window.localStorage.setItem(IMPORT_PREF_KEYS.dryRun, String(importDryRun.checked));
   window.localStorage.setItem(IMPORT_PREF_KEYS.resume, String(importResume.checked));
+}
+
+function saveLastLocalCursor(cursor) {
+  if (!cursor) {
+    return;
+  }
+  window.localStorage.setItem(IMPORT_PREF_KEYS.lastCursor, JSON.stringify(cursor));
 }
 
 function isUuid(value) {
@@ -321,6 +351,8 @@ async function runImport(event) {
 
   importStatus.textContent = "Running import...";
   importSummary.textContent = "";
+  importCursorBefore.textContent = "Cursor before: pending";
+  importCursorAfter.textContent = "Cursor after: pending";
   clearImportErrorsUi();
   importForm.querySelector("button[type='submit']").disabled = true;
   saveImportPreferences();
@@ -343,11 +375,16 @@ async function runImport(event) {
     const payload = await response.json();
     if (!response.ok) {
       importStatus.textContent = parseApiError(payload);
+      importCursorBefore.textContent = "Cursor before: unavailable";
+      importCursorAfter.textContent = "Cursor after: unavailable";
       importSummary.textContent = JSON.stringify(payload, null, 2);
       return;
     }
     importStatus.textContent = `Import finished: inserted ${payload.inserted_count}, skipped ${payload.skipped_count}, errors ${payload.error_count}, rejected ${payload.rejected_before_import}`;
     importSummary.textContent = formatImportSummary(payload);
+    renderImportCursorInfo(payload);
+    saveLastLocalCursor(payload.cursor_after);
+    renderLastLocalCursor();
     if (payload.error_count > 0 && payload.import_batch_id) {
       await loadImportBatchErrors(payload.import_batch_id);
     } else {
@@ -356,6 +393,8 @@ async function runImport(event) {
     await loadDashboardData();
   } catch (_error) {
     importStatus.textContent = "Import request failed. Check network and server logs.";
+    importCursorBefore.textContent = "Cursor before: unavailable";
+    importCursorAfter.textContent = "Cursor after: unavailable";
     clearImportErrorsUi();
   } finally {
     importForm.querySelector("button[type='submit']").disabled = false;
@@ -461,6 +500,13 @@ historyNext.addEventListener("click", async () => {
 });
 
 importForm.addEventListener("submit", runImport);
+
+importUseLatestCursor.addEventListener("click", () => {
+  importMode.value = "incremental";
+  importResume.checked = true;
+  saveImportPreferences();
+  importStatus.textContent = "Configured incremental mode with resume_from_latest enabled.";
+});
 
 logoutBtn.addEventListener("click", async () => {
   await api("/api/v1/session/logout", { method: "DELETE" });

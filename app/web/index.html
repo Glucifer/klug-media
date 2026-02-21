@@ -50,9 +50,15 @@
             <input id="import-resume" type="checkbox" />
             Resume From Latest
           </label>
+          <button id="import-use-latest-cursor" type="button" class="secondary">
+            Use Latest Cursor
+          </button>
           <button id="import-submit" type="submit">Run Import</button>
         </form>
         <p id="import-status" class="muted">No import started.</p>
+        <p id="import-cursor-before" class="muted">Cursor before: none</p>
+        <p id="import-cursor-after" class="muted">Cursor after: none</p>
+        <p id="import-last-cursor" class="muted">Last successful local cursor: none</p>
         <pre id="import-summary" class="code-block"></pre>
         <p id="import-errors-status" class="muted"></p>
         <ul id="import-errors-list"></ul>
