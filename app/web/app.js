@@ -31,6 +31,13 @@ const detailProgress = document.getElementById("detail-progress");
 const detailStatus = document.getElementById("detail-status");
 const episodeList = document.getElementById("episode-list");
 
+const IMPORT_PREF_KEYS = {
+  userId: "klug.import_user_id",
+  mode: "klug.import_mode",
+  dryRun: "klug.import_dry_run",
+  resume: "klug.import_resume",
+};
+
 let historyOffset = 0;
 let historyLimit = Number.parseInt(historyLimitSelect.value, 10);
 
@@ -48,8 +55,7 @@ function setAuthenticatedUI(authenticated, message) {
   loginCard.classList.toggle("hidden", authenticated);
   appCard.classList.toggle("hidden", !authenticated);
   if (authenticated) {
-    const savedUserId = window.localStorage.getItem("klug.import_user_id") || "";
-    importUserId.value = savedUserId;
+    loadImportPreferences();
   }
 }
 
@@ -187,6 +193,71 @@ function formatImportSummary(summary) {
   ].join("\n");
 }
 
+function loadImportPreferences() {
+  importUserId.value = window.localStorage.getItem(IMPORT_PREF_KEYS.userId) || "";
+
+  const savedMode = window.localStorage.getItem(IMPORT_PREF_KEYS.mode);
+  if (savedMode === "bootstrap" || savedMode === "incremental") {
+    importMode.value = savedMode;
+  }
+
+  importDryRun.checked = window.localStorage.getItem(IMPORT_PREF_KEYS.dryRun) !== "false";
+  importResume.checked = window.localStorage.getItem(IMPORT_PREF_KEYS.resume) === "true";
+}
+
+function saveImportPreferences() {
+  window.localStorage.setItem(IMPORT_PREF_KEYS.userId, importUserId.value.trim());
+  window.localStorage.setItem(IMPORT_PREF_KEYS.mode, importMode.value);
+  window.localStorage.setItem(IMPORT_PREF_KEYS.dryRun, String(importDryRun.checked));
+  window.localStorage.setItem(IMPORT_PREF_KEYS.resume, String(importResume.checked));
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
+function inferFileFormat(fileName) {
+  const lowered = fileName.toLowerCase();
+  if (lowered.endsWith(".json")) {
+    return "json";
+  }
+  if (lowered.endsWith(".csv")) {
+    return "csv";
+  }
+  return null;
+}
+
+function parseApiError(payload) {
+  const detail = payload && typeof payload === "object" ? payload.detail : null;
+
+  if (typeof detail === "string") {
+    if (detail.includes("Uploaded file is empty")) {
+      return "The selected file is empty.";
+    }
+    if (detail.includes("Could not detect upload format")) {
+      return "Use a .json or .csv file, or rename the file to include the correct extension.";
+    }
+    if (detail.includes("No valid rows available for import")) {
+      return "No valid rows were found after preprocessing.";
+    }
+    if (detail.includes("user_id is required")) {
+      return "User UUID is required for legacy backup imports.";
+    }
+    return detail;
+  }
+
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0];
+    if (first && typeof first.msg === "string") {
+      return `Request validation failed: ${first.msg}`;
+    }
+  }
+
+  return "Import failed due to an unknown error.";
+}
+
 async function runImport(event) {
   event.preventDefault();
   const selectedFile = importFile.files && importFile.files[0];
@@ -194,22 +265,35 @@ async function runImport(event) {
     importStatus.textContent = "Choose a file before running import";
     return;
   }
-  if (!importUserId.value.trim()) {
+  const trimmedUserId = importUserId.value.trim();
+  if (!trimmedUserId) {
     importStatus.textContent = "User UUID is required for legacy backup imports";
+    return;
+  }
+  if (!isUuid(trimmedUserId)) {
+    importStatus.textContent = "User UUID format is invalid";
+    return;
+  }
+
+  const inferredFormat = inferFileFormat(selectedFile.name);
+  if (!inferredFormat) {
+    importStatus.textContent = "Unsupported file type. Use a .json or .csv file.";
     return;
   }
 
   importStatus.textContent = "Running import...";
   importSummary.textContent = "";
   importForm.querySelector("button[type='submit']").disabled = true;
+  saveImportPreferences();
 
   const formData = new FormData();
   formData.append("input_file", selectedFile);
   formData.append("input_schema", "legacy_backup");
+  formData.append("file_format", inferredFormat);
   formData.append("mode", importMode.value);
   formData.append("dry_run", String(importDryRun.checked));
   formData.append("resume_from_latest", String(importResume.checked));
-  formData.append("user_id", importUserId.value.trim());
+  formData.append("user_id", trimmedUserId);
 
   try {
     const response = await fetch("/api/v1/imports/watch-events/legacy-source/upload", {
@@ -219,16 +303,15 @@ async function runImport(event) {
     });
     const payload = await response.json();
     if (!response.ok) {
-      importStatus.textContent = "Import failed";
+      importStatus.textContent = parseApiError(payload);
       importSummary.textContent = JSON.stringify(payload, null, 2);
       return;
     }
-    window.localStorage.setItem("klug.import_user_id", importUserId.value.trim());
-    importStatus.textContent = "Import finished";
+    importStatus.textContent = `Import finished: inserted ${payload.inserted_count}, skipped ${payload.skipped_count}, errors ${payload.error_count}, rejected ${payload.rejected_before_import}`;
     importSummary.textContent = formatImportSummary(payload);
     await loadDashboardData();
   } catch (_error) {
-    importStatus.textContent = "Import request failed";
+    importStatus.textContent = "Import request failed. Check network and server logs.";
   } finally {
     importForm.querySelector("button[type='submit']").disabled = false;
   }
