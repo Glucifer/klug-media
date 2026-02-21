@@ -24,6 +24,8 @@ const importErrorsStatus = document.getElementById("import-errors-status");
 const importErrorsList = document.getElementById("import-errors-list");
 const importHistoryStatus = document.getElementById("import-history-status");
 const importHistoryBody = document.getElementById("import-history-body");
+const importDetailStatus = document.getElementById("import-detail-status");
+const importDetail = document.getElementById("import-detail");
 const historyMediaType = document.getElementById("history-media-type");
 const historyLimitSelect = document.getElementById("history-limit");
 const historyApply = document.getElementById("history-apply");
@@ -227,6 +229,24 @@ function clearImportErrorsUi() {
   importErrorsList.innerHTML = "";
 }
 
+function formatImportBatchDetail(batch) {
+  return [
+    `import_batch_id: ${batch.import_batch_id}`,
+    `source: ${batch.source}`,
+    `source_detail: ${batch.source_detail || "n/a"}`,
+    `status: ${batch.status}`,
+    `started_at: ${batch.started_at}`,
+    `finished_at: ${batch.finished_at || "n/a"}`,
+    `watch_events_inserted: ${batch.watch_events_inserted}`,
+    `media_items_inserted: ${batch.media_items_inserted}`,
+    `media_versions_inserted: ${batch.media_versions_inserted}`,
+    `tags_added: ${batch.tags_added}`,
+    `errors_count: ${batch.errors_count}`,
+    `notes: ${batch.notes || "n/a"}`,
+    `parameters: ${JSON.stringify(batch.parameters || {})}`,
+  ].join("\n");
+}
+
 function renderImportErrors(errors) {
   importErrorsList.innerHTML = "";
   if (!errors.length) {
@@ -255,6 +275,24 @@ async function loadImportBatchErrors(importBatchId) {
   } catch (_error) {
     importErrorsStatus.textContent = "Failed to load import-batch errors.";
     importErrorsList.innerHTML = "";
+  }
+}
+
+async function loadImportBatchDetail(importBatchId) {
+  importDetailStatus.textContent = `Loading detail for batch ${importBatchId}...`;
+  try {
+    const response = await api(`/api/v1/import-batches/${importBatchId}`);
+    if (!response.ok) {
+      importDetailStatus.textContent = `Failed to load detail for batch ${importBatchId}.`;
+      importDetail.textContent = "";
+      return;
+    }
+    const batch = await response.json();
+    importDetailStatus.textContent = `Showing detail for batch ${importBatchId}`;
+    importDetail.textContent = formatImportBatchDetail(batch);
+  } catch (_error) {
+    importDetailStatus.textContent = `Failed to load detail for batch ${importBatchId}.`;
+    importDetail.textContent = "";
   }
 }
 
@@ -293,6 +331,7 @@ async function loadImportHistory() {
           <button class="secondary" data-import-batch-id="${batch.import_batch_id}" data-action="view-errors">View Errors</button>
         </td>
       `;
+      tr.dataset.importBatchId = batch.import_batch_id;
       importHistoryBody.appendChild(tr);
     }
   } catch (_error) {
@@ -588,28 +627,41 @@ importHistoryBody.addEventListener("click", async (event) => {
     return;
   }
   const button = target.closest("button[data-import-batch-id]");
-  if (!(button instanceof HTMLButtonElement)) {
-    return;
-  }
-  const importBatchId = button.dataset.importBatchId;
-  if (!importBatchId) {
-    return;
-  }
-  const action = button.dataset.action;
-  if (action === "view-errors") {
-    importErrorsStatus.textContent = `Loading errors for batch ${importBatchId}...`;
-    await loadImportBatchErrors(importBatchId);
-    return;
-  }
-  if (action === "reuse-settings") {
-    const batch = importHistoryById.get(importBatchId);
-    if (!batch) {
-      importStatus.textContent = "Could not load settings from selected batch.";
+  if (button instanceof HTMLButtonElement) {
+    const importBatchId = button.dataset.importBatchId;
+    if (!importBatchId) {
       return;
     }
-    applyImportSettingsFromBatch(batch);
-    importStatus.textContent = `Applied settings from batch ${importBatchId}.`;
+    const action = button.dataset.action;
+    if (action === "view-errors") {
+      importErrorsStatus.textContent = `Loading errors for batch ${importBatchId}...`;
+      await loadImportBatchErrors(importBatchId);
+      await loadImportBatchDetail(importBatchId);
+      return;
+    }
+    if (action === "reuse-settings") {
+      const batch = importHistoryById.get(importBatchId);
+      if (!batch) {
+        importStatus.textContent = "Could not load settings from selected batch.";
+        return;
+      }
+      applyImportSettingsFromBatch(batch);
+      importStatus.textContent = `Applied settings from batch ${importBatchId}.`;
+      await loadImportBatchDetail(importBatchId);
+      return;
+    }
+    return;
   }
+
+  const row = target.closest("tr[data-import-batch-id]");
+  if (!(row instanceof HTMLTableRowElement)) {
+    return;
+  }
+  const rowBatchId = row.dataset.importBatchId;
+  if (!rowBatchId) {
+    return;
+  }
+  await loadImportBatchDetail(rowBatchId);
 });
 
 logoutBtn.addEventListener("click", async () => {
