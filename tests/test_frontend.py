@@ -12,6 +12,7 @@ def test_root_frontend_serves_index() -> None:
     assert "Recent Watch History" in response.text
     assert "Import Watch History" in response.text
     assert "Use Latest Cursor" in response.text
+    assert "Import History" in response.text
 
 
 def test_frontend_static_assets_are_served() -> None:

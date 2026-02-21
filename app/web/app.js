@@ -22,6 +22,8 @@ const importLastCursor = document.getElementById("import-last-cursor");
 const importSummary = document.getElementById("import-summary");
 const importErrorsStatus = document.getElementById("import-errors-status");
 const importErrorsList = document.getElementById("import-errors-list");
+const importHistoryStatus = document.getElementById("import-history-status");
+const importHistoryBody = document.getElementById("import-history-body");
 const historyMediaType = document.getElementById("history-media-type");
 const historyLimitSelect = document.getElementById("history-limit");
 const historyApply = document.getElementById("history-apply");
@@ -87,7 +89,7 @@ async function checkSession() {
 }
 
 async function loadDashboardData() {
-  await Promise.all([loadShows(), loadProgress(), loadHistory()]);
+  await Promise.all([loadShows(), loadProgress(), loadHistory(), loadImportHistory()]);
 }
 
 async function loadShows() {
@@ -250,6 +252,43 @@ async function loadImportBatchErrors(importBatchId) {
   } catch (_error) {
     importErrorsStatus.textContent = "Failed to load import-batch errors.";
     importErrorsList.innerHTML = "";
+  }
+}
+
+async function loadImportHistory() {
+  importHistoryStatus.textContent = "Loading import history...";
+  importHistoryBody.innerHTML = "";
+  try {
+    const response = await api("/api/v1/import-batches?limit=20");
+    if (!response.ok) {
+      importHistoryStatus.textContent = "Failed to load import history.";
+      return;
+    }
+
+    const batches = await response.json();
+    if (!batches.length) {
+      importHistoryStatus.textContent = "No import batches found.";
+      return;
+    }
+
+    importHistoryStatus.textContent = `Loaded ${batches.length} import batch(es).`;
+    for (const batch of batches) {
+      const tr = document.createElement("tr");
+      const startedAt = new Date(batch.started_at).toLocaleString();
+      const inserted = batch.watch_events_inserted ?? 0;
+      const errors = batch.errors_count ?? 0;
+      tr.innerHTML = `
+        <td>${startedAt}</td>
+        <td>${batch.status}</td>
+        <td>${batch.source}</td>
+        <td>${inserted}</td>
+        <td>${errors}</td>
+        <td><button class="secondary" data-import-batch-id="${batch.import_batch_id}">View Errors</button></td>
+      `;
+      importHistoryBody.appendChild(tr);
+    }
+  } catch (_error) {
+    importHistoryStatus.textContent = "Failed to load import history.";
   }
 }
 
@@ -506,6 +545,23 @@ importUseLatestCursor.addEventListener("click", () => {
   importResume.checked = true;
   saveImportPreferences();
   importStatus.textContent = "Configured incremental mode with resume_from_latest enabled.";
+});
+
+importHistoryBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const button = target.closest("button[data-import-batch-id]");
+  if (!(button instanceof HTMLButtonElement)) {
+    return;
+  }
+  const importBatchId = button.dataset.importBatchId;
+  if (!importBatchId) {
+    return;
+  }
+  importErrorsStatus.textContent = `Loading errors for batch ${importBatchId}...`;
+  await loadImportBatchErrors(importBatchId);
 });
 
 logoutBtn.addEventListener("click", async () => {
