@@ -8,12 +8,23 @@ const showList = document.getElementById("show-list");
 const showsStatus = document.getElementById("shows-status");
 const progressStatus = document.getElementById("progress-status");
 const progressBody = document.getElementById("progress-body");
+const historyMediaType = document.getElementById("history-media-type");
+const historyLimitSelect = document.getElementById("history-limit");
+const historyApply = document.getElementById("history-apply");
+const historyStatus = document.getElementById("history-status");
+const historyBody = document.getElementById("history-body");
+const historyPrev = document.getElementById("history-prev");
+const historyNext = document.getElementById("history-next");
+const historyPage = document.getElementById("history-page");
 const refreshData = document.getElementById("refresh-data");
 const logoutBtn = document.getElementById("logout-btn");
 const detailTitle = document.getElementById("detail-title");
 const detailProgress = document.getElementById("detail-progress");
 const detailStatus = document.getElementById("detail-status");
 const episodeList = document.getElementById("episode-list");
+
+let historyOffset = 0;
+let historyLimit = Number.parseInt(historyLimitSelect.value, 10);
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -51,7 +62,7 @@ async function checkSession() {
 }
 
 async function loadDashboardData() {
-  await Promise.all([loadShows(), loadProgress()]);
+  await Promise.all([loadShows(), loadProgress(), loadHistory()]);
 }
 
 async function loadShows() {
@@ -147,6 +158,61 @@ async function loadShowDetail(showId) {
   }
 }
 
+function setHistoryPagination(rowsLoaded) {
+  const page = Math.floor(historyOffset / historyLimit) + 1;
+  historyPage.textContent = `Page ${page}`;
+  historyPrev.disabled = historyOffset === 0;
+  historyNext.disabled = rowsLoaded < historyLimit;
+}
+
+function buildHistoryQuery() {
+  const params = new URLSearchParams();
+  params.set("limit", String(historyLimit));
+  params.set("offset", String(historyOffset));
+  if (historyMediaType.value) {
+    params.set("media_type", historyMediaType.value);
+  }
+  return params.toString();
+}
+
+async function loadHistory() {
+  historyStatus.textContent = "Loading history...";
+  historyBody.innerHTML = "";
+  try {
+    const response = await api(`/api/v1/watch-events?${buildHistoryQuery()}`);
+    if (!response.ok) {
+      historyStatus.textContent = "Failed to load history";
+      setHistoryPagination(0);
+      return;
+    }
+    const rows = await response.json();
+    if (rows.length === 0) {
+      historyStatus.textContent = "No events for current filter/page";
+      setHistoryPagination(0);
+      return;
+    }
+    for (const row of rows) {
+      const tr = document.createElement("tr");
+      const watchedAt = new Date(row.watched_at).toLocaleString();
+      const completed = row.completed ? "yes" : "no";
+      const progress = row.progress_percent === null ? "-" : `${row.progress_percent}%`;
+      tr.innerHTML = `
+        <td>${watchedAt}</td>
+        <td>${row.media_item_id}</td>
+        <td>${row.playback_source}</td>
+        <td>${completed}</td>
+        <td>${progress}</td>
+      `;
+      historyBody.appendChild(tr);
+    }
+    historyStatus.textContent = `Loaded ${rows.length} event(s)`;
+    setHistoryPagination(rows.length);
+  } catch (_error) {
+    historyStatus.textContent = "Failed to load history";
+    setHistoryPagination(0);
+  }
+}
+
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   loginError.textContent = "";
@@ -164,6 +230,27 @@ loginForm.addEventListener("submit", async (event) => {
 
 refreshData.addEventListener("click", async () => {
   await loadDashboardData();
+});
+
+historyApply.addEventListener("click", async () => {
+  historyLimit = Number.parseInt(historyLimitSelect.value, 10);
+  historyOffset = 0;
+  await loadHistory();
+});
+
+historyMediaType.addEventListener("change", async () => {
+  historyOffset = 0;
+  await loadHistory();
+});
+
+historyPrev.addEventListener("click", async () => {
+  historyOffset = Math.max(0, historyOffset - historyLimit);
+  await loadHistory();
+});
+
+historyNext.addEventListener("click", async () => {
+  historyOffset += historyLimit;
+  await loadHistory();
 });
 
 logoutBtn.addEventListener("click", async () => {

@@ -101,6 +101,7 @@ def test_list_watch_events_clamps_limit(monkeypatch) -> None:
 
     def fake_list_watch_events(_session, **kwargs):
         assert kwargs["limit"] == 100
+        assert kwargs["offset"] == 0
         return []
 
     monkeypatch.setattr(
@@ -114,5 +115,7 @@ def test_list_watch_events_clamps_limit(monkeypatch) -> None:
         media_item_id=None,
         watched_after=None,
         watched_before=None,
+        media_type=None,
         limit=1000,
+        offset=-5,
     )

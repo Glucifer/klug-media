@@ -1,10 +1,11 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
-from app.db.models.entities import WatchEvent
+from app.db.models.entities import MediaItem, WatchEvent
 
 
 def list_watch_events(
@@ -14,9 +15,16 @@ def list_watch_events(
     media_item_id: UUID | None,
     watched_after: datetime | None,
     watched_before: datetime | None,
+    media_type: Literal["movie", "show", "episode"] | None,
     limit: int,
+    offset: int,
 ) -> list[WatchEvent]:
     statement: Select[tuple[WatchEvent]] = select(WatchEvent)
+    if media_type is not None:
+        statement = statement.join(
+            MediaItem,
+            WatchEvent.media_item_id == MediaItem.media_item_id,
+        ).where(MediaItem.type == media_type)
 
     if user_id is not None:
         statement = statement.where(WatchEvent.user_id == user_id)
@@ -27,7 +35,9 @@ def list_watch_events(
     if watched_before is not None:
         statement = statement.where(WatchEvent.watched_at <= watched_before)
 
-    statement = statement.order_by(WatchEvent.watched_at.desc()).limit(limit)
+    statement = (
+        statement.order_by(WatchEvent.watched_at.desc()).offset(offset).limit(limit)
+    )
     return list(session.scalars(statement))
 
 

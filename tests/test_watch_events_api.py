@@ -32,8 +32,10 @@ class DummyWatchEvent:
 
 def test_list_watch_events_returns_items(monkeypatch) -> None:
     event = DummyWatchEvent()
+    called: dict[str, object] = {}
 
     def fake_list_watch_events(_session, **_kwargs):
+        called.update(_kwargs)
         return [event]
 
     monkeypatch.setattr(WatchEventService, "list_watch_events", fake_list_watch_events)
@@ -42,9 +44,39 @@ def test_list_watch_events_returns_items(monkeypatch) -> None:
     response = client.get("/api/v1/watch-events")
 
     assert response.status_code == 200
+    assert called["offset"] == 0
+    assert called["media_type"] is None
     payload = response.json()
     assert len(payload) == 1
     assert payload[0]["playback_source"] == "jellyfin"
+
+
+def test_list_watch_events_forwards_filters(monkeypatch) -> None:
+    event = DummyWatchEvent()
+    called: dict[str, object] = {}
+
+    def fake_list_watch_events(_session, **_kwargs):
+        called.update(_kwargs)
+        return [event]
+
+    monkeypatch.setattr(WatchEventService, "list_watch_events", fake_list_watch_events)
+
+    client = TestClient(app)
+    response = client.get(
+        f"/api/v1/watch-events?user_id={event.user_id}&media_type=episode&limit=10&offset=5"
+    )
+
+    assert response.status_code == 200
+    assert called["user_id"] == event.user_id
+    assert called["media_type"] == "episode"
+    assert called["limit"] == 10
+    assert called["offset"] == 5
+
+
+def test_list_watch_events_invalid_media_type_returns_422() -> None:
+    client = TestClient(app)
+    response = client.get("/api/v1/watch-events?media_type=bad")
+    assert response.status_code == 422
 
 
 def test_create_watch_event_returns_201(monkeypatch) -> None:

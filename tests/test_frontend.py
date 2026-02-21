@@ -9,6 +9,7 @@ def test_root_frontend_serves_index() -> None:
 
     assert response.status_code == 200
     assert "Klug Media" in response.text
+    assert "Recent Watch History" in response.text
 
 
 def test_frontend_static_assets_are_served() -> None:

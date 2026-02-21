@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -26,16 +27,21 @@ class WatchEventService:
         media_item_id: UUID | None,
         watched_after: datetime | None,
         watched_before: datetime | None,
+        media_type: Literal["movie", "show", "episode"] | None,
         limit: int,
+        offset: int,
     ) -> list[WatchEvent]:
         safe_limit = max(1, min(limit, 100))
+        safe_offset = max(0, offset)
         return watch_event_repository.list_watch_events(
             session,
             user_id=user_id,
             media_item_id=media_item_id,
             watched_after=watched_after,
             watched_before=watched_before,
+            media_type=media_type,
             limit=safe_limit,
+            offset=safe_offset,
         )
 
     @staticmethod

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -22,7 +23,9 @@ def list_watch_events(
     media_item_id: UUID | None = Query(default=None),
     watched_after: datetime | None = Query(default=None),
     watched_before: datetime | None = Query(default=None),
+    media_type: Literal["movie", "show", "episode"] | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     session: Session = Depends(get_db_session),
 ) -> list[WatchEventRead]:
     watch_events = WatchEventService.list_watch_events(
@@ -31,7 +34,9 @@ def list_watch_events(
         media_item_id=media_item_id,
         watched_after=watched_after,
         watched_before=watched_before,
+        media_type=media_type,
         limit=limit,
+        offset=offset,
     )
     return [WatchEventRead.model_validate(item) for item in watch_events]
 

@@ -45,6 +45,7 @@ form,
 }
 
 input,
+select,
 button {
   padding: 10px 12px;
   border: 1px solid var(--border);
