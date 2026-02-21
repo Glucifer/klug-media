@@ -31,6 +31,7 @@ const importHistoryClearFilter = document.getElementById("import-history-clear-f
 const importHistoryStatus = document.getElementById("import-history-status");
 const importHistoryBody = document.getElementById("import-history-body");
 const importDetailStatus = document.getElementById("import-detail-status");
+const importDownloadErrors = document.getElementById("import-download-errors");
 const importDetail = document.getElementById("import-detail");
 const historyMediaType = document.getElementById("history-media-type");
 const historyLimitSelect = document.getElementById("history-limit");
@@ -337,6 +338,7 @@ function syncSelectedImportHistoryRow() {
     const rowBatchId = row.getAttribute("data-import-batch-id");
     row.classList.toggle("selected", rowBatchId === selectedImportBatchId);
   }
+  importDownloadErrors.disabled = selectedImportBatchId === null;
 }
 
 function renderImportHistoryRows() {
@@ -383,6 +385,7 @@ async function loadImportHistory() {
   importHistoryStatus.textContent = "Loading import history...";
   importHistoryRows = [];
   selectedImportBatchId = null;
+  importDownloadErrors.disabled = true;
   importHistoryBody.innerHTML = "";
   try {
     const response = await api("/api/v1/import-batches?limit=20");
@@ -714,6 +717,44 @@ importHistoryClearFilter.addEventListener("click", () => {
   importDetailStatus.textContent = "Select an import batch to view details.";
   importDetail.textContent = "";
   renderImportHistoryRows();
+});
+
+importDownloadErrors.addEventListener("click", async () => {
+  if (!selectedImportBatchId) {
+    importDetailStatus.textContent = "Select an import batch before downloading errors.";
+    return;
+  }
+  importDetailStatus.textContent = `Preparing error export for batch ${selectedImportBatchId}...`;
+  try {
+    const response = await api(
+      `/api/v1/import-batches/${selectedImportBatchId}/errors?limit=100`
+    );
+    if (!response.ok) {
+      importDetailStatus.textContent = `Failed to export errors for batch ${selectedImportBatchId}.`;
+      return;
+    }
+    const errors = await response.json();
+    const payload = {
+      export_generated_at: new Date().toISOString(),
+      import_batch_id: selectedImportBatchId,
+      error_count: errors.length,
+      errors,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = `import-batch-${selectedImportBatchId}-errors.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(downloadUrl);
+    importDetailStatus.textContent = `Downloaded ${errors.length} error(s) for batch ${selectedImportBatchId}.`;
+  } catch (_error) {
+    importDetailStatus.textContent = `Failed to export errors for batch ${selectedImportBatchId}.`;
+  }
 });
 
 importHistoryBody.addEventListener("click", async (event) => {

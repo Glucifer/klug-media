@@ -15,6 +15,7 @@ def test_root_frontend_serves_index() -> None:
     assert "Import History" in response.text
     assert "Clear Filter" in response.text
     assert "Select an import batch to view details." in response.text
+    assert "Download Errors JSON" in response.text
     assert "completed_with_errors" in response.text
     assert "API Health:" in response.text
     assert "Last Refresh:" in response.text
