@@ -18,13 +18,19 @@ def list_watch_events(
     media_type: Literal["movie", "show", "episode"] | None,
     limit: int,
     offset: int,
-) -> list[WatchEvent]:
-    statement: Select[tuple[WatchEvent]] = select(WatchEvent)
+) -> list[dict[str, object]]:
+    statement: Select[tuple[WatchEvent, str, str, int | None, int | None]] = select(
+        WatchEvent,
+        MediaItem.title,
+        MediaItem.type,
+        MediaItem.season_number,
+        MediaItem.episode_number,
+    ).join(
+        MediaItem,
+        WatchEvent.media_item_id == MediaItem.media_item_id,
+    )
     if media_type is not None:
-        statement = statement.join(
-            MediaItem,
-            WatchEvent.media_item_id == MediaItem.media_item_id,
-        ).where(MediaItem.type == media_type)
+        statement = statement.where(MediaItem.type == media_type)
 
     if user_id is not None:
         statement = statement.where(WatchEvent.user_id == user_id)
@@ -38,7 +44,36 @@ def list_watch_events(
     statement = (
         statement.order_by(WatchEvent.watched_at.desc()).offset(offset).limit(limit)
     )
-    return list(session.scalars(statement))
+    rows = session.execute(statement).all()
+    payload: list[dict[str, object]] = []
+    for watch_event, item_title, item_type, season_number, episode_number in rows:
+        payload.append(
+            {
+                "watch_id": watch_event.watch_id,
+                "user_id": watch_event.user_id,
+                "media_item_id": watch_event.media_item_id,
+                "watched_at": watch_event.watched_at,
+                "playback_source": watch_event.playback_source,
+                "total_seconds": watch_event.total_seconds,
+                "watched_seconds": watch_event.watched_seconds,
+                "progress_percent": watch_event.progress_percent,
+                "completed": watch_event.completed,
+                "rating_value": watch_event.rating_value,
+                "rating_scale": watch_event.rating_scale,
+                "media_version_id": watch_event.media_version_id,
+                "import_batch_id": watch_event.import_batch_id,
+                "created_at": watch_event.created_at,
+                "rewatch": watch_event.rewatch,
+                "dedupe_hash": watch_event.dedupe_hash,
+                "created_by": watch_event.created_by,
+                "source_event_id": watch_event.source_event_id,
+                "media_item_title": item_title,
+                "media_item_type": item_type,
+                "media_item_season_number": season_number,
+                "media_item_episode_number": episode_number,
+            }
+        )
+    return payload
 
 
 def create_watch_event(

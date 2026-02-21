@@ -30,7 +30,7 @@ class WatchEventService:
         media_type: Literal["movie", "show", "episode"] | None,
         limit: int,
         offset: int,
-    ) -> list[WatchEvent]:
+    ) -> list[dict[str, object]]:
         safe_limit = max(1, min(limit, 100))
         safe_offset = max(0, offset)
         return watch_event_repository.list_watch_events(

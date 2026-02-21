@@ -7,7 +7,11 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import require_request_auth
 from app.db.session import get_db_session
-from app.schemas.watch_events import WatchEventCreate, WatchEventRead
+from app.schemas.watch_events import (
+    WatchEventCreate,
+    WatchEventListRead,
+    WatchEventRead,
+)
 from app.services.watch_events import WatchEventConstraintError, WatchEventService
 
 router = APIRouter(
@@ -17,7 +21,7 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=list[WatchEventRead])
+@router.get("", response_model=list[WatchEventListRead])
 def list_watch_events(
     user_id: UUID | None = Query(default=None),
     media_item_id: UUID | None = Query(default=None),
@@ -27,7 +31,7 @@ def list_watch_events(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     session: Session = Depends(get_db_session),
-) -> list[WatchEventRead]:
+) -> list[WatchEventListRead]:
     watch_events = WatchEventService.list_watch_events(
         session,
         user_id=user_id,
@@ -38,7 +42,7 @@ def list_watch_events(
         limit=limit,
         offset=offset,
     )
-    return [WatchEventRead.model_validate(item) for item in watch_events]
+    return [WatchEventListRead.model_validate(item) for item in watch_events]
 
 
 @router.post("", response_model=WatchEventRead, status_code=status.HTTP_201_CREATED)

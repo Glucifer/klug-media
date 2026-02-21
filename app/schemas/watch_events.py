@@ -41,3 +41,10 @@ class WatchEventRead(BaseModel):
     dedupe_hash: str | None
     created_by: str | None
     source_event_id: str | None
+
+
+class WatchEventListRead(WatchEventRead):
+    media_item_title: str | None = None
+    media_item_type: str | None = None
+    media_item_season_number: int | None = None
+    media_item_episode_number: int | None = None

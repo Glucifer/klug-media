@@ -79,6 +79,52 @@ def test_list_watch_events_invalid_media_type_returns_422() -> None:
     assert response.status_code == 422
 
 
+def test_list_watch_events_returns_enriched_media_fields(monkeypatch) -> None:
+    watch_id = uuid4()
+    user_id = uuid4()
+    media_item_id = uuid4()
+
+    def fake_list_watch_events(_session, **_kwargs):
+        return [
+            {
+                "watch_id": watch_id,
+                "user_id": user_id,
+                "media_item_id": media_item_id,
+                "watched_at": datetime.now(UTC),
+                "playback_source": "legacy_backup",
+                "total_seconds": None,
+                "watched_seconds": None,
+                "progress_percent": None,
+                "completed": True,
+                "rating_value": None,
+                "rating_scale": None,
+                "media_version_id": None,
+                "import_batch_id": None,
+                "created_at": datetime.now(UTC),
+                "rewatch": False,
+                "dedupe_hash": None,
+                "created_by": None,
+                "source_event_id": "evt-9",
+                "media_item_title": "The Nest",
+                "media_item_type": "episode",
+                "media_item_season_number": 1,
+                "media_item_episode_number": 8,
+            }
+        ]
+
+    monkeypatch.setattr(WatchEventService, "list_watch_events", fake_list_watch_events)
+
+    client = TestClient(app)
+    response = client.get("/api/v1/watch-events")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload[0]["media_item_title"] == "The Nest"
+    assert payload[0]["media_item_type"] == "episode"
+    assert payload[0]["media_item_season_number"] == 1
+    assert payload[0]["media_item_episode_number"] == 8
+
+
 def test_create_watch_event_returns_201(monkeypatch) -> None:
     event = DummyWatchEvent()
 
