@@ -148,3 +148,16 @@ Interactive docs:
 ```text
 http://127.0.0.1:8000/docs
 ```
+
+Minimal frontend page:
+
+```text
+http://127.0.0.1:8000/
+```
+
+The page uses:
+- `POST /api/v1/session/login`
+- `GET /api/v1/session/me`
+- `DELETE /api/v1/session/logout`
+- `GET /api/v1/shows`
+- `GET /api/v1/shows/{show_id}`
