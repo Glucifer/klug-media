@@ -8,6 +8,7 @@ def test_baseline_tables_registered() -> None:
         "app.import_batch_error",
         "app.media_item",
         "app.media_version",
+        "app.shows",
         "app.tag",
         "app.tmdb_metadata_cache",
         "app.users",

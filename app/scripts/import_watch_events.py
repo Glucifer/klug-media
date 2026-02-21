@@ -17,6 +17,7 @@ from app.db.session import SessionLocal
 from app.schemas.imports import ImportMode, LegacySourceWatchEventImportRequest
 from app.services.imports import WatchEventImportService
 from app.services.media_items import MediaItemService
+from app.services.shows import ShowService
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -275,6 +276,120 @@ def _extract_tvdb_id(row: dict[str, Any], media_type: str) -> int | None:
     return None
 
 
+def _extract_show_tmdb_id(row: dict[str, Any], media_type: str) -> int | None:
+    top_show_tmdb = _parse_int(row.get("show_tmdb_id"))
+    if top_show_tmdb is not None:
+        return top_show_tmdb
+
+    if media_type != "episode":
+        return None
+
+    show_value = row.get("show")
+    if isinstance(show_value, dict):
+        ids = show_value.get("ids")
+        if isinstance(ids, dict):
+            return _parse_int(ids.get("tmdb"))
+
+    return None
+
+
+def _extract_show_tvdb_id(row: dict[str, Any], media_type: str) -> int | None:
+    top_show_tvdb = _parse_int(row.get("show_tvdb_id"))
+    if top_show_tvdb is not None:
+        return top_show_tvdb
+
+    if media_type != "episode":
+        return None
+
+    show_value = row.get("show")
+    if isinstance(show_value, dict):
+        ids = show_value.get("ids")
+        if isinstance(ids, dict):
+            return _parse_int(ids.get("tvdb"))
+
+    return None
+
+
+def _extract_show_imdb_id(row: dict[str, Any], media_type: str) -> str | None:
+    top_show_imdb = row.get("show_imdb_id")
+    if isinstance(top_show_imdb, str):
+        normalized = top_show_imdb.strip()
+        if normalized:
+            return normalized
+
+    if media_type != "episode":
+        return None
+
+    show_value = row.get("show")
+    if isinstance(show_value, dict):
+        ids = show_value.get("ids")
+        if isinstance(ids, dict):
+            show_imdb = ids.get("imdb")
+            if isinstance(show_imdb, str):
+                normalized = show_imdb.strip()
+                if normalized:
+                    return normalized
+
+    return None
+
+
+def _extract_show_title(row: dict[str, Any], media_type: str) -> str | None:
+    top_show_title = row.get("show_title")
+    if isinstance(top_show_title, str):
+        normalized = top_show_title.strip()
+        if normalized:
+            return normalized
+
+    if media_type != "episode":
+        return None
+
+    show_value = row.get("show")
+    if isinstance(show_value, dict):
+        show_title = show_value.get("title")
+        if isinstance(show_title, str):
+            normalized = show_title.strip()
+            if normalized:
+                return normalized
+
+    return None
+
+
+def _extract_show_year(row: dict[str, Any], media_type: str) -> int | None:
+    top_show_year = _parse_int(row.get("show_year"))
+    if top_show_year is not None:
+        return top_show_year
+
+    if media_type != "episode":
+        return None
+
+    show_value = row.get("show")
+    if isinstance(show_value, dict):
+        return _parse_int(show_value.get("year"))
+
+    return None
+
+
+def _extract_season_episode_numbers(
+    row: dict[str, Any], media_type: str
+) -> tuple[int | None, int | None]:
+    season_number = _parse_int(row.get("season_number"))
+    episode_number = _parse_int(row.get("episode_number"))
+    if season_number is not None or episode_number is not None:
+        return season_number, episode_number
+
+    if media_type != "episode":
+        return None, None
+
+    episode_value = row.get("episode")
+    if isinstance(episode_value, dict):
+        return (
+            _parse_int(episode_value.get("season")),
+            _parse_int(episode_value.get("number")),
+        )
+
+    return None, None
+
+
 def _create_media_item_from_backup_row(
     session: Any,
     *,
@@ -288,6 +403,22 @@ def _create_media_item_from_backup_row(
         fallback_id = tmdb_id or imdb_id or row.get("id") or "unknown"
         title = f"{media_type}:{fallback_id}"
 
+    season_number, episode_number = _extract_season_episode_numbers(row, media_type)
+    show_tmdb_id = _extract_show_tmdb_id(row, media_type)
+    show_id: UUID | None = None
+
+    if media_type == "episode" and show_tmdb_id is not None:
+        show_title = _extract_show_title(row, media_type) or f"show:{show_tmdb_id}"
+        show = ShowService.get_or_create_show(
+            session,
+            tmdb_id=show_tmdb_id,
+            title=show_title,
+            year=_extract_show_year(row, media_type),
+            tvdb_id=_extract_show_tvdb_id(row, media_type),
+            imdb_id=_extract_show_imdb_id(row, media_type),
+        )
+        show_id = show.show_id
+
     media_item = MediaItem(
         type=media_type,
         title=title,
@@ -295,6 +426,10 @@ def _create_media_item_from_backup_row(
         tmdb_id=tmdb_id,
         imdb_id=imdb_id,
         tvdb_id=_extract_tvdb_id(row, media_type),
+        show_tmdb_id=show_tmdb_id,
+        season_number=season_number,
+        episode_number=episode_number,
+        show_id=show_id,
         metadata_source="legacy_backup",
     )
     session.add(media_item)

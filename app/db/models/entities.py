@@ -111,12 +111,51 @@ class ImportBatchError(Base):
     import_batch: Mapped[ImportBatch] = relationship(back_populates="import_errors")
 
 
+class Show(Base):
+    __tablename__ = "shows"
+    __table_args__ = (
+        UniqueConstraint("tmdb_id", name="uq_shows_tmdb"),
+        Index("ix_shows_imdb_id", "imdb_id"),
+        Index("ix_shows_tvdb_id", "tvdb_id"),
+        {"schema": APP_SCHEMA},
+    )
+
+    show_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tmdb_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    tvdb_id: Mapped[int | None] = mapped_column(Integer)
+    imdb_id: Mapped[str | None] = mapped_column(String)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    year: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+
+    media_items: Mapped[list[MediaItem]] = relationship(back_populates="show")
+
+
 class MediaItem(Base):
     __tablename__ = "media_item"
     __table_args__ = (
         UniqueConstraint("type", "imdb_id", name="uq_media_imdb"),
         UniqueConstraint("type", "tmdb_id", name="uq_media_tmdb"),
         Index("ix_media_item_tmdb", "tmdb_id"),
+        Index("ix_media_item_show_id", "show_id"),
+        Index("ix_media_item_show_tmdb", "show_tmdb_id"),
+        Index(
+            "ux_media_item_episode_key",
+            "show_tmdb_id",
+            "season_number",
+            "episode_number",
+            unique=True,
+            postgresql_where=text(
+                "type = 'episode'::public.media_type AND show_tmdb_id IS NOT NULL"
+            ),
+        ),
         {"schema": APP_SCHEMA},
     )
 
@@ -142,11 +181,16 @@ class MediaItem(Base):
     metadata_updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True)
     )
+    show_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey(f"{APP_SCHEMA}.shows.show_id", ondelete="SET NULL"),
+    )
 
     media_versions: Mapped[list[MediaVersion]] = relationship(
         back_populates="media_item"
     )
     watch_events: Mapped[list[WatchEvent]] = relationship(back_populates="media_item")
+    show: Mapped[Show | None] = relationship(back_populates="media_items")
 
 
 class MediaVersion(Base):

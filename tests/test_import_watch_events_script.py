@@ -21,10 +21,20 @@ def _row_dict() -> dict[str, str]:
 def _backup_row_dict() -> dict[str, str]:
     return {
         "id": "legacy-evt-1",
-        "type": "movie",
+        "type": "episode",
         "watched_at": "2025-01-01T00:00:00Z",
         "player": "jellyfin",
-        "tmdb_id": "100",
+        "episode": {
+            "season": 1,
+            "number": 8,
+            "title": "The Nest",
+            "ids": {"tmdb": 4765221, "imdb": "tt28634845", "tvdb": 10081853},
+        },
+        "show": {
+            "title": "Scavengers Reign",
+            "year": 2023,
+            "ids": {"tmdb": 204154},
+        },
     }
 
 
@@ -204,13 +214,19 @@ def test_run_legacy_backup_rejected_rows_write_report(
 
 
 def test_legacy_backup_creates_missing_media_item(monkeypatch) -> None:
+    class DummyShow:
+        def __init__(self) -> None:
+            self.show_id = uuid4()
+
     class DummySession:
         def __init__(self) -> None:
             self.created = 0
             self.commits = 0
+            self.last_media_item = None
 
         def add(self, media_item) -> None:
             media_item.media_item_id = uuid4()
+            self.last_media_item = media_item
             self.created += 1
 
         def flush(self) -> None:
@@ -229,6 +245,11 @@ def test_legacy_backup_creates_missing_media_item(monkeypatch) -> None:
         "find_media_item_by_external_ids",
         lambda *_args, **_kwargs: None,
     )
+    monkeypatch.setattr(
+        import_watch_events.ShowService,
+        "get_or_create_show",
+        lambda *_args, **_kwargs: DummyShow(),
+    )
 
     mapped_rows, rejected_rows = import_watch_events._build_mapped_rows_from_legacy_backup(
         [_backup_row_dict()],
@@ -239,6 +260,11 @@ def test_legacy_backup_creates_missing_media_item(monkeypatch) -> None:
     assert len(mapped_rows) == 1
     assert dummy_session.created == 1
     assert dummy_session.commits == 1
+    assert dummy_session.last_media_item is not None
+    assert dummy_session.last_media_item.show_tmdb_id == 204154
+    assert dummy_session.last_media_item.season_number == 1
+    assert dummy_session.last_media_item.episode_number == 8
+    assert dummy_session.last_media_item.show_id is not None
 
 
 def test_run_returns_2_for_missing_file() -> None:
