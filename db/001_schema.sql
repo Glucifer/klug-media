@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict QpaBse0e2xW8ckQmL7MWrdH0H7iVhRujmhe0xlgs3Oiisv7crXe0r0wcUyeapF2
+\restrict h5vCqRIUiSU3eNbbSxhckS1olOuDinH91iJdTmF0keoinSI2lv8SwZ3cyZ95qlq
 
 -- Dumped from database version 18.2 (Debian 18.2-1.pgdg13+1)
 -- Dumped by pg_dump version 18.2 (Debian 18.2-1.pgdg13+1)
@@ -146,7 +146,8 @@ CREATE TABLE app.media_item (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     base_runtime_seconds integer,
     metadata_source text,
-    metadata_updated_at timestamp with time zone
+    metadata_updated_at timestamp with time zone,
+    show_id uuid
 );
 
 
@@ -162,6 +163,22 @@ CREATE TABLE app.media_version (
     runtime_seconds integer,
     notes text,
     created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: shows; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.shows (
+    show_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tmdb_id integer NOT NULL,
+    tvdb_id integer,
+    imdb_id text,
+    title text NOT NULL,
+    year integer,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -245,6 +262,41 @@ CREATE TABLE app.watch_event (
     created_by text,
     source_event_id text
 );
+
+
+--
+-- Name: v_show_progress; Type: VIEW; Schema: app; Owner: -
+--
+
+CREATE VIEW app.v_show_progress AS
+ WITH totals AS (
+         SELECT mi.show_id,
+            count(*) AS total_episodes
+           FROM app.media_item mi
+          WHERE ((mi.type = 'episode'::public.media_type) AND (mi.show_id IS NOT NULL))
+          GROUP BY mi.show_id
+        ), watched AS (
+         SELECT we.user_id,
+            mi.show_id,
+            count(DISTINCT we.media_item_id) AS watched_episodes
+           FROM (app.watch_event we
+             JOIN app.media_item mi ON ((mi.media_item_id = we.media_item_id)))
+          WHERE ((mi.type = 'episode'::public.media_type) AND (mi.show_id IS NOT NULL) AND (we.completed = true))
+          GROUP BY we.user_id, mi.show_id
+        )
+ SELECT s.show_id,
+    s.tmdb_id AS show_tmdb_id,
+    s.title AS show_title,
+    w.user_id,
+    t.total_episodes,
+    w.watched_episodes,
+        CASE
+            WHEN (t.total_episodes = 0) THEN (0)::numeric
+            ELSE round((((w.watched_episodes)::numeric / (t.total_episodes)::numeric) * (100)::numeric), 2)
+        END AS watched_percent
+   FROM ((watched w
+     JOIN totals t ON ((t.show_id = w.show_id)))
+     JOIN app.shows s ON ((s.show_id = w.show_id)));
 
 
 --
@@ -360,6 +412,14 @@ ALTER TABLE ONLY app.media_version
 
 
 --
+-- Name: shows shows_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.shows
+    ADD CONSTRAINT shows_pkey PRIMARY KEY (show_id);
+
+
+--
 -- Name: tag tag_pkey; Type: CONSTRAINT; Schema: app; Owner: -
 --
 
@@ -405,6 +465,14 @@ ALTER TABLE ONLY app.media_item
 
 ALTER TABLE ONLY app.media_version
     ADD CONSTRAINT uq_media_version UNIQUE (media_item_id, version_key);
+
+
+--
+-- Name: shows uq_shows_tmdb; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.shows
+    ADD CONSTRAINT uq_shows_tmdb UNIQUE (tmdb_id);
 
 
 --
@@ -468,6 +536,20 @@ CREATE INDEX ix_import_batch_status ON app.import_batch USING btree (status);
 
 
 --
+-- Name: ix_media_item_show_id; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_media_item_show_id ON app.media_item USING btree (show_id);
+
+
+--
+-- Name: ix_media_item_show_tmdb; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_media_item_show_tmdb ON app.media_item USING btree (show_tmdb_id);
+
+
+--
 -- Name: ix_media_item_tmdb; Type: INDEX; Schema: app; Owner: -
 --
 
@@ -479,6 +561,20 @@ CREATE INDEX ix_media_item_tmdb ON app.media_item USING btree (tmdb_id);
 --
 
 CREATE INDEX ix_media_version_item ON app.media_version USING btree (media_item_id);
+
+
+--
+-- Name: ix_shows_imdb_id; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_shows_imdb_id ON app.shows USING btree (imdb_id);
+
+
+--
+-- Name: ix_shows_tvdb_id; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_shows_tvdb_id ON app.shows USING btree (tvdb_id);
 
 
 --
@@ -503,6 +599,13 @@ CREATE INDEX ix_watch_event_source_event ON app.watch_event USING btree (playbac
 
 
 --
+-- Name: ix_watch_event_user_media_item_completed; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_watch_event_user_media_item_completed ON app.watch_event USING btree (user_id, media_item_id) WHERE (completed = true);
+
+
+--
 -- Name: ix_watch_event_user_time; Type: INDEX; Schema: app; Owner: -
 --
 
@@ -514,6 +617,13 @@ CREATE INDEX ix_watch_event_user_time ON app.watch_event USING btree (user_id, w
 --
 
 CREATE INDEX ix_watch_event_watched_at ON app.watch_event USING btree (watched_at DESC);
+
+
+--
+-- Name: ux_media_item_episode_key; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_media_item_episode_key ON app.media_item USING btree (show_tmdb_id, season_number, episode_number) WHERE ((type = 'episode'::public.media_type) AND (show_tmdb_id IS NOT NULL));
 
 
 --
@@ -535,6 +645,14 @@ CREATE TRIGGER trg_create_default_media_version AFTER INSERT ON app.media_item F
 --
 
 CREATE TRIGGER trg_watch_event_set_dedupe_hash BEFORE INSERT ON app.watch_event FOR EACH ROW EXECUTE FUNCTION app.set_watch_event_dedupe_hash();
+
+
+--
+-- Name: media_item fk_media_item_show; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.media_item
+    ADD CONSTRAINT fk_media_item_show FOREIGN KEY (show_id) REFERENCES app.shows(show_id) ON DELETE SET NULL;
 
 
 --
@@ -613,5 +731,5 @@ ALTER TABLE ONLY app.watch_event
 -- PostgreSQL database dump complete
 --
 
-\unrestrict QpaBse0e2xW8ckQmL7MWrdH0H7iVhRujmhe0xlgs3Oiisv7crXe0r0wcUyeapF2
+\unrestrict h5vCqRIUiSU3eNbbSxhckS1olOuDinH91iJdTmF0keoinSI2lv8SwZ3cyZ95qlq
 

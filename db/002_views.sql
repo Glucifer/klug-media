@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict QWQKRYiWEQ5xZrm1XrDvFusFta7FamQWe3CLOoVQHNE9eZvimfPXSlkT8I24Nxe
+\restrict HbH83WshcfcQukzU58tSraEnB2msQlEDpFfqfZQE7VopWFVBdEJTEyzAQi41ysz
 
 -- Dumped from database version 18.2 (Debian 18.2-1.pgdg13+1)
 -- Dumped by pg_dump version 18.2 (Debian 18.2-1.pgdg13+1)
@@ -62,6 +62,14 @@ ALTER TABLE ONLY app.media_version
 
 
 --
+-- Name: shows shows_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.shows
+    ADD CONSTRAINT shows_pkey PRIMARY KEY (show_id);
+
+
+--
 -- Name: tag tag_pkey; Type: CONSTRAINT; Schema: app; Owner: -
 --
 
@@ -107,6 +115,14 @@ ALTER TABLE ONLY app.media_item
 
 ALTER TABLE ONLY app.media_version
     ADD CONSTRAINT uq_media_version UNIQUE (media_item_id, version_key);
+
+
+--
+-- Name: shows uq_shows_tmdb; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.shows
+    ADD CONSTRAINT uq_shows_tmdb UNIQUE (tmdb_id);
 
 
 --
@@ -170,6 +186,20 @@ CREATE INDEX ix_import_batch_status ON app.import_batch USING btree (status);
 
 
 --
+-- Name: ix_media_item_show_id; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_media_item_show_id ON app.media_item USING btree (show_id);
+
+
+--
+-- Name: ix_media_item_show_tmdb; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_media_item_show_tmdb ON app.media_item USING btree (show_tmdb_id);
+
+
+--
 -- Name: ix_media_item_tmdb; Type: INDEX; Schema: app; Owner: -
 --
 
@@ -181,6 +211,20 @@ CREATE INDEX ix_media_item_tmdb ON app.media_item USING btree (tmdb_id);
 --
 
 CREATE INDEX ix_media_version_item ON app.media_version USING btree (media_item_id);
+
+
+--
+-- Name: ix_shows_imdb_id; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_shows_imdb_id ON app.shows USING btree (imdb_id);
+
+
+--
+-- Name: ix_shows_tvdb_id; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_shows_tvdb_id ON app.shows USING btree (tvdb_id);
 
 
 --
@@ -205,6 +249,13 @@ CREATE INDEX ix_watch_event_source_event ON app.watch_event USING btree (playbac
 
 
 --
+-- Name: ix_watch_event_user_media_item_completed; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_watch_event_user_media_item_completed ON app.watch_event USING btree (user_id, media_item_id) WHERE (completed = true);
+
+
+--
 -- Name: ix_watch_event_user_time; Type: INDEX; Schema: app; Owner: -
 --
 
@@ -216,6 +267,13 @@ CREATE INDEX ix_watch_event_user_time ON app.watch_event USING btree (user_id, w
 --
 
 CREATE INDEX ix_watch_event_watched_at ON app.watch_event USING btree (watched_at DESC);
+
+
+--
+-- Name: ux_media_item_episode_key; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_media_item_episode_key ON app.media_item USING btree (show_tmdb_id, season_number, episode_number) WHERE ((type = 'episode'::public.media_type) AND (show_tmdb_id IS NOT NULL));
 
 
 --
@@ -237,6 +295,14 @@ CREATE TRIGGER trg_create_default_media_version AFTER INSERT ON app.media_item F
 --
 
 CREATE TRIGGER trg_watch_event_set_dedupe_hash BEFORE INSERT ON app.watch_event FOR EACH ROW EXECUTE FUNCTION app.set_watch_event_dedupe_hash();
+
+
+--
+-- Name: media_item fk_media_item_show; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.media_item
+    ADD CONSTRAINT fk_media_item_show FOREIGN KEY (show_id) REFERENCES app.shows(show_id) ON DELETE SET NULL;
 
 
 --
@@ -315,5 +381,5 @@ ALTER TABLE ONLY app.watch_event
 -- PostgreSQL database dump complete
 --
 
-\unrestrict QWQKRYiWEQ5xZrm1XrDvFusFta7FamQWe3CLOoVQHNE9eZvimfPXSlkT8I24Nxe
+\unrestrict HbH83WshcfcQukzU58tSraEnB2msQlEDpFfqfZQE7VopWFVBdEJTEyzAQi41ysz
 
