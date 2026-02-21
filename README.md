@@ -70,6 +70,8 @@ uv sync
 ```bash
 export KLUG_API_KEY=replace-with-long-random-value
 export KLUG_API_AUTH_MODE=write
+export KLUG_SESSION_PASSWORD=replace-with-login-password
+export KLUG_SESSION_SECRET=replace-with-session-signing-secret
 ```
 
 `KLUG_API_AUTH_MODE` options:
@@ -78,6 +80,13 @@ export KLUG_API_AUTH_MODE=write
 - `all`: require `X-API-Key` on all routed endpoints
 
 If `KLUG_API_KEY` is unset, requests are allowed (local dev convenience).
+
+Session auth endpoints:
+- `POST /api/v1/session/login` with `{ "password": "<KLUG_SESSION_PASSWORD>" }`
+- `DELETE /api/v1/session/logout`
+- `GET /api/v1/session/me`
+
+When logged in, a signed `klug_session` cookie can satisfy API auth checks (API key remains supported for scripts/admin usage).
 
 4. Run API:
 ```bash
@@ -125,6 +134,7 @@ With server running on `http://127.0.0.1:8000`:
 
 ```bash
 curl http://127.0.0.1:8000/api/v1/health
+curl -X POST http://127.0.0.1:8000/api/v1/session/login -H "Content-Type: application/json" -d '{"password":"<session-password>"}'
 curl http://127.0.0.1:8000/api/v1/shows
 curl http://127.0.0.1:8000/api/v1/shows/progress
 curl "http://127.0.0.1:8000/api/v1/shows/progress?user_id=<your-user-uuid>"

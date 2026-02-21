@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.auth import require_api_key
+from app.core.auth import require_request_auth
 from app.db.session import get_db_session
 from app.schemas.media_items import MediaItemCreate, MediaItemRead
 from app.services.media_items import MediaItemAlreadyExistsError, MediaItemService
@@ -9,7 +9,7 @@ from app.services.media_items import MediaItemAlreadyExistsError, MediaItemServi
 router = APIRouter(
     prefix="/media-items",
     tags=["media-items"],
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_request_auth)],
 )
 
 

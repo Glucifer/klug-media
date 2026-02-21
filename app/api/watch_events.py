@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.auth import require_api_key
+from app.core.auth import require_request_auth
 from app.db.session import get_db_session
 from app.schemas.watch_events import WatchEventCreate, WatchEventRead
 from app.services.watch_events import WatchEventConstraintError, WatchEventService
@@ -12,7 +12,7 @@ from app.services.watch_events import WatchEventConstraintError, WatchEventServi
 router = APIRouter(
     prefix="/watch-events",
     tags=["watch-events"],
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_request_auth)],
 )
 
 

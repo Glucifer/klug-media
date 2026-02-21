@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.auth import require_api_key
+from app.core.auth import require_request_auth
 from app.db.session import get_db_session
 from app.schemas.users import UserCreate, UserRead
 from app.services.users import UserAlreadyExistsError, UserService
@@ -9,7 +9,7 @@ from app.services.users import UserAlreadyExistsError, UserService
 router = APIRouter(
     prefix="/users",
     tags=["users"],
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_request_auth)],
 )
 
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.auth import require_api_key
+from app.core.auth import require_request_auth
 from app.db.session import get_db_session
 from app.schemas.imports import (
     LegacySourceWatchEventImportRequest,
@@ -13,7 +13,7 @@ from app.services.imports import WatchEventImportService
 router = APIRouter(
     prefix="/imports",
     tags=["imports"],
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_request_auth)],
 )
 
 

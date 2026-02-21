@@ -139,3 +139,18 @@ def test_disabled_mode_ignores_api_key_requirement(monkeypatch) -> None:
     response = client.get("/api/v1/users")
 
     assert response.status_code == 200
+
+
+def test_all_mode_allows_session_cookie_auth(monkeypatch) -> None:
+    _set_auth(monkeypatch, api_key="secret-key", auth_mode="all")
+    monkeypatch.setenv("KLUG_SESSION_PASSWORD", "session-pass")
+    monkeypatch.setenv("KLUG_SESSION_SECRET", "session-secret")
+    get_settings.cache_clear()
+    monkeypatch.setattr(UserService, "list_users", lambda _session: [])
+
+    client = TestClient(app)
+    login = client.post("/api/v1/session/login", json={"password": "session-pass"})
+    assert login.status_code == 200
+
+    response = client.get("/api/v1/users")
+    assert response.status_code == 200

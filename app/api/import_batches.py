@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.auth import require_api_key
+from app.core.auth import require_request_auth
 from app.db.session import get_db_session
 from app.schemas.import_batches import (
     ImportBatchErrorCreateRequest,
@@ -21,7 +21,7 @@ from app.services.import_batches import (
 router = APIRouter(
     prefix="/import-batches",
     tags=["import-batches"],
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_request_auth)],
 )
 
 

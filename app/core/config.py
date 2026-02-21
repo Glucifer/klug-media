@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
     klug_api_key: str | None = None
     klug_api_auth_mode: Literal["disabled", "write", "all"] = "write"
+    klug_session_password: str | None = None
+    klug_session_secret: str | None = None
+    klug_session_ttl_seconds: int = 60 * 60 * 24 * 30
     database_url: str = (
         "postgresql+psycopg://postgres:postgres@localhost:5432/klug_media"
     )
