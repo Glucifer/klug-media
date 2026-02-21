@@ -2,6 +2,8 @@
 
 You are an AI coding agent working in this repository. Follow these rules strictly.
 
+Besides this AGENTS.md file, you also have PROJECT_CONTEXT.md that you maintain. It is to keep track of your notes on the project, projects status, agreedupon workflows, permissions, etc. This is so when your context gets compacted, you can resume work on the project in the expected manner.
+
 ## 1) Project goal
 Build a self-hosted media tracking app (“Klug Media”) with a Python backend.
 Optimize for correctness, maintainability, and incremental delivery.
@@ -103,3 +105,13 @@ If the repo uses `pyproject.toml` + locked deps, follow that instead of requirem
 - Be concise and specific.
 - If something is ambiguous, make a reasonable assumption and state it.
 - For each new file: give a one-line purpose explanation.
+
+## Added
+## Git Workflow and notes
+pre-commit installed via uv
+Tests must pass before commit
+stages changes with git add -A
+run git status before committing
+commit when instructed
+never pushes
+show git log -1 --oneline after commit
