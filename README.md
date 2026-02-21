@@ -33,8 +33,11 @@ The repository currently includes:
 - FastAPI app entrypoint
 - Versioned API prefix (`/api/v1`)
 - Health endpoint (`GET /api/v1/health`)
+- Import endpoints (`/api/v1/imports/*`)
+- Users, media items, watch events, and shows endpoints
 - Config wiring via `pydantic-settings`
-- SQLAlchemy engine/session module scaffold
+- SQLAlchemy engine/session module
+- Alembic migrations through `0004_align_show_progress_view_with_backup`
 
 ## Architecture Direction
 
@@ -91,4 +94,33 @@ uv run python -m app.scripts.import_watch_events --input ./path/to/export.csv --
 Incremental resume example:
 ```bash
 uv run python -m app.scripts.import_watch_events --input ./path/to/export.csv --input-schema legacy_backup --user-id <your-user-uuid> --mode incremental --resume-from-latest --error-report ./import_errors.json
+```
+
+7. Backfill episode `show_id` links for older data:
+```bash
+uv run python -m app.scripts.backfill_episode_shows --dry-run
+```
+
+Write mode example:
+```bash
+uv run python -m app.scripts.backfill_episode_shows
+```
+
+## API Smoke Checks
+
+With server running on `http://127.0.0.1:8000`:
+
+```bash
+curl http://127.0.0.1:8000/api/v1/health
+curl http://127.0.0.1:8000/api/v1/shows
+curl http://127.0.0.1:8000/api/v1/shows/progress
+curl "http://127.0.0.1:8000/api/v1/shows/progress?user_id=<your-user-uuid>"
+curl http://127.0.0.1:8000/api/v1/shows/<show-uuid>
+curl "http://127.0.0.1:8000/api/v1/shows/<show-uuid>?user_id=<your-user-uuid>"
+```
+
+Interactive docs:
+
+```text
+http://127.0.0.1:8000/docs
 ```
