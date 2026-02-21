@@ -400,15 +400,8 @@ async function loadHistory() {
       const watchedAt = new Date(row.watched_at).toLocaleString();
       const completed = row.completed ? "yes" : "no";
       const progress = row.progress_percent === null ? "-" : `${row.progress_percent}%`;
-      let title = row.media_item_title || row.media_item_id;
+      const title = row.display_title || row.media_item_title || row.media_item_id;
       const type = row.media_item_type || "-";
-      if (
-        row.media_item_type === "episode" &&
-        row.media_item_season_number !== null &&
-        row.media_item_episode_number !== null
-      ) {
-        title = `${title} (S${row.media_item_season_number}E${row.media_item_episode_number})`;
-      }
       tr.innerHTML = `
         <td>${watchedAt}</td>
         <td>${title}</td>

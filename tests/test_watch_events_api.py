@@ -109,6 +109,7 @@ def test_list_watch_events_returns_enriched_media_fields(monkeypatch) -> None:
                 "media_item_type": "episode",
                 "media_item_season_number": 1,
                 "media_item_episode_number": 8,
+                "display_title": "Scavengers Reign S01E08",
             }
         ]
 
@@ -123,6 +124,7 @@ def test_list_watch_events_returns_enriched_media_fields(monkeypatch) -> None:
     assert payload[0]["media_item_type"] == "episode"
     assert payload[0]["media_item_season_number"] == 1
     assert payload[0]["media_item_episode_number"] == 8
+    assert payload[0]["display_title"] == "Scavengers Reign S01E08"
 
 
 def test_create_watch_event_returns_201(monkeypatch) -> None:

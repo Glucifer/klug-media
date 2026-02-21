@@ -5,7 +5,28 @@ from uuid import UUID
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
-from app.db.models.entities import MediaItem, WatchEvent
+from app.db.models.entities import MediaItem, Show, WatchEvent
+
+
+def _format_display_title(
+    *,
+    item_type: str,
+    item_title: str | None,
+    item_year: int | None,
+    show_title: str | None,
+    season_number: int | None,
+    episode_number: int | None,
+) -> str:
+    base_title = item_title or "Unknown Title"
+    if item_type == "episode":
+        episode_show_title = show_title or base_title
+        if season_number is not None and episode_number is not None:
+            return f"{episode_show_title} S{season_number:02d}E{episode_number:02d}"
+        return episode_show_title
+
+    if item_year is not None:
+        return f"{base_title} ({item_year})"
+    return base_title
 
 
 def list_watch_events(
@@ -19,15 +40,26 @@ def list_watch_events(
     limit: int,
     offset: int,
 ) -> list[dict[str, object]]:
-    statement: Select[tuple[WatchEvent, str, str, int | None, int | None]] = select(
-        WatchEvent,
-        MediaItem.title,
-        MediaItem.type,
-        MediaItem.season_number,
-        MediaItem.episode_number,
-    ).join(
-        MediaItem,
-        WatchEvent.media_item_id == MediaItem.media_item_id,
+    statement: Select[
+        tuple[WatchEvent, str, str, int | None, int | None, int | None, str | None]
+    ] = (
+        select(
+            WatchEvent,
+            MediaItem.title,
+            MediaItem.type,
+            MediaItem.season_number,
+            MediaItem.episode_number,
+            MediaItem.year,
+            Show.title,
+        )
+        .join(
+            MediaItem,
+            WatchEvent.media_item_id == MediaItem.media_item_id,
+        )
+        .outerjoin(
+            Show,
+            MediaItem.show_id == Show.show_id,
+        )
     )
     if media_type is not None:
         statement = statement.where(MediaItem.type == media_type)
@@ -46,7 +78,15 @@ def list_watch_events(
     )
     rows = session.execute(statement).all()
     payload: list[dict[str, object]] = []
-    for watch_event, item_title, item_type, season_number, episode_number in rows:
+    for (
+        watch_event,
+        item_title,
+        item_type,
+        season_number,
+        episode_number,
+        item_year,
+        show_title,
+    ) in rows:
         payload.append(
             {
                 "watch_id": watch_event.watch_id,
@@ -71,6 +111,14 @@ def list_watch_events(
                 "media_item_type": item_type,
                 "media_item_season_number": season_number,
                 "media_item_episode_number": episode_number,
+                "display_title": _format_display_title(
+                    item_type=item_type,
+                    item_title=item_title,
+                    item_year=item_year,
+                    show_title=show_title,
+                    season_number=season_number,
+                    episode_number=episode_number,
+                ),
             }
         )
     return payload
