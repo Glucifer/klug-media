@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import get_settings
@@ -15,16 +16,29 @@ class DummyUser:
         self.created_at = datetime.now(UTC)
 
 
-def _set_api_key(monkeypatch, value: str | None) -> None:
-    if value is None:
+@pytest.fixture(autouse=True)
+def clear_settings_cache() -> None:
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+def _set_auth(
+    monkeypatch, *, api_key: str | None, auth_mode: str | None = None
+) -> None:
+    if api_key is None:
         monkeypatch.delenv("KLUG_API_KEY", raising=False)
     else:
-        monkeypatch.setenv("KLUG_API_KEY", value)
+        monkeypatch.setenv("KLUG_API_KEY", api_key)
+    if auth_mode is None:
+        monkeypatch.delenv("KLUG_API_AUTH_MODE", raising=False)
+    else:
+        monkeypatch.setenv("KLUG_API_AUTH_MODE", auth_mode)
     get_settings.cache_clear()
 
 
 def test_write_endpoint_requires_api_key_when_configured(monkeypatch) -> None:
-    _set_api_key(monkeypatch, "secret-key")
+    _set_auth(monkeypatch, api_key="secret-key", auth_mode="write")
     monkeypatch.setattr(
         UserService,
         "create_user",
@@ -38,7 +52,7 @@ def test_write_endpoint_requires_api_key_when_configured(monkeypatch) -> None:
 
 
 def test_write_endpoint_rejects_invalid_api_key(monkeypatch) -> None:
-    _set_api_key(monkeypatch, "secret-key")
+    _set_auth(monkeypatch, api_key="secret-key", auth_mode="write")
     monkeypatch.setattr(
         UserService,
         "create_user",
@@ -56,7 +70,7 @@ def test_write_endpoint_rejects_invalid_api_key(monkeypatch) -> None:
 
 
 def test_write_endpoint_accepts_valid_api_key(monkeypatch) -> None:
-    _set_api_key(monkeypatch, "secret-key")
+    _set_auth(monkeypatch, api_key="secret-key", auth_mode="write")
     monkeypatch.setattr(
         UserService,
         "create_user",
@@ -74,7 +88,7 @@ def test_write_endpoint_accepts_valid_api_key(monkeypatch) -> None:
 
 
 def test_write_endpoint_allows_requests_when_api_key_not_configured(monkeypatch) -> None:
-    _set_api_key(monkeypatch, None)
+    _set_auth(monkeypatch, api_key=None, auth_mode="write")
     monkeypatch.setattr(
         UserService,
         "create_user",
@@ -85,3 +99,43 @@ def test_write_endpoint_allows_requests_when_api_key_not_configured(monkeypatch)
     response = client.post("/api/v1/users", json={"username": "alice"})
 
     assert response.status_code == 201
+
+
+def test_read_endpoint_allowed_in_write_mode_without_api_key(monkeypatch) -> None:
+    _set_auth(monkeypatch, api_key="secret-key", auth_mode="write")
+    monkeypatch.setattr(UserService, "list_users", lambda _session: [])
+
+    client = TestClient(app)
+    response = client.get("/api/v1/users")
+
+    assert response.status_code == 200
+
+
+def test_read_endpoint_requires_api_key_in_all_mode(monkeypatch) -> None:
+    _set_auth(monkeypatch, api_key="secret-key", auth_mode="all")
+    monkeypatch.setattr(UserService, "list_users", lambda _session: [])
+
+    client = TestClient(app)
+    response = client.get("/api/v1/users")
+
+    assert response.status_code == 401
+
+
+def test_read_endpoint_accepts_api_key_in_all_mode(monkeypatch) -> None:
+    _set_auth(monkeypatch, api_key="secret-key", auth_mode="all")
+    monkeypatch.setattr(UserService, "list_users", lambda _session: [])
+
+    client = TestClient(app)
+    response = client.get("/api/v1/users", headers={"X-API-Key": "secret-key"})
+
+    assert response.status_code == 200
+
+
+def test_disabled_mode_ignores_api_key_requirement(monkeypatch) -> None:
+    _set_auth(monkeypatch, api_key="secret-key", auth_mode="disabled")
+    monkeypatch.setattr(UserService, "list_users", lambda _session: [])
+
+    client = TestClient(app)
+    response = client.get("/api/v1/users")
+
+    assert response.status_code == 200

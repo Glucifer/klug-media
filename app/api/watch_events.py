@@ -9,7 +9,11 @@ from app.db.session import get_db_session
 from app.schemas.watch_events import WatchEventCreate, WatchEventRead
 from app.services.watch_events import WatchEventConstraintError, WatchEventService
 
-router = APIRouter(prefix="/watch-events", tags=["watch-events"])
+router = APIRouter(
+    prefix="/watch-events",
+    tags=["watch-events"],
+    dependencies=[Depends(require_api_key)],
+)
 
 
 @router.get("", response_model=list[WatchEventRead])
@@ -35,7 +39,6 @@ def list_watch_events(
 @router.post("", response_model=WatchEventRead, status_code=status.HTTP_201_CREATED)
 def create_watch_event(
     payload: WatchEventCreate,
-    _: None = Depends(require_api_key),
     session: Session = Depends(get_db_session),
 ) -> WatchEventRead:
     try:

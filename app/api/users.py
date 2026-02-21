@@ -6,7 +6,11 @@ from app.db.session import get_db_session
 from app.schemas.users import UserCreate, UserRead
 from app.services.users import UserAlreadyExistsError, UserService
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(
+    prefix="/users",
+    tags=["users"],
+    dependencies=[Depends(require_api_key)],
+)
 
 
 @router.get("", response_model=list[UserRead])
@@ -18,7 +22,6 @@ def list_users(session: Session = Depends(get_db_session)) -> list[UserRead]:
 @router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def create_user(
     payload: UserCreate,
-    _: None = Depends(require_api_key),
     session: Session = Depends(get_db_session),
 ) -> UserRead:
     try:

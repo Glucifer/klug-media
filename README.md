@@ -66,13 +66,18 @@ uv venv --python 3.12
 uv sync
 ```
 
-3. Configure optional write-endpoint API key:
+3. Configure optional API auth:
 ```bash
 export KLUG_API_KEY=replace-with-long-random-value
+export KLUG_API_AUTH_MODE=write
 ```
 
-If `KLUG_API_KEY` is set, all `POST` endpoints require `X-API-Key`.
-If unset, write endpoints remain open for local development.
+`KLUG_API_AUTH_MODE` options:
+- `disabled`: no API key checks
+- `write`: require `X-API-Key` on write methods (`POST/PUT/PATCH/DELETE`)
+- `all`: require `X-API-Key` on all routed endpoints
+
+If `KLUG_API_KEY` is unset, requests are allowed (local dev convenience).
 
 4. Run API:
 ```bash

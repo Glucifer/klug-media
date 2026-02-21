@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -11,6 +12,7 @@ class Settings(BaseSettings):
     app_env: str = "dev"
     api_v1_prefix: str = "/api/v1"
     klug_api_key: str | None = None
+    klug_api_auth_mode: Literal["disabled", "write", "all"] = "write"
     database_url: str = (
         "postgresql+psycopg://postgres:postgres@localhost:5432/klug_media"
     )

@@ -18,7 +18,11 @@ from app.services.import_batches import (
     ImportBatchService,
 )
 
-router = APIRouter(prefix="/import-batches", tags=["import-batches"])
+router = APIRouter(
+    prefix="/import-batches",
+    tags=["import-batches"],
+    dependencies=[Depends(require_api_key)],
+)
 
 
 @router.get("", response_model=list[ImportBatchRead])
@@ -50,7 +54,6 @@ def get_import_batch(
 @router.post("", response_model=ImportBatchRead, status_code=status.HTTP_201_CREATED)
 def start_import_batch(
     payload: ImportBatchStartRequest,
-    _: None = Depends(require_api_key),
     session: Session = Depends(get_db_session),
 ) -> ImportBatchRead:
     try:
@@ -77,7 +80,6 @@ def start_import_batch(
 def finish_import_batch(
     import_batch_id: UUID,
     payload: ImportBatchFinishRequest,
-    _: None = Depends(require_api_key),
     session: Session = Depends(get_db_session),
 ) -> ImportBatchRead:
     try:
@@ -137,7 +139,6 @@ def list_import_batch_errors(
 def add_import_batch_error(
     import_batch_id: UUID,
     payload: ImportBatchErrorCreateRequest,
-    _: None = Depends(require_api_key),
     session: Session = Depends(get_db_session),
 ) -> ImportBatchErrorRead:
     try:

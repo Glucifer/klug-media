@@ -3,11 +3,16 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_api_key
 from app.db.session import get_db_session
 from app.schemas.shows import ShowDetailRead, ShowEpisodeRead, ShowProgressRead, ShowRead
 from app.services.shows import ShowNotFoundError, ShowService
 
-router = APIRouter(prefix="/shows", tags=["shows"])
+router = APIRouter(
+    prefix="/shows",
+    tags=["shows"],
+    dependencies=[Depends(require_api_key)],
+)
 
 
 @router.get("", response_model=list[ShowRead])

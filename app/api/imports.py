@@ -10,13 +10,16 @@ from app.schemas.imports import (
 )
 from app.services.imports import WatchEventImportService
 
-router = APIRouter(prefix="/imports", tags=["imports"])
+router = APIRouter(
+    prefix="/imports",
+    tags=["imports"],
+    dependencies=[Depends(require_api_key)],
+)
 
 
 @router.post("/watch-events", response_model=WatchEventImportResponse)
 def import_watch_events(
     payload: WatchEventImportRequest,
-    _: None = Depends(require_api_key),
     session: Session = Depends(get_db_session),
 ) -> WatchEventImportResponse:
     try:
@@ -46,7 +49,6 @@ def import_watch_events(
 @router.post("/watch-events/legacy-source", response_model=WatchEventImportResponse)
 def import_legacy_source_watch_events(
     payload: LegacySourceWatchEventImportRequest,
-    _: None = Depends(require_api_key),
     session: Session = Depends(get_db_session),
 ) -> WatchEventImportResponse:
     result = WatchEventImportService.run_legacy_source_import(session, payload=payload)
