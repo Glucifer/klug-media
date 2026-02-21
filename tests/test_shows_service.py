@@ -1,7 +1,9 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from app.services.shows import ShowService
+import pytest
+
+from app.services.shows import ShowNotFoundError, ShowService
 
 
 class DummyShow:
@@ -45,3 +47,37 @@ def test_list_show_progress_parses_user_id(monkeypatch) -> None:
 
     ShowService.list_show_progress(session, user_id=user_id)
     assert captured["user_id"] == user_id
+
+
+def test_get_show_detail_returns_show_progress_and_episodes(monkeypatch) -> None:
+    session = object()
+    show = DummyShow()
+    user_id = uuid4()
+
+    monkeypatch.setattr(
+        "app.services.shows.show_repository.find_show_by_id",
+        lambda _session, *, show_id: show,
+    )
+    monkeypatch.setattr(
+        "app.services.shows.show_repository.list_show_progress",
+        lambda _session, *, user_id, show_id: [{"show_id": show_id, "user_id": user_id}],
+    )
+    monkeypatch.setattr(
+        "app.services.shows.show_repository.list_show_episodes",
+        lambda _session, *, show_id, user_id: [{"media_item_id": uuid4(), "title": "Ep"}],
+    )
+
+    result = ShowService.get_show_detail(session, show_id=show.show_id, user_id=user_id)
+    assert result["show"] is show
+    assert len(result["progress"]) == 1
+    assert len(result["episodes"]) == 1
+
+
+def test_get_show_detail_not_found_raises(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.services.shows.show_repository.find_show_by_id",
+        lambda _session, *, show_id: None,
+    )
+
+    with pytest.raises(ShowNotFoundError):
+        ShowService.get_show_detail(object(), show_id=uuid4(), user_id=None)

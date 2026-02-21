@@ -71,3 +71,63 @@ def test_list_show_progress_invalid_user_id_returns_422(monkeypatch) -> None:
     response = client.get("/api/v1/shows/progress?user_id=bad")
 
     assert response.status_code == 422
+
+
+def test_get_show_detail_returns_payload(monkeypatch) -> None:
+    show = DummyShow()
+    user_id = uuid4()
+
+    monkeypatch.setattr(
+        ShowService,
+        "get_show_detail",
+        lambda _session, *, show_id, user_id=None: {
+            "show": show,
+            "progress": [
+                {
+                    "show_id": show.show_id,
+                    "show_tmdb_id": show.tmdb_id,
+                    "show_title": show.title,
+                    "user_id": user_id,
+                    "total_episodes": 12,
+                    "watched_episodes": 6,
+                    "watched_percent": Decimal("50.00"),
+                }
+            ],
+            "episodes": [
+                {
+                    "media_item_id": uuid4(),
+                    "title": "The Nest",
+                    "season_number": 1,
+                    "episode_number": 8,
+                    "watched_count": 1,
+                    "watched_by_user": True,
+                }
+            ],
+        },
+    )
+
+    client = TestClient(app)
+    response = client.get(f"/api/v1/shows/{show.show_id}?user_id={user_id}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["show"]["title"] == "Scavengers Reign"
+    assert payload["progress"][0]["watched_percent"] == "50.00"
+    assert payload["episodes"][0]["title"] == "The Nest"
+
+
+def test_get_show_detail_not_found_returns_404(monkeypatch) -> None:
+    from app.services.shows import ShowNotFoundError
+
+    monkeypatch.setattr(
+        ShowService,
+        "get_show_detail",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            ShowNotFoundError("Show not found")
+        ),
+    )
+
+    client = TestClient(app)
+    response = client.get(f"/api/v1/shows/{uuid4()}")
+
+    assert response.status_code == 404

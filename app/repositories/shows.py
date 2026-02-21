@@ -65,10 +65,16 @@ def list_shows(session: Session) -> list[Show]:
     return list(session.scalars(statement))
 
 
+def find_show_by_id(session: Session, *, show_id: UUID) -> Show | None:
+    statement = select(Show).where(Show.show_id == show_id)
+    return session.scalar(statement)
+
+
 def list_show_progress(
     session: Session,
     *,
     user_id: UUID | None,
+    show_id: UUID | None = None,
 ) -> list[dict]:
     statement = """
         SELECT
@@ -82,9 +88,58 @@ def list_show_progress(
         FROM app.v_show_progress
     """
     params: dict[str, object] = {}
+    where_parts: list[str] = []
+    if show_id is not None:
+        where_parts.append("show_id = :show_id")
+        params["show_id"] = show_id
     if user_id is not None:
-        statement += " WHERE user_id = :user_id"
+        where_parts.append("user_id = :user_id")
         params["user_id"] = user_id
+    if where_parts:
+        statement += " WHERE " + " AND ".join(where_parts)
     statement += " ORDER BY show_title ASC, user_id ASC"
+    rows = session.execute(text(statement), params).mappings().all()
+    return [dict(row) for row in rows]
+
+
+def list_show_episodes(
+    session: Session,
+    *,
+    show_id: UUID,
+    user_id: UUID | None,
+) -> list[dict]:
+    base_select = """
+        SELECT
+            mi.media_item_id,
+            mi.title,
+            mi.season_number,
+            mi.episode_number,
+            COUNT(*) FILTER (WHERE we.completed = TRUE) AS watched_count,
+    """
+    from_clause = """
+        FROM app.media_item AS mi
+        LEFT JOIN app.watch_event AS we
+          ON we.media_item_id = mi.media_item_id
+        WHERE mi.type = 'episode'::public.media_type
+          AND mi.show_id = :show_id
+        GROUP BY mi.media_item_id, mi.title, mi.season_number, mi.episode_number
+        ORDER BY mi.season_number ASC NULLS LAST, mi.episode_number ASC NULLS LAST, mi.title ASC
+    """
+    params: dict[str, object] = {"show_id": show_id}
+
+    if user_id is None:
+        statement = (
+            base_select
+            + "            NULL::boolean AS watched_by_user\n"
+            + from_clause
+        )
+    else:
+        statement = (
+            base_select
+            + "            BOOL_OR(we.user_id = :user_id AND we.completed = TRUE) AS watched_by_user\n"
+            + from_clause
+        )
+        params["user_id"] = user_id
+
     rows = session.execute(text(statement), params).mappings().all()
     return [dict(row) for row in rows]

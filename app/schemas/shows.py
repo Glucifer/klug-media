@@ -26,3 +26,18 @@ class ShowProgressRead(BaseModel):
     total_episodes: int
     watched_episodes: int
     watched_percent: Decimal
+
+
+class ShowEpisodeRead(BaseModel):
+    media_item_id: UUID
+    title: str
+    season_number: int | None
+    episode_number: int | None
+    watched_count: int
+    watched_by_user: bool | None
+
+
+class ShowDetailRead(BaseModel):
+    show: ShowRead
+    progress: list[ShowProgressRead]
+    episodes: list[ShowEpisodeRead]

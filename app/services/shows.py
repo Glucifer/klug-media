@@ -6,6 +6,10 @@ from app.db.models.entities import Show
 from app.repositories import shows as show_repository
 
 
+class ShowNotFoundError(Exception):
+    """Raised when a show cannot be found."""
+
+
 class ShowService:
     @staticmethod
     def find_show_by_tmdb_id(session: Session, *, tmdb_id: int) -> Show | None:
@@ -62,3 +66,30 @@ class ShowService:
         user_id: UUID | None,
     ) -> list[dict]:
         return show_repository.list_show_progress(session, user_id=user_id)
+
+    @staticmethod
+    def get_show_detail(
+        session: Session,
+        *,
+        show_id: UUID,
+        user_id: UUID | None,
+    ) -> dict:
+        show = show_repository.find_show_by_id(session, show_id=show_id)
+        if show is None:
+            raise ShowNotFoundError(f"Show '{show_id}' not found")
+
+        progress = show_repository.list_show_progress(
+            session,
+            user_id=user_id,
+            show_id=show_id,
+        )
+        episodes = show_repository.list_show_episodes(
+            session,
+            show_id=show_id,
+            user_id=user_id,
+        )
+        return {
+            "show": show,
+            "progress": progress,
+            "episodes": episodes,
+        }
