@@ -30,6 +30,8 @@ class WatchEventImportResult:
     skipped_count: int
     error_count: int
     rejected_before_import: int = 0
+    media_items_created: int = 0
+    shows_created: int = 0
     cursor_before: dict | None = None
     cursor_after: dict | None = None
 
@@ -173,6 +175,8 @@ class WatchEventImportService:
                 skipped_count=skipped_count,
                 error_count=error_count,
                 rejected_before_import=payload.rejected_before_import,
+                media_items_created=payload.media_items_created,
+                shows_created=payload.shows_created,
                 cursor_before=cursor_before,
                 cursor_after=cursor_after,
             )
@@ -187,6 +191,8 @@ class WatchEventImportService:
                 "resume_from_latest": payload.resume_from_latest,
                 "cursor_before": cursor_before,
                 "rejected_before_import": payload.rejected_before_import,
+                "media_items_created": payload.media_items_created,
+                "shows_created": payload.shows_created,
             },
         )
 
@@ -271,6 +277,8 @@ class WatchEventImportService:
                 "cursor_before": cursor_before,
                 "cursor": cursor_after,
                 "rejected_before_import": payload.rejected_before_import,
+                "media_items_created": payload.media_items_created,
+                "shows_created": payload.shows_created,
             },
         )
 
@@ -283,6 +291,8 @@ class WatchEventImportService:
             skipped_count=skipped_count,
             error_count=error_count,
             rejected_before_import=payload.rejected_before_import,
+            media_items_created=payload.media_items_created,
+            shows_created=payload.shows_created,
             cursor_before=cursor_before,
             cursor_after=cursor_after,
         )
@@ -303,6 +313,8 @@ class WatchEventImportService:
             source_detail=payload.source_detail,
             notes=payload.notes,
             rejected_before_import=payload.rejected_before_import,
+            media_items_created=payload.media_items_created,
+            shows_created=payload.shows_created,
             events=internal_events,
         )
         return WatchEventImportService.run_import(session, payload=internal_payload)

@@ -7,6 +7,10 @@ from app.repositories import shows as show_repository
 
 class ShowService:
     @staticmethod
+    def find_show_by_tmdb_id(session: Session, *, tmdb_id: int) -> Show | None:
+        return show_repository.find_show_by_tmdb_id(session, tmdb_id=tmdb_id)
+
+    @staticmethod
     def get_or_create_show(
         session: Session,
         *,

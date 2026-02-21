@@ -3,11 +3,12 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
@@ -18,6 +19,14 @@ from app.schemas.imports import ImportMode, LegacySourceWatchEventImportRequest
 from app.services.imports import WatchEventImportService
 from app.services.media_items import MediaItemService
 from app.services.shows import ShowService
+
+
+@dataclass(frozen=True)
+class LegacyBackupPreprocessResult:
+    mapped_rows: list[dict[str, Any]]
+    rejected_rows: list[dict[str, Any]]
+    media_items_created: int
+    shows_created: int
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -397,7 +406,7 @@ def _create_media_item_from_backup_row(
     media_type: str,
     tmdb_id: int | None,
     imdb_id: str | None,
-) -> MediaItem:
+) -> tuple[MediaItem, bool]:
     title = _extract_media_title(row, media_type)
     if not title:
         fallback_id = tmdb_id or imdb_id or row.get("id") or "unknown"
@@ -406,8 +415,10 @@ def _create_media_item_from_backup_row(
     season_number, episode_number = _extract_season_episode_numbers(row, media_type)
     show_tmdb_id = _extract_show_tmdb_id(row, media_type)
     show_id: UUID | None = None
+    show_created = False
 
     if media_type == "episode" and show_tmdb_id is not None:
+        existing_show = ShowService.find_show_by_tmdb_id(session, tmdb_id=show_tmdb_id)
         show_title = _extract_show_title(row, media_type) or f"show:{show_tmdb_id}"
         show = ShowService.get_or_create_show(
             session,
@@ -418,6 +429,7 @@ def _create_media_item_from_backup_row(
             imdb_id=_extract_show_imdb_id(row, media_type),
         )
         show_id = show.show_id
+        show_created = existing_show is None
 
     media_item = MediaItem(
         type=media_type,
@@ -434,18 +446,22 @@ def _create_media_item_from_backup_row(
     )
     session.add(media_item)
     session.flush()
-    return media_item
+    return media_item, show_created
 
 
 def _build_mapped_rows_from_legacy_backup(
     raw_rows: list[dict[str, Any]],
     *,
     user_id: UUID,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    dry_run: bool,
+) -> LegacyBackupPreprocessResult:
     session = SessionLocal()
     mapped_rows: list[dict[str, Any]] = []
     rejected_rows: list[dict[str, Any]] = []
     created_media_items = 0
+    created_shows = 0
+    planned_shows: set[int] = set()
+    planned_media_items: dict[tuple[str, int | str], UUID] = {}
 
     try:
         for index, row in enumerate(raw_rows):
@@ -481,37 +497,73 @@ def _build_mapped_rows_from_legacy_backup(
                 imdb_id=imdb_id,
             )
             if media_item is None:
-                try:
-                    media_item = _create_media_item_from_backup_row(
-                        session,
-                        row=row,
-                        media_type=media_type,
-                        tmdb_id=tmdb_id,
-                        imdb_id=imdb_id,
-                    )
-                    created_media_items += 1
-                except IntegrityError:
-                    session.rollback()
-                    media_item = MediaItemService.find_media_item_by_external_ids(
-                        session,
-                        media_type=media_type,
-                        tmdb_id=tmdb_id,
-                        imdb_id=imdb_id,
-                    )
-                    if media_item is None:
-                        rejected_rows.append(
-                            {
-                                "row_index": index,
-                                "reason": "no matching media_item for external ids",
-                                "row": row,
-                                "lookup": {
-                                    "media_type": media_type,
-                                    "tmdb_id": tmdb_id,
-                                    "imdb_id": imdb_id,
-                                },
-                            }
+                media_key: tuple[str, int | str] | None = None
+                if tmdb_id is not None:
+                    media_key = (media_type, tmdb_id)
+                elif imdb_id is not None:
+                    media_key = (media_type, imdb_id)
+
+                if dry_run:
+                    if media_type == "episode":
+                        show_tmdb_id = _extract_show_tmdb_id(row, media_type)
+                        if show_tmdb_id is not None:
+                            existing_show = ShowService.find_show_by_tmdb_id(
+                                session, tmdb_id=show_tmdb_id
+                            )
+                            if (
+                                existing_show is None
+                                and show_tmdb_id not in planned_shows
+                            ):
+                                planned_shows.add(show_tmdb_id)
+                                created_shows += 1
+
+                    if media_key is not None:
+                        planned_media_item_id = planned_media_items.get(media_key)
+                        if planned_media_item_id is None:
+                            planned_media_item_id = uuid4()
+                            planned_media_items[media_key] = planned_media_item_id
+                            created_media_items += 1
+                        media_item_id = planned_media_item_id
+                    else:
+                        media_item_id = uuid4()
+                        created_media_items += 1
+                else:
+                    try:
+                        media_item, show_created = _create_media_item_from_backup_row(
+                            session,
+                            row=row,
+                            media_type=media_type,
+                            tmdb_id=tmdb_id,
+                            imdb_id=imdb_id,
                         )
-                        continue
+                        created_media_items += 1
+                        if show_created:
+                            created_shows += 1
+                    except IntegrityError:
+                        session.rollback()
+                        media_item = MediaItemService.find_media_item_by_external_ids(
+                            session,
+                            media_type=media_type,
+                            tmdb_id=tmdb_id,
+                            imdb_id=imdb_id,
+                        )
+                        if media_item is None:
+                            rejected_rows.append(
+                                {
+                                    "row_index": index,
+                                    "reason": "no matching media_item for external ids",
+                                    "row": row,
+                                    "lookup": {
+                                        "media_type": media_type,
+                                        "tmdb_id": tmdb_id,
+                                        "imdb_id": imdb_id,
+                                    },
+                                }
+                            )
+                            continue
+                    media_item_id = media_item.media_item_id
+            else:
+                media_item_id = media_item.media_item_id
 
             source_event_id = row.get("source_event_id") or row.get("id")
             if source_event_id is not None:
@@ -524,7 +576,7 @@ def _build_mapped_rows_from_legacy_backup(
             mapped_rows.append(
                 {
                     "user_id": str(user_id),
-                    "media_item_id": str(media_item.media_item_id),
+                    "media_item_id": str(media_item_id),
                     "watched_at": watched_at.isoformat(),
                     "player": str(playback_source),
                     "total_seconds": _parse_int(row.get("total_seconds")),
@@ -540,12 +592,17 @@ def _build_mapped_rows_from_legacy_backup(
                     "source_event_id": source_event_id,
                 }
             )
-        if created_media_items > 0:
+        if created_media_items > 0 and not dry_run:
             session.commit()
     finally:
         session.close()
 
-    return mapped_rows, rejected_rows
+    return LegacyBackupPreprocessResult(
+        mapped_rows=mapped_rows,
+        rejected_rows=rejected_rows,
+        media_items_created=created_media_items,
+        shows_created=created_shows,
+    )
 
 
 def _write_error_report(path: Path, rows: list[dict[str, Any]]) -> None:
@@ -563,6 +620,8 @@ def run(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     input_path = Path(args.input)
     rejected_rows: list[dict[str, Any]] = []
+    media_items_created = 0
+    shows_created = 0
 
     if not input_path.exists():
         print(f"Input file not found: {input_path}")
@@ -580,10 +639,15 @@ def run(argv: list[str] | None = None) -> int:
                     "--user-id is required for --input-schema legacy_backup"
                 )
             user_id = UUID(args.user_id)
-            rows_for_validation, rejected_rows = _build_mapped_rows_from_legacy_backup(
+            preprocess = _build_mapped_rows_from_legacy_backup(
                 raw_rows,
                 user_id=user_id,
+                dry_run=args.dry_run,
             )
+            rows_for_validation = preprocess.mapped_rows
+            rejected_rows = preprocess.rejected_rows
+            media_items_created = preprocess.media_items_created
+            shows_created = preprocess.shows_created
 
         if not rows_for_validation:
             raise ValueError("No valid rows available for import")
@@ -595,6 +659,8 @@ def run(argv: list[str] | None = None) -> int:
             source_detail=args.source_detail,
             notes=args.notes,
             rejected_before_import=len(rejected_rows),
+            media_items_created=media_items_created,
+            shows_created=shows_created,
             rows=rows_for_validation,
         )
     except (ValueError, ValidationError, json.JSONDecodeError) as exc:
@@ -632,6 +698,8 @@ def run(argv: list[str] | None = None) -> int:
     print(f"  skipped: {result.skipped_count}")
     print(f"  errors: {result.error_count}")
     print(f"  rejected_before_import: {result.rejected_before_import}")
+    print(f"  media_items_created: {result.media_items_created}")
+    print(f"  shows_created: {result.shows_created}")
     print(f"  cursor_before: {result.cursor_before}")
     print(f"  cursor_after: {result.cursor_after}")
     return 0

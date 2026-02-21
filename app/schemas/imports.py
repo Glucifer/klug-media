@@ -34,6 +34,8 @@ class WatchEventImportRequest(BaseModel):
     source_detail: str | None = Field(default=None, max_length=255)
     notes: str | None = None
     rejected_before_import: int = Field(default=0, ge=0)
+    media_items_created: int = Field(default=0, ge=0)
+    shows_created: int = Field(default=0, ge=0)
     events: list[ImportedWatchEvent] = Field(min_length=1)
 
 
@@ -46,6 +48,8 @@ class WatchEventImportResponse(BaseModel):
     skipped_count: int
     error_count: int
     rejected_before_import: int = 0
+    media_items_created: int = 0
+    shows_created: int = 0
     cursor_before: dict | None = None
     cursor_after: dict | None = None
 
@@ -71,4 +75,6 @@ class LegacySourceWatchEventImportRequest(BaseModel):
     source_detail: str | None = Field(default=None, max_length=255)
     notes: str | None = None
     rejected_before_import: int = Field(default=0, ge=0)
+    media_items_created: int = Field(default=0, ge=0)
+    shows_created: int = Field(default=0, ge=0)
     rows: list[LegacySourceWatchEventRow] = Field(min_length=1)

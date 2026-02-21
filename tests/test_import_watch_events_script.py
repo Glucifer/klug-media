@@ -250,14 +250,22 @@ def test_legacy_backup_creates_missing_media_item(monkeypatch) -> None:
         "get_or_create_show",
         lambda *_args, **_kwargs: DummyShow(),
     )
-
-    mapped_rows, rejected_rows = import_watch_events._build_mapped_rows_from_legacy_backup(
-        [_backup_row_dict()],
-        user_id=uuid4(),
+    monkeypatch.setattr(
+        import_watch_events.ShowService,
+        "find_show_by_tmdb_id",
+        lambda *_args, **_kwargs: None,
     )
 
-    assert not rejected_rows
-    assert len(mapped_rows) == 1
+    preprocess = import_watch_events._build_mapped_rows_from_legacy_backup(
+        [_backup_row_dict()],
+        user_id=uuid4(),
+        dry_run=False,
+    )
+
+    assert not preprocess.rejected_rows
+    assert len(preprocess.mapped_rows) == 1
+    assert preprocess.media_items_created == 1
+    assert preprocess.shows_created == 1
     assert dummy_session.created == 1
     assert dummy_session.commits == 1
     assert dummy_session.last_media_item is not None
@@ -265,6 +273,50 @@ def test_legacy_backup_creates_missing_media_item(monkeypatch) -> None:
     assert dummy_session.last_media_item.season_number == 1
     assert dummy_session.last_media_item.episode_number == 8
     assert dummy_session.last_media_item.show_id is not None
+
+
+def test_legacy_backup_dry_run_does_not_create_media_items(monkeypatch) -> None:
+    class DummySession:
+        def __init__(self) -> None:
+            self.created = 0
+            self.commits = 0
+
+        def add(self, _media_item) -> None:
+            self.created += 1
+
+        def flush(self) -> None:
+            return None
+
+        def commit(self) -> None:
+            self.commits += 1
+
+        def close(self) -> None:
+            return None
+
+    dummy_session = DummySession()
+    monkeypatch.setattr(import_watch_events, "SessionLocal", lambda: dummy_session)
+    monkeypatch.setattr(
+        import_watch_events.MediaItemService,
+        "find_media_item_by_external_ids",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        import_watch_events.ShowService,
+        "find_show_by_tmdb_id",
+        lambda *_args, **_kwargs: None,
+    )
+
+    preprocess = import_watch_events._build_mapped_rows_from_legacy_backup(
+        [_backup_row_dict()],
+        user_id=uuid4(),
+        dry_run=True,
+    )
+
+    assert len(preprocess.mapped_rows) == 1
+    assert preprocess.media_items_created == 1
+    assert preprocess.shows_created == 1
+    assert dummy_session.created == 0
+    assert dummy_session.commits == 0
 
 
 def test_run_returns_2_for_missing_file() -> None:
