@@ -14,6 +14,8 @@ def test_root_frontend_serves_index() -> None:
     assert "Use Latest Cursor" in response.text
     assert "Import History" in response.text
     assert "Select an import batch to view details." in response.text
+    assert "API Health:" in response.text
+    assert "Last Refresh:" in response.text
 
 
 def test_frontend_static_assets_are_served() -> None:

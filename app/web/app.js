@@ -4,6 +4,10 @@ const appCard = document.getElementById("app-card");
 const detailCard = document.getElementById("detail-card");
 const loginForm = document.getElementById("login-form");
 const loginError = document.getElementById("login-error");
+const opsHealth = document.getElementById("ops-health");
+const opsAuthMode = document.getElementById("ops-auth-mode");
+const opsSession = document.getElementById("ops-session");
+const opsLastRefresh = document.getElementById("ops-last-refresh");
 const showList = document.getElementById("show-list");
 const showsStatus = document.getElementById("shows-status");
 const progressStatus = document.getElementById("progress-status");
@@ -68,20 +72,42 @@ function setAuthenticatedUI(authenticated, message) {
   authStatus.textContent = message;
   loginCard.classList.toggle("hidden", authenticated);
   appCard.classList.toggle("hidden", !authenticated);
+  opsSession.textContent = `Session: ${authenticated ? "authenticated" : "not authenticated"}`;
   if (authenticated) {
     loadImportPreferences();
   }
 }
 
+async function loadOpsHealth() {
+  try {
+    const response = await fetch("/api/v1/health", { credentials: "include" });
+    if (!response.ok) {
+      opsHealth.textContent = "API Health: unavailable";
+      return;
+    }
+    const payload = await response.json();
+    opsHealth.textContent = `API Health: ${payload.status}`;
+  } catch (_error) {
+    opsHealth.textContent = "API Health: unavailable";
+  }
+}
+
+function setLastRefreshNow() {
+  opsLastRefresh.textContent = `Last Refresh: ${new Date().toLocaleString()}`;
+}
+
 async function checkSession() {
   authStatus.textContent = "Checking session...";
+  await loadOpsHealth();
   try {
     const response = await api("/api/v1/session/me");
     if (!response.ok) {
+      opsAuthMode.textContent = "Auth Mode: unavailable";
       setAuthenticatedUI(false, "Session check failed");
       return;
     }
     const payload = await response.json();
+    opsAuthMode.textContent = `Auth Mode: ${payload.auth_mode}`;
     if (payload.authenticated) {
       setAuthenticatedUI(true, "Authenticated");
       await loadDashboardData();
@@ -89,12 +115,14 @@ async function checkSession() {
       setAuthenticatedUI(false, "Not authenticated");
     }
   } catch (_error) {
+    opsAuthMode.textContent = "Auth Mode: unavailable";
     setAuthenticatedUI(false, "Session check failed");
   }
 }
 
 async function loadDashboardData() {
   await Promise.all([loadShows(), loadProgress(), loadHistory(), loadImportHistory()]);
+  setLastRefreshNow();
 }
 
 async function loadShows() {

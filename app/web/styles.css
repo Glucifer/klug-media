@@ -50,6 +50,13 @@ form,
   gap: 6px;
 }
 
+.ops-strip {
+  margin-top: 10px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
 input,
 select,
 button {
