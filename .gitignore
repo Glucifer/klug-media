@@ -21,3 +21,12 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Local workspace artifacts
+windows-session-chat
+history-*.json
+import_errors.json
+db/*.old
+db-schema-backup-commands.txt
+=3.11,
+
