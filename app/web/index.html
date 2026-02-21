@@ -28,6 +28,33 @@
           <button id="refresh-data">Refresh Data</button>
           <button id="logout-btn" class="secondary">Logout</button>
         </div>
+
+        <h2 style="margin-top: 18px">Import Watch History</h2>
+        <form id="import-form">
+          <input
+            id="import-file"
+            type="file"
+            accept=".json,.csv,application/json,text/csv"
+            required
+          />
+          <input id="import-user-id" type="text" placeholder="User UUID (required for legacy backup)" />
+          <select id="import-mode">
+            <option value="bootstrap">Bootstrap</option>
+            <option value="incremental">Incremental</option>
+          </select>
+          <label class="checkbox">
+            <input id="import-dry-run" type="checkbox" checked />
+            Dry Run
+          </label>
+          <label class="checkbox">
+            <input id="import-resume" type="checkbox" />
+            Resume From Latest
+          </label>
+          <button id="import-submit" type="submit">Run Import</button>
+        </form>
+        <p id="import-status" class="muted">No import started.</p>
+        <pre id="import-summary" class="code-block"></pre>
+
         <h2>Shows</h2>
         <p id="shows-status" class="muted">Loading shows...</p>
         <ul id="show-list"></ul>

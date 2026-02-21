@@ -8,6 +8,14 @@ const showList = document.getElementById("show-list");
 const showsStatus = document.getElementById("shows-status");
 const progressStatus = document.getElementById("progress-status");
 const progressBody = document.getElementById("progress-body");
+const importForm = document.getElementById("import-form");
+const importFile = document.getElementById("import-file");
+const importUserId = document.getElementById("import-user-id");
+const importMode = document.getElementById("import-mode");
+const importDryRun = document.getElementById("import-dry-run");
+const importResume = document.getElementById("import-resume");
+const importStatus = document.getElementById("import-status");
+const importSummary = document.getElementById("import-summary");
 const historyMediaType = document.getElementById("history-media-type");
 const historyLimitSelect = document.getElementById("history-limit");
 const historyApply = document.getElementById("history-apply");
@@ -39,6 +47,10 @@ function setAuthenticatedUI(authenticated, message) {
   authStatus.textContent = message;
   loginCard.classList.toggle("hidden", authenticated);
   appCard.classList.toggle("hidden", !authenticated);
+  if (authenticated) {
+    const savedUserId = window.localStorage.getItem("klug.import_user_id") || "";
+    importUserId.value = savedUserId;
+  }
 }
 
 async function checkSession() {
@@ -158,6 +170,70 @@ async function loadShowDetail(showId) {
   }
 }
 
+function formatImportSummary(summary) {
+  return [
+    `batch_id: ${summary.import_batch_id}`,
+    `status: ${summary.status}`,
+    `dry_run: ${summary.dry_run}`,
+    `processed: ${summary.processed_count}`,
+    `inserted: ${summary.inserted_count}`,
+    `skipped: ${summary.skipped_count}`,
+    `errors: ${summary.error_count}`,
+    `rejected_before_import: ${summary.rejected_before_import}`,
+    `media_items_created: ${summary.media_items_created}`,
+    `shows_created: ${summary.shows_created}`,
+    `cursor_before: ${JSON.stringify(summary.cursor_before)}`,
+    `cursor_after: ${JSON.stringify(summary.cursor_after)}`,
+  ].join("\n");
+}
+
+async function runImport(event) {
+  event.preventDefault();
+  const selectedFile = importFile.files && importFile.files[0];
+  if (!selectedFile) {
+    importStatus.textContent = "Choose a file before running import";
+    return;
+  }
+  if (!importUserId.value.trim()) {
+    importStatus.textContent = "User UUID is required for legacy backup imports";
+    return;
+  }
+
+  importStatus.textContent = "Running import...";
+  importSummary.textContent = "";
+  importForm.querySelector("button[type='submit']").disabled = true;
+
+  const formData = new FormData();
+  formData.append("input_file", selectedFile);
+  formData.append("input_schema", "legacy_backup");
+  formData.append("mode", importMode.value);
+  formData.append("dry_run", String(importDryRun.checked));
+  formData.append("resume_from_latest", String(importResume.checked));
+  formData.append("user_id", importUserId.value.trim());
+
+  try {
+    const response = await fetch("/api/v1/imports/watch-events/legacy-source/upload", {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      importStatus.textContent = "Import failed";
+      importSummary.textContent = JSON.stringify(payload, null, 2);
+      return;
+    }
+    window.localStorage.setItem("klug.import_user_id", importUserId.value.trim());
+    importStatus.textContent = "Import finished";
+    importSummary.textContent = formatImportSummary(payload);
+    await loadDashboardData();
+  } catch (_error) {
+    importStatus.textContent = "Import request failed";
+  } finally {
+    importForm.querySelector("button[type='submit']").disabled = false;
+  }
+}
+
 function setHistoryPagination(rowsLoaded) {
   const page = Math.floor(historyOffset / historyLimit) + 1;
   historyPage.textContent = `Page ${page}`;
@@ -262,6 +338,8 @@ historyNext.addEventListener("click", async () => {
   historyOffset += historyLimit;
   await loadHistory();
 });
+
+importForm.addEventListener("submit", runImport);
 
 logoutBtn.addEventListener("click", async () => {
   await api("/api/v1/session/logout", { method: "DELETE" });

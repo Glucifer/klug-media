@@ -1,9 +1,11 @@
 from datetime import UTC, datetime
+import json
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.scripts.import_watch_events import LegacyBackupPreprocessResult
 from app.services.imports import WatchEventImportResult, WatchEventImportService
 
 
@@ -120,3 +122,89 @@ def test_import_legacy_source_watch_events_endpoint(monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json()["status"] == "dry_run"
     assert response.json()["rejected_before_import"] == 4
+
+
+def test_import_legacy_source_watch_events_upload_endpoint(monkeypatch) -> None:
+    expected_result = WatchEventImportResult(
+        import_batch_id=uuid4(),
+        status="dry_run",
+        dry_run=True,
+        processed_count=1,
+        inserted_count=1,
+        skipped_count=0,
+        error_count=0,
+        rejected_before_import=0,
+    )
+
+    monkeypatch.setattr(
+        "app.api.imports.import_watch_events_script._build_mapped_rows_from_legacy_backup",
+        lambda _rows, *, user_id, dry_run: LegacyBackupPreprocessResult(
+            mapped_rows=[
+                {
+                    "user_id": str(user_id),
+                    "media_item_id": str(uuid4()),
+                    "watched_at": datetime.now(UTC).isoformat(),
+                    "player": "legacy_backup",
+                }
+            ],
+            rejected_rows=[],
+            media_items_created=0,
+            shows_created=0,
+        ),
+    )
+
+    def fake_run_legacy_source_import(_session, *, payload):
+        assert payload.mode.value == "incremental"
+        assert payload.dry_run is True
+        assert len(payload.rows) == 1
+        return expected_result
+
+    monkeypatch.setattr(
+        WatchEventImportService,
+        "run_legacy_source_import",
+        fake_run_legacy_source_import,
+    )
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/imports/watch-events/legacy-source/upload",
+        data={
+            "input_schema": "legacy_backup",
+            "mode": "incremental",
+            "dry_run": "true",
+            "resume_from_latest": "false",
+            "user_id": str(uuid4()),
+        },
+        files={
+            "input_file": (
+                "history.json",
+                json.dumps([{"id": "evt-1"}]),
+                "application/json",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "dry_run"
+
+
+def test_import_upload_legacy_backup_requires_user_id() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/imports/watch-events/legacy-source/upload",
+        data={
+            "input_schema": "legacy_backup",
+            "mode": "bootstrap",
+            "dry_run": "true",
+        },
+        files={
+            "input_file": (
+                "history.json",
+                json.dumps([{"id": "evt-1"}]),
+                "application/json",
+            )
+        },
+    )
+
+    assert response.status_code == 422
+    assert "user_id is required" in response.json()["detail"]

@@ -44,6 +44,12 @@ form,
   flex-wrap: wrap;
 }
 
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 input,
 select,
 button {
@@ -98,6 +104,16 @@ td {
 
 .error {
   color: #b42318;
+}
+
+.code-block {
+  margin: 10px 0 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f8fbff;
+  white-space: pre-wrap;
+  font-size: 13px;
 }
 
 @media (max-width: 680px) {
