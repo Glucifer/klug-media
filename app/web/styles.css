@@ -95,6 +95,10 @@ ul {
   cursor: pointer;
 }
 
+#import-history-body tr.selected {
+  background: #eef4ff;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;

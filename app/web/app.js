@@ -26,6 +26,8 @@ const importLastCursor = document.getElementById("import-last-cursor");
 const importSummary = document.getElementById("import-summary");
 const importErrorsStatus = document.getElementById("import-errors-status");
 const importErrorsList = document.getElementById("import-errors-list");
+const importHistoryStatusFilter = document.getElementById("import-history-status-filter");
+const importHistoryClearFilter = document.getElementById("import-history-clear-filter");
 const importHistoryStatus = document.getElementById("import-history-status");
 const importHistoryBody = document.getElementById("import-history-body");
 const importDetailStatus = document.getElementById("import-detail-status");
@@ -51,6 +53,7 @@ const IMPORT_PREF_KEYS = {
   dryRun: "klug.import_dry_run",
   resume: "klug.import_resume",
   lastCursor: "klug.import_last_cursor",
+  importHistoryStatusFilter: "klug.import_history_status_filter",
 };
 const IMPORT_UPLOAD_MAX_MB = 25;
 const IMPORT_UPLOAD_MAX_BYTES = IMPORT_UPLOAD_MAX_MB * 1024 * 1024;
@@ -58,6 +61,8 @@ const IMPORT_UPLOAD_MAX_BYTES = IMPORT_UPLOAD_MAX_MB * 1024 * 1024;
 let historyOffset = 0;
 let historyLimit = Number.parseInt(historyLimitSelect.value, 10);
 const importHistoryById = new Map();
+let importHistoryRows = [];
+let selectedImportBatchId = null;
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -316,6 +321,8 @@ async function loadImportBatchDetail(importBatchId) {
       return;
     }
     const batch = await response.json();
+    selectedImportBatchId = importBatchId;
+    syncSelectedImportHistoryRow();
     importDetailStatus.textContent = `Showing detail for batch ${importBatchId}`;
     importDetail.textContent = formatImportBatchDetail(batch);
   } catch (_error) {
@@ -324,10 +331,59 @@ async function loadImportBatchDetail(importBatchId) {
   }
 }
 
-async function loadImportHistory() {
-  importHistoryStatus.textContent = "Loading import history...";
+function syncSelectedImportHistoryRow() {
+  const rows = importHistoryBody.querySelectorAll("tr[data-import-batch-id]");
+  for (const row of rows) {
+    const rowBatchId = row.getAttribute("data-import-batch-id");
+    row.classList.toggle("selected", rowBatchId === selectedImportBatchId);
+  }
+}
+
+function renderImportHistoryRows() {
   importHistoryBody.innerHTML = "";
   importHistoryById.clear();
+
+  const statusFilter = importHistoryStatusFilter.value;
+  const filteredBatches = importHistoryRows.filter(
+    (batch) => !statusFilter || batch.status === statusFilter
+  );
+
+  if (!filteredBatches.length) {
+    importHistoryStatus.textContent = statusFilter
+      ? `No import batches with status '${statusFilter}'.`
+      : "No import batches found.";
+    return;
+  }
+
+  importHistoryStatus.textContent = `Loaded ${filteredBatches.length} import batch(es).`;
+  for (const batch of filteredBatches) {
+    importHistoryById.set(batch.import_batch_id, batch);
+    const tr = document.createElement("tr");
+    const startedAt = new Date(batch.started_at).toLocaleString();
+    const inserted = batch.watch_events_inserted ?? 0;
+    const errors = batch.errors_count ?? 0;
+    tr.innerHTML = `
+      <td>${startedAt}</td>
+      <td>${batch.status}</td>
+      <td>${batch.source}</td>
+      <td>${inserted}</td>
+      <td>${errors}</td>
+      <td class="row">
+        <button class="secondary" data-import-batch-id="${batch.import_batch_id}" data-action="reuse-settings">Reuse Settings</button>
+        <button class="secondary" data-import-batch-id="${batch.import_batch_id}" data-action="view-errors">View Errors</button>
+      </td>
+    `;
+    tr.dataset.importBatchId = batch.import_batch_id;
+    importHistoryBody.appendChild(tr);
+  }
+  syncSelectedImportHistoryRow();
+}
+
+async function loadImportHistory() {
+  importHistoryStatus.textContent = "Loading import history...";
+  importHistoryRows = [];
+  selectedImportBatchId = null;
+  importHistoryBody.innerHTML = "";
   try {
     const response = await api("/api/v1/import-batches?limit=20");
     if (!response.ok) {
@@ -335,32 +391,11 @@ async function loadImportHistory() {
       return;
     }
 
-    const batches = await response.json();
-    if (!batches.length) {
-      importHistoryStatus.textContent = "No import batches found.";
-      return;
-    }
-
-    importHistoryStatus.textContent = `Loaded ${batches.length} import batch(es).`;
-    for (const batch of batches) {
-      importHistoryById.set(batch.import_batch_id, batch);
-      const tr = document.createElement("tr");
-      const startedAt = new Date(batch.started_at).toLocaleString();
-      const inserted = batch.watch_events_inserted ?? 0;
-      const errors = batch.errors_count ?? 0;
-      tr.innerHTML = `
-        <td>${startedAt}</td>
-        <td>${batch.status}</td>
-        <td>${batch.source}</td>
-        <td>${inserted}</td>
-        <td>${errors}</td>
-        <td class="row">
-          <button class="secondary" data-import-batch-id="${batch.import_batch_id}" data-action="reuse-settings">Reuse Settings</button>
-          <button class="secondary" data-import-batch-id="${batch.import_batch_id}" data-action="view-errors">View Errors</button>
-        </td>
-      `;
-      tr.dataset.importBatchId = batch.import_batch_id;
-      importHistoryBody.appendChild(tr);
+    importHistoryRows = await response.json();
+    renderImportHistoryRows();
+    const latestBatch = importHistoryRows[0];
+    if (latestBatch) {
+      await loadImportBatchDetail(latestBatch.import_batch_id);
     }
   } catch (_error) {
     importHistoryStatus.textContent = "Failed to load import history.";
@@ -397,6 +432,18 @@ function loadImportPreferences() {
 
   importDryRun.checked = window.localStorage.getItem(IMPORT_PREF_KEYS.dryRun) !== "false";
   importResume.checked = window.localStorage.getItem(IMPORT_PREF_KEYS.resume) === "true";
+  const savedHistoryStatusFilter = window.localStorage.getItem(
+    IMPORT_PREF_KEYS.importHistoryStatusFilter
+  );
+  if (
+    savedHistoryStatusFilter === "" ||
+    savedHistoryStatusFilter === "running" ||
+    savedHistoryStatusFilter === "completed" ||
+    savedHistoryStatusFilter === "completed_with_errors" ||
+    savedHistoryStatusFilter === "failed"
+  ) {
+    importHistoryStatusFilter.value = savedHistoryStatusFilter;
+  }
   renderLastLocalCursor();
 }
 
@@ -647,6 +694,26 @@ importUseLatestCursor.addEventListener("click", () => {
   importResume.checked = true;
   saveImportPreferences();
   importStatus.textContent = "Configured incremental mode with resume_from_latest enabled.";
+});
+
+importHistoryStatusFilter.addEventListener("change", () => {
+  window.localStorage.setItem(
+    IMPORT_PREF_KEYS.importHistoryStatusFilter,
+    importHistoryStatusFilter.value
+  );
+  selectedImportBatchId = null;
+  importDetailStatus.textContent = "Select an import batch to view details.";
+  importDetail.textContent = "";
+  renderImportHistoryRows();
+});
+
+importHistoryClearFilter.addEventListener("click", () => {
+  importHistoryStatusFilter.value = "";
+  window.localStorage.setItem(IMPORT_PREF_KEYS.importHistoryStatusFilter, "");
+  selectedImportBatchId = null;
+  importDetailStatus.textContent = "Select an import batch to view details.";
+  importDetail.textContent = "";
+  renderImportHistoryRows();
 });
 
 importHistoryBody.addEventListener("click", async (event) => {

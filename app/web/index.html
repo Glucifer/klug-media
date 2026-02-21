@@ -70,6 +70,19 @@
         <ul id="import-errors-list"></ul>
 
         <h2 style="margin-top: 18px">Import History</h2>
+        <div class="row">
+          <label for="import-history-status-filter">Status</label>
+          <select id="import-history-status-filter">
+            <option value="">All</option>
+            <option value="running">running</option>
+            <option value="completed">completed</option>
+            <option value="completed_with_errors">completed_with_errors</option>
+            <option value="failed">failed</option>
+          </select>
+          <button id="import-history-clear-filter" type="button" class="secondary">
+            Clear Filter
+          </button>
+        </div>
         <p id="import-history-status" class="muted">Loading import history...</p>
         <table>
           <thead>
