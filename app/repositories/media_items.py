@@ -59,3 +59,30 @@ def find_media_item_by_external_ids(
             return found
 
     return None
+
+
+def list_episode_media_items_missing_show_id(
+    session: Session, *, limit: int | None
+) -> list[MediaItem]:
+    statement = (
+        select(MediaItem)
+        .where(
+            MediaItem.type == "episode",
+            MediaItem.show_tmdb_id.is_not(None),
+            MediaItem.show_id.is_(None),
+        )
+        .order_by(MediaItem.created_at.asc())
+    )
+    if limit is not None:
+        statement = statement.limit(limit)
+    return list(session.scalars(statement))
+
+
+def find_show_media_item_by_tmdb_id(
+    session: Session, *, show_tmdb_id: int
+) -> MediaItem | None:
+    statement = select(MediaItem).where(
+        MediaItem.type == "show",
+        MediaItem.tmdb_id == show_tmdb_id,
+    )
+    return session.scalar(statement)
