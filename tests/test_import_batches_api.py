@@ -73,3 +73,46 @@ def test_finish_import_batch_constraint_error_returns_409(monkeypatch) -> None:
     )
 
     assert response.status_code == 409
+
+
+def test_list_import_batch_errors_returns_rows(monkeypatch) -> None:
+    class DummyImportBatchError:
+        def __init__(self) -> None:
+            self.import_batch_error_id = uuid4()
+            self.import_batch_id = uuid4()
+            self.occurred_at = datetime.now(UTC)
+            self.severity = "error"
+            self.entity_type = "watch_event"
+            self.entity_ref = "evt-1"
+            self.message = "bad payload"
+            self.details = {"row_index": 4}
+
+    monkeypatch.setattr(
+        ImportBatchService,
+        "list_import_batch_errors",
+        lambda _session, **_kwargs: [DummyImportBatchError()],
+    )
+
+    client = TestClient(app)
+    response = client.get(f"/api/v1/import-batches/{uuid4()}/errors")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) == 1
+    assert payload[0]["message"] == "bad payload"
+
+
+def test_list_import_batch_errors_not_found_returns_404(monkeypatch) -> None:
+    def fake_list_import_batch_errors(_session, **_kwargs):
+        raise ImportBatchNotFoundError("missing")
+
+    monkeypatch.setattr(
+        ImportBatchService,
+        "list_import_batch_errors",
+        fake_list_import_batch_errors,
+    )
+
+    client = TestClient(app)
+    response = client.get(f"/api/v1/import-batches/{uuid4()}/errors")
+
+    assert response.status_code == 404

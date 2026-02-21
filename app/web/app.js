@@ -16,6 +16,8 @@ const importDryRun = document.getElementById("import-dry-run");
 const importResume = document.getElementById("import-resume");
 const importStatus = document.getElementById("import-status");
 const importSummary = document.getElementById("import-summary");
+const importErrorsStatus = document.getElementById("import-errors-status");
+const importErrorsList = document.getElementById("import-errors-list");
 const historyMediaType = document.getElementById("history-media-type");
 const historyLimitSelect = document.getElementById("history-limit");
 const historyApply = document.getElementById("history-apply");
@@ -193,6 +195,42 @@ function formatImportSummary(summary) {
   ].join("\n");
 }
 
+function clearImportErrorsUi() {
+  importErrorsStatus.textContent = "";
+  importErrorsList.innerHTML = "";
+}
+
+function renderImportErrors(errors) {
+  importErrorsList.innerHTML = "";
+  if (!errors.length) {
+    importErrorsStatus.textContent = "No import-batch errors were recorded.";
+    return;
+  }
+  importErrorsStatus.textContent = `Showing ${errors.length} import-batch error(s):`;
+  for (const error of errors) {
+    const li = document.createElement("li");
+    const ref = error.entity_ref ? ` [${error.entity_ref}]` : "";
+    li.textContent = `${error.severity}${ref}: ${error.message}`;
+    importErrorsList.appendChild(li);
+  }
+}
+
+async function loadImportBatchErrors(importBatchId) {
+  try {
+    const response = await api(`/api/v1/import-batches/${importBatchId}/errors?limit=25`);
+    if (!response.ok) {
+      importErrorsStatus.textContent = "Failed to load import-batch errors.";
+      importErrorsList.innerHTML = "";
+      return;
+    }
+    const errors = await response.json();
+    renderImportErrors(errors);
+  } catch (_error) {
+    importErrorsStatus.textContent = "Failed to load import-batch errors.";
+    importErrorsList.innerHTML = "";
+  }
+}
+
 function loadImportPreferences() {
   importUserId.value = window.localStorage.getItem(IMPORT_PREF_KEYS.userId) || "";
 
@@ -283,6 +321,7 @@ async function runImport(event) {
 
   importStatus.textContent = "Running import...";
   importSummary.textContent = "";
+  clearImportErrorsUi();
   importForm.querySelector("button[type='submit']").disabled = true;
   saveImportPreferences();
 
@@ -309,9 +348,15 @@ async function runImport(event) {
     }
     importStatus.textContent = `Import finished: inserted ${payload.inserted_count}, skipped ${payload.skipped_count}, errors ${payload.error_count}, rejected ${payload.rejected_before_import}`;
     importSummary.textContent = formatImportSummary(payload);
+    if (payload.error_count > 0 && payload.import_batch_id) {
+      await loadImportBatchErrors(payload.import_batch_id);
+    } else {
+      clearImportErrorsUi();
+    }
     await loadDashboardData();
   } catch (_error) {
     importStatus.textContent = "Import request failed. Check network and server logs.";
+    clearImportErrorsUi();
   } finally {
     importForm.querySelector("button[type='submit']").disabled = false;
   }

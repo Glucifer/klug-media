@@ -80,6 +80,10 @@ ul {
   padding-left: 18px;
 }
 
+#import-errors-list li {
+  margin-bottom: 6px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
