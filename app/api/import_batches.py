@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_api_key
 from app.db.session import get_db_session
 from app.schemas.import_batches import (
     ImportBatchErrorCreateRequest,
@@ -49,6 +50,7 @@ def get_import_batch(
 @router.post("", response_model=ImportBatchRead, status_code=status.HTTP_201_CREATED)
 def start_import_batch(
     payload: ImportBatchStartRequest,
+    _: None = Depends(require_api_key),
     session: Session = Depends(get_db_session),
 ) -> ImportBatchRead:
     try:
@@ -75,6 +77,7 @@ def start_import_batch(
 def finish_import_batch(
     import_batch_id: UUID,
     payload: ImportBatchFinishRequest,
+    _: None = Depends(require_api_key),
     session: Session = Depends(get_db_session),
 ) -> ImportBatchRead:
     try:
@@ -134,6 +137,7 @@ def list_import_batch_errors(
 def add_import_batch_error(
     import_batch_id: UUID,
     payload: ImportBatchErrorCreateRequest,
+    _: None = Depends(require_api_key),
     session: Session = Depends(get_db_session),
 ) -> ImportBatchErrorRead:
     try:

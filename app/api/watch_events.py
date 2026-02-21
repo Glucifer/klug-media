@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_api_key
 from app.db.session import get_db_session
 from app.schemas.watch_events import WatchEventCreate, WatchEventRead
 from app.services.watch_events import WatchEventConstraintError, WatchEventService
@@ -33,7 +34,9 @@ def list_watch_events(
 
 @router.post("", response_model=WatchEventRead, status_code=status.HTTP_201_CREATED)
 def create_watch_event(
-    payload: WatchEventCreate, session: Session = Depends(get_db_session)
+    payload: WatchEventCreate,
+    _: None = Depends(require_api_key),
+    session: Session = Depends(get_db_session),
 ) -> WatchEventRead:
     try:
         watch_event = WatchEventService.create_watch_event(

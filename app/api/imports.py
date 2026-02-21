@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_api_key
 from app.db.session import get_db_session
 from app.schemas.imports import (
     LegacySourceWatchEventImportRequest,
@@ -15,6 +16,7 @@ router = APIRouter(prefix="/imports", tags=["imports"])
 @router.post("/watch-events", response_model=WatchEventImportResponse)
 def import_watch_events(
     payload: WatchEventImportRequest,
+    _: None = Depends(require_api_key),
     session: Session = Depends(get_db_session),
 ) -> WatchEventImportResponse:
     try:
@@ -44,6 +46,7 @@ def import_watch_events(
 @router.post("/watch-events/legacy-source", response_model=WatchEventImportResponse)
 def import_legacy_source_watch_events(
     payload: LegacySourceWatchEventImportRequest,
+    _: None = Depends(require_api_key),
     session: Session = Depends(get_db_session),
 ) -> WatchEventImportResponse:
     result = WatchEventImportService.run_legacy_source_import(session, payload=payload)

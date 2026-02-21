@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_api_key
 from app.db.session import get_db_session
 from app.schemas.media_items import MediaItemCreate, MediaItemRead
 from app.services.media_items import MediaItemAlreadyExistsError, MediaItemService
@@ -16,7 +17,9 @@ def list_media_items(session: Session = Depends(get_db_session)) -> list[MediaIt
 
 @router.post("", response_model=MediaItemRead, status_code=status.HTTP_201_CREATED)
 def create_media_item(
-    payload: MediaItemCreate, session: Session = Depends(get_db_session)
+    payload: MediaItemCreate,
+    _: None = Depends(require_api_key),
+    session: Session = Depends(get_db_session),
 ) -> MediaItemRead:
     try:
         media_item = MediaItemService.create_media_item(

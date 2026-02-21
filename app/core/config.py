@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     app_env: str = "dev"
     api_v1_prefix: str = "/api/v1"
+    klug_api_key: str | None = None
     database_url: str = (
         "postgresql+psycopg://postgres:postgres@localhost:5432/klug_media"
     )

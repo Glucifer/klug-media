@@ -66,22 +66,30 @@ uv venv --python 3.12
 uv sync
 ```
 
-3. Run API:
+3. Configure optional write-endpoint API key:
+```bash
+export KLUG_API_KEY=replace-with-long-random-value
+```
+
+If `KLUG_API_KEY` is set, all `POST` endpoints require `X-API-Key`.
+If unset, write endpoints remain open for local development.
+
+4. Run API:
 ```bash
 uv run uvicorn app.main:app --reload
 ```
 
-4. Run tests:
+5. Run tests:
 ```bash
 uv run pytest -q
 ```
 
-5. Run integration tests (PostgreSQL):
+6. Run integration tests (PostgreSQL):
 ```bash
 KLUG_TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/klug_media_test uv run pytest -q tests/integration
 ```
 
-6. Run legacy-source watch-event import script:
+7. Run legacy-source watch-event import script:
 ```bash
 uv run python -m app.scripts.import_watch_events --input ./path/to/export.json --input-schema legacy_backup --user-id <your-user-uuid> --mode bootstrap
 ```
@@ -96,7 +104,7 @@ Incremental resume example:
 uv run python -m app.scripts.import_watch_events --input ./path/to/export.csv --input-schema legacy_backup --user-id <your-user-uuid> --mode incremental --resume-from-latest --error-report ./import_errors.json
 ```
 
-7. Backfill episode `show_id` links for older data:
+8. Backfill episode `show_id` links for older data:
 ```bash
 uv run python -m app.scripts.backfill_episode_shows --dry-run
 ```
@@ -117,6 +125,7 @@ curl http://127.0.0.1:8000/api/v1/shows/progress
 curl "http://127.0.0.1:8000/api/v1/shows/progress?user_id=<your-user-uuid>"
 curl http://127.0.0.1:8000/api/v1/shows/<show-uuid>
 curl "http://127.0.0.1:8000/api/v1/shows/<show-uuid>?user_id=<your-user-uuid>"
+curl -X POST http://127.0.0.1:8000/api/v1/users -H "Content-Type: application/json" -H "X-API-Key: <your-api-key>" -d '{"username":"alice"}'
 ```
 
 Interactive docs:

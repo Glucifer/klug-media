@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_api_key
 from app.db.session import get_db_session
 from app.schemas.users import UserCreate, UserRead
 from app.services.users import UserAlreadyExistsError, UserService
@@ -16,7 +17,9 @@ def list_users(session: Session = Depends(get_db_session)) -> list[UserRead]:
 
 @router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def create_user(
-    payload: UserCreate, session: Session = Depends(get_db_session)
+    payload: UserCreate,
+    _: None = Depends(require_api_key),
+    session: Session = Depends(get_db_session),
 ) -> UserRead:
     try:
         user = UserService.create_user(session, payload.username)
