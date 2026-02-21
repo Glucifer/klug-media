@@ -25,6 +25,7 @@ class DummyImportBatch:
         self.tags_added = 0
         self.errors_count = 0
         self.notes = None
+        self.parameters = {}
 
 
 def test_start_import_batch_returns_201(monkeypatch) -> None:
@@ -42,6 +43,25 @@ def test_start_import_batch_returns_201(monkeypatch) -> None:
 
     assert response.status_code == 201
     assert response.json()["status"] == "running"
+
+
+def test_list_import_batches_returns_parameters(monkeypatch) -> None:
+    batch = DummyImportBatch(status="completed")
+    batch.parameters = {"mode": "incremental", "resume_from_latest": True}
+
+    monkeypatch.setattr(
+        ImportBatchService,
+        "list_import_batches",
+        lambda _session, **_kwargs: [batch],
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/import-batches")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload[0]["parameters"]["mode"] == "incremental"
+    assert payload[0]["parameters"]["resume_from_latest"] is True
 
 
 def test_get_import_batch_not_found_returns_404(monkeypatch) -> None:

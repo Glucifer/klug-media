@@ -49,6 +49,7 @@ const IMPORT_PREF_KEYS = {
 
 let historyOffset = 0;
 let historyLimit = Number.parseInt(historyLimitSelect.value, 10);
+const importHistoryById = new Map();
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -258,6 +259,7 @@ async function loadImportBatchErrors(importBatchId) {
 async function loadImportHistory() {
   importHistoryStatus.textContent = "Loading import history...";
   importHistoryBody.innerHTML = "";
+  importHistoryById.clear();
   try {
     const response = await api("/api/v1/import-batches?limit=20");
     if (!response.ok) {
@@ -273,6 +275,7 @@ async function loadImportHistory() {
 
     importHistoryStatus.textContent = `Loaded ${batches.length} import batch(es).`;
     for (const batch of batches) {
+      importHistoryById.set(batch.import_batch_id, batch);
       const tr = document.createElement("tr");
       const startedAt = new Date(batch.started_at).toLocaleString();
       const inserted = batch.watch_events_inserted ?? 0;
@@ -283,13 +286,36 @@ async function loadImportHistory() {
         <td>${batch.source}</td>
         <td>${inserted}</td>
         <td>${errors}</td>
-        <td><button class="secondary" data-import-batch-id="${batch.import_batch_id}">View Errors</button></td>
+        <td class="row">
+          <button class="secondary" data-import-batch-id="${batch.import_batch_id}" data-action="reuse-settings">Reuse Settings</button>
+          <button class="secondary" data-import-batch-id="${batch.import_batch_id}" data-action="view-errors">View Errors</button>
+        </td>
       `;
       importHistoryBody.appendChild(tr);
     }
   } catch (_error) {
     importHistoryStatus.textContent = "Failed to load import history.";
   }
+}
+
+function applyImportSettingsFromBatch(batch) {
+  const params = batch && typeof batch.parameters === "object" ? batch.parameters : {};
+  const modeFromParams = params.mode;
+  const modeFromSourceDetail = batch.source_detail;
+  if (modeFromParams === "bootstrap" || modeFromParams === "incremental") {
+    importMode.value = modeFromParams;
+  } else if (modeFromSourceDetail === "bootstrap" || modeFromSourceDetail === "incremental") {
+    importMode.value = modeFromSourceDetail;
+  }
+  if (typeof params.resume_from_latest === "boolean") {
+    importResume.checked = params.resume_from_latest;
+  } else {
+    importResume.checked = false;
+  }
+  if (typeof params.dry_run === "boolean") {
+    importDryRun.checked = params.dry_run;
+  }
+  saveImportPreferences();
 }
 
 function loadImportPreferences() {
@@ -560,8 +586,21 @@ importHistoryBody.addEventListener("click", async (event) => {
   if (!importBatchId) {
     return;
   }
-  importErrorsStatus.textContent = `Loading errors for batch ${importBatchId}...`;
-  await loadImportBatchErrors(importBatchId);
+  const action = button.dataset.action;
+  if (action === "view-errors") {
+    importErrorsStatus.textContent = `Loading errors for batch ${importBatchId}...`;
+    await loadImportBatchErrors(importBatchId);
+    return;
+  }
+  if (action === "reuse-settings") {
+    const batch = importHistoryById.get(importBatchId);
+    if (!batch) {
+      importStatus.textContent = "Could not load settings from selected batch.";
+      return;
+    }
+    applyImportSettingsFromBatch(batch);
+    importStatus.textContent = `Applied settings from batch ${importBatchId}.`;
+  }
 });
 
 logoutBtn.addEventListener("click", async () => {

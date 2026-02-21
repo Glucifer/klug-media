@@ -35,6 +35,7 @@ class ImportBatchRead(BaseModel):
     tags_added: int
     errors_count: int
     notes: str | None
+    parameters: dict = Field(default_factory=dict)
 
 
 class ImportBatchErrorCreateRequest(BaseModel):
