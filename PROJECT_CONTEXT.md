@@ -29,7 +29,12 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - watch events
   - shows + show progress
   - import batches + import errors
-  - watch-event import endpoint(s)
+  - watch-event import endpoint(s), including upload route
+- Import upload endpoint:
+  - `POST /api/v1/imports/watch-events/legacy-source/upload`
+  - accepts JSON/CSV multipart uploads
+  - supports `input_schema`, `mode`, `dry_run`, `resume_from_latest`
+  - enforces max size via `KLUG_IMPORT_UPLOAD_MAX_MB` (default 25 MB)
 - Legacy-source import script:
   - `python -m app.scripts.import_watch_events`
   - supports dry run + incremental resume
@@ -38,11 +43,22 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Tests:
   - unit tests + API tests in `tests/`
   - integration tests in `tests/integration/`
-- Frontend smoke page supports login/logout/session check, show list, show detail, and progress table.
+- Import integration coverage exists for upload dry-run path.
+- Frontend page (`/`) now includes:
+  - session login/logout and auth status
+  - ops strip (API health, auth mode, session state, last refresh)
+  - watch history table with pagination/filtering
+  - import runner (file upload + mode/dry-run/resume options)
+  - cursor visibility (`cursor_before`, `cursor_after`, local last cursor)
+  - import batch history with status filter (persisted)
+  - import batch detail panel
+  - import error drilldown + JSON export
+  - import batch detail JSON copy action
+  - “reuse settings” from prior import batches
 
 ## What Is Not Implemented Yet (or only partial)
 - Production-grade frontend UI (current page is intentionally minimal).
-- Full watch-history browsing UI/API slice with richer filtering/pagination UX.
+- Full watch-history browsing UX polish (sorting/search/column customization, richer metadata views).
 - Planned external sync integrations (metadata/webhooks/automation connectors) are not fully implemented.
 - Hardening items likely still needed over time: broader integration coverage, stricter operational docs, and deployment polish.
 
@@ -89,6 +105,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Run API: `uv run uvicorn app.main:app --reload`
 - Run tests: `uv run pytest -q`
 - Run lint: `uv run ruff check app tests`
+- Run integration tests: `KLUG_TEST_DATABASE_URL=... uv run pytest -q tests/integration`
 - Legacy import:
   - `uv run python -m app.scripts.import_watch_events ...`
 - Backfill:
