@@ -1,9 +1,10 @@
-from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import AwareDatetime, Field
+
+from app.schemas.base import KlugBaseModel
 
 
 class ImportMode(str, Enum):
@@ -11,10 +12,10 @@ class ImportMode(str, Enum):
     incremental = "incremental"
 
 
-class ImportedWatchEvent(BaseModel):
+class ImportedWatchEvent(KlugBaseModel):
     user_id: UUID
     media_item_id: UUID
-    watched_at: datetime
+    watched_at: AwareDatetime
     playback_source: str = Field(min_length=1, max_length=100)
     total_seconds: int | None = Field(default=None, ge=0)
     watched_seconds: int | None = Field(default=None, ge=0)
@@ -26,7 +27,7 @@ class ImportedWatchEvent(BaseModel):
     source_event_id: str | None = Field(default=None, max_length=255)
 
 
-class WatchEventImportRequest(BaseModel):
+class WatchEventImportRequest(KlugBaseModel):
     source: str = Field(min_length=1, max_length=100)
     mode: ImportMode
     dry_run: bool = False
@@ -39,7 +40,7 @@ class WatchEventImportRequest(BaseModel):
     events: list[ImportedWatchEvent] = Field(min_length=1)
 
 
-class WatchEventImportResponse(BaseModel):
+class WatchEventImportResponse(KlugBaseModel):
     import_batch_id: UUID
     status: str
     dry_run: bool
@@ -54,10 +55,10 @@ class WatchEventImportResponse(BaseModel):
     cursor_after: dict | None = None
 
 
-class LegacySourceWatchEventRow(BaseModel):
+class LegacySourceWatchEventRow(KlugBaseModel):
     user_id: UUID
     media_item_id: UUID
-    watched_at: datetime
+    watched_at: AwareDatetime
     player: str = Field(min_length=1, max_length=100)
     total_seconds: int | None = Field(default=None, ge=0)
     watched_seconds: int | None = Field(default=None, ge=0)
@@ -68,7 +69,7 @@ class LegacySourceWatchEventRow(BaseModel):
     source_event_id: str | None = Field(default=None, max_length=255)
 
 
-class LegacySourceWatchEventImportRequest(BaseModel):
+class LegacySourceWatchEventImportRequest(KlugBaseModel):
     mode: ImportMode
     dry_run: bool = False
     resume_from_latest: bool = False

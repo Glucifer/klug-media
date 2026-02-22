@@ -4,7 +4,9 @@ from uuid import uuid4
 
 
 def test_upload_import_dry_run_returns_summary_and_cursor(integration_client) -> None:
-    watched_at = datetime.now(UTC).replace(microsecond=0).isoformat()
+    watched_at = (
+        datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    )
     payload_rows = [
         {
             "user_id": str(uuid4()),

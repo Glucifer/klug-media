@@ -1,6 +1,6 @@
-from pydantic import BaseModel
+from app.schemas.base import KlugBaseModel
 
 
-class HealthResponse(BaseModel):
+class HealthResponse(KlugBaseModel):
     status: str
     service: str

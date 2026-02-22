@@ -2,12 +2,10 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from app.schemas.base import KlugBaseModel, KlugORMModel
 
 
-class ShowRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class ShowRead(KlugORMModel):
     show_id: UUID
     tmdb_id: int
     tvdb_id: int | None
@@ -18,7 +16,7 @@ class ShowRead(BaseModel):
     updated_at: datetime
 
 
-class ShowProgressRead(BaseModel):
+class ShowProgressRead(KlugBaseModel):
     show_id: UUID
     show_tmdb_id: int
     show_title: str
@@ -28,7 +26,7 @@ class ShowProgressRead(BaseModel):
     watched_percent: Decimal
 
 
-class ShowEpisodeRead(BaseModel):
+class ShowEpisodeRead(KlugBaseModel):
     media_item_id: UUID
     title: str
     season_number: int | None
@@ -37,7 +35,7 @@ class ShowEpisodeRead(BaseModel):
     watched_by_user: bool | None
 
 
-class ShowDetailRead(BaseModel):
+class ShowDetailRead(KlugBaseModel):
     show: ShowRead
     progress: list[ShowProgressRead]
     episodes: list[ShowEpisodeRead]

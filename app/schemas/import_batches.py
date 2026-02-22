@@ -1,16 +1,18 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
+
+from app.schemas.base import KlugBaseModel, KlugORMModel
 
 
-class ImportBatchStartRequest(BaseModel):
+class ImportBatchStartRequest(KlugBaseModel):
     source: str = Field(min_length=1, max_length=100)
     source_detail: str | None = Field(default=None, max_length=255)
     notes: str | None = None
 
 
-class ImportBatchFinishRequest(BaseModel):
+class ImportBatchFinishRequest(KlugBaseModel):
     status: str = Field(min_length=1, max_length=30)
     watch_events_inserted: int = Field(default=0, ge=0)
     media_items_inserted: int = Field(default=0, ge=0)
@@ -20,9 +22,7 @@ class ImportBatchFinishRequest(BaseModel):
     notes: str | None = None
 
 
-class ImportBatchRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class ImportBatchRead(KlugORMModel):
     import_batch_id: UUID
     source: str
     source_detail: str | None
@@ -38,7 +38,7 @@ class ImportBatchRead(BaseModel):
     parameters: dict = Field(default_factory=dict)
 
 
-class ImportBatchErrorCreateRequest(BaseModel):
+class ImportBatchErrorCreateRequest(KlugBaseModel):
     severity: str = Field(default="error", min_length=1, max_length=20)
     entity_type: str | None = Field(default=None, max_length=100)
     entity_ref: str | None = Field(default=None, max_length=255)
@@ -46,9 +46,7 @@ class ImportBatchErrorCreateRequest(BaseModel):
     details: dict = Field(default_factory=dict)
 
 
-class ImportBatchErrorRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class ImportBatchErrorRead(KlugORMModel):
     import_batch_error_id: UUID
     import_batch_id: UUID
     occurred_at: datetime

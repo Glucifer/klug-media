@@ -79,6 +79,27 @@ def test_import_watch_events_unsupported_source_returns_422(monkeypatch) -> None
     assert response.status_code == 422
 
 
+def test_import_watch_events_rejects_naive_watched_at() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/imports/watch-events",
+        json={
+            "source": "legacy_source_export",
+            "mode": "bootstrap",
+            "events": [
+                {
+                    "user_id": str(uuid4()),
+                    "media_item_id": str(uuid4()),
+                    "watched_at": "2026-01-01T12:00:00",
+                    "playback_source": "jellyfin",
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_import_legacy_source_watch_events_endpoint(monkeypatch) -> None:
     expected_result = WatchEventImportResult(
         import_batch_id=uuid4(),

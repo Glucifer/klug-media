@@ -35,6 +35,8 @@ def test_post_watch_event_success(
     assert payload["user_id"] == str(user.user_id)
     assert payload["media_item_id"] == str(media_item.media_item_id)
     assert payload["playback_source"] == "jellyfin"
+    assert payload["watched_at"].endswith("Z")
+    assert payload["created_at"].endswith("Z")
 
 
 def test_post_watch_event_fk_violation_returns_409(

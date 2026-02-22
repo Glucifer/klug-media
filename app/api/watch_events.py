@@ -1,8 +1,8 @@
-from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import AwareDatetime
 from sqlalchemy.orm import Session
 
 from app.core.auth import require_request_auth
@@ -25,8 +25,8 @@ router = APIRouter(
 def list_watch_events(
     user_id: UUID | None = Query(default=None),
     media_item_id: UUID | None = Query(default=None),
-    watched_after: datetime | None = Query(default=None),
-    watched_before: datetime | None = Query(default=None),
+    watched_after: AwareDatetime | None = Query(default=None),
+    watched_before: AwareDatetime | None = Query(default=None),
     media_type: Literal["movie", "show", "episode"] | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),

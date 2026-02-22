@@ -151,7 +151,26 @@ def test_create_watch_event_returns_201(monkeypatch) -> None:
     )
 
     assert response.status_code == 201
-    assert response.json()["playback_source"] == "jellyfin"
+    payload = response.json()
+    assert payload["playback_source"] == "jellyfin"
+    assert payload["watched_at"].endswith("Z")
+    assert payload["created_at"].endswith("Z")
+
+
+def test_create_watch_event_rejects_naive_watched_at() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/watch-events",
+        json={
+            "user_id": str(uuid4()),
+            "media_item_id": str(uuid4()),
+            "watched_at": "2026-01-01T12:00:00",
+            "playback_source": "jellyfin",
+            "completed": True,
+        },
+    )
+
+    assert response.status_code == 422
 
 
 def test_create_watch_event_constraint_error_returns_409(monkeypatch) -> None:

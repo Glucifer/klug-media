@@ -65,6 +65,29 @@ def test_create_watch_event_empty_playback_source_raises_value_error() -> None:
         )
 
 
+def test_create_watch_event_naive_watched_at_raises_value_error() -> None:
+    session = Mock()
+
+    with pytest.raises(
+        ValueError, match="watched_at must include timezone information"
+    ):
+        WatchEventService.create_watch_event(
+            session,
+            user_id=uuid4(),
+            media_item_id=uuid4(),
+            watched_at=datetime(2026, 1, 1, 12, 0, 0),
+            playback_source="jellyfin",
+            total_seconds=None,
+            watched_seconds=None,
+            progress_percent=None,
+            completed=True,
+            rating_value=None,
+            rating_scale=None,
+            media_version_id=None,
+            source_event_id=None,
+        )
+
+
 def test_create_watch_event_integrity_error_maps_to_domain_error(monkeypatch) -> None:
     session = Mock()
 

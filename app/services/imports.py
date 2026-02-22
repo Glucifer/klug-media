@@ -1,9 +1,10 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.datetime_utils import ensure_timezone_aware, to_utc_z_string
 from app.schemas.imports import (
     LegacySourceWatchEventImportRequest,
     WatchEventImportRequest,
@@ -44,7 +45,7 @@ class WatchEventImportService:
         source_event_id: str | None,
     ) -> dict:
         return {
-            "watched_at": watched_at.isoformat(),
+            "watched_at": to_utc_z_string(watched_at),
             "source_event_id": source_event_id,
         }
 
@@ -58,6 +59,13 @@ class WatchEventImportService:
 
         normalized = watched_at_value.replace("Z", "+00:00")
         parsed_watched_at = datetime.fromisoformat(normalized)
+        try:
+            parsed_watched_at = ensure_timezone_aware(
+                parsed_watched_at,
+                field_name="cursor.watched_at",
+            ).astimezone(UTC)
+        except ValueError:
+            return None
         source_event_id = cursor.get("source_event_id") or ""
         return parsed_watched_at, source_event_id
 

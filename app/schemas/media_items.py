@@ -2,7 +2,9 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
+
+from app.schemas.base import KlugBaseModel, KlugORMModel
 
 
 class MediaItemType(str, Enum):
@@ -11,7 +13,7 @@ class MediaItemType(str, Enum):
     episode = "episode"
 
 
-class MediaItemCreate(BaseModel):
+class MediaItemCreate(KlugBaseModel):
     type: MediaItemType
     title: str = Field(min_length=1, max_length=500)
     year: int | None = Field(default=None, ge=1800, le=3000)
@@ -20,9 +22,7 @@ class MediaItemCreate(BaseModel):
     tvdb_id: int | None = None
 
 
-class MediaItemRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class MediaItemRead(KlugORMModel):
     media_item_id: UUID
     type: MediaItemType
     title: str

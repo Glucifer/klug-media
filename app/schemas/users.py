@@ -1,16 +1,16 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
+
+from app.schemas.base import KlugBaseModel, KlugORMModel
 
 
-class UserCreate(BaseModel):
+class UserCreate(KlugBaseModel):
     username: str = Field(min_length=1, max_length=100)
 
 
-class UserRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class UserRead(KlugORMModel):
     user_id: UUID
     username: str
     created_at: datetime

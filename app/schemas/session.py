@@ -1,19 +1,21 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from app.schemas.base import KlugBaseModel
 
 
-class SessionLoginRequest(BaseModel):
+class SessionLoginRequest(KlugBaseModel):
     password: str = Field(min_length=1)
 
 
-class SessionLoginResponse(BaseModel):
+class SessionLoginResponse(KlugBaseModel):
     authenticated: bool
     auth_mode: str
     expires_at: datetime | None = None
 
 
-class SessionStatusResponse(BaseModel):
+class SessionStatusResponse(KlugBaseModel):
     authenticated: bool
     auth_mode: str
     expires_at: datetime | None = None

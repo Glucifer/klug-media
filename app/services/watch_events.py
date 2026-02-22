@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.datetime_utils import ensure_timezone_aware
 from app.db.models.entities import WatchEvent
 from app.repositories import watch_events as watch_event_repository
 
@@ -64,6 +65,10 @@ class WatchEventService:
         normalized_playback_source = playback_source.strip()
         if not normalized_playback_source:
             raise ValueError("playback_source must not be empty")
+        normalized_watched_at = ensure_timezone_aware(
+            watched_at,
+            field_name="watched_at",
+        ).astimezone(UTC)
 
         normalized_rating_scale = rating_scale.strip() if rating_scale else None
 
@@ -72,7 +77,7 @@ class WatchEventService:
                 session,
                 user_id=user_id,
                 media_item_id=media_item_id,
-                watched_at=watched_at,
+                watched_at=normalized_watched_at,
                 playback_source=normalized_playback_source,
                 total_seconds=total_seconds,
                 watched_seconds=watched_seconds,
