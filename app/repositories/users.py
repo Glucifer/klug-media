@@ -9,8 +9,8 @@ def list_users(session: Session) -> list[User]:
     return list(session.scalars(statement))
 
 
-def create_user(session: Session, username: str) -> User:
-    user = User(username=username)
+def create_user(session: Session, username: str, timezone: str) -> User:
+    user = User(username=username, timezone=timezone)
     session.add(user)
     session.flush()
     session.refresh(user)

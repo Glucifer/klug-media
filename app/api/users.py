@@ -25,7 +25,11 @@ def create_user(
     session: Session = Depends(get_db_session),
 ) -> UserRead:
     try:
-        user = UserService.create_user(session, payload.username)
+        user = UserService.create_user(
+            session,
+            payload.username,
+            payload.timezone,
+        )
     except UserAlreadyExistsError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

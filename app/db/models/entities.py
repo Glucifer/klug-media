@@ -278,6 +278,12 @@ class User(Base):
         PGUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     username: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False)
+    timezone: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default="UTC",
+        server_default=text("'UTC'::text"),
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )

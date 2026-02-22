@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict h5vCqRIUiSU3eNbbSxhckS1olOuDinH91iJdTmF0keoinSI2lv8SwZ3cyZ95qlq
+\restrict 6F1oEZ5JqmEdG82bUBj8howfqnj5UGaNVmwqJdGb0F1TDdmNWB78pHChgrCkeTE
 
 -- Dumped from database version 18.2 (Debian 18.2-1.pgdg13+1)
 -- Dumped by pg_dump version 18.2 (Debian 18.2-1.pgdg13+1)
@@ -78,6 +78,34 @@ BEGIN
       COALESCE(NEW.watched_seconds::text, '');
 
     NEW.dedupe_hash := encode(digest(v_payload, 'sha256'), 'hex');
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: validate_user_timezone(); Type: FUNCTION; Schema: app; Owner: -
+--
+
+CREATE FUNCTION app.validate_user_timezone() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  -- Allow NULL only if your column allows it (yours doesn't).
+  IF NEW.timezone IS NULL THEN
+    RAISE EXCEPTION 'timezone cannot be NULL';
+  END IF;
+
+  -- Validate against Postgres' known time zone names (IANA + abbreviations it supports)
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_timezone_names
+    WHERE name = NEW.timezone
+  ) THEN
+    RAISE EXCEPTION 'Invalid timezone: % (must be a valid IANA tz like America/Edmonton)', NEW.timezone
+      USING ERRCODE = '22023'; -- invalid_parameter_value
   END IF;
 
   RETURN NEW;
@@ -234,7 +262,8 @@ CREATE VIEW app.tmdb_movie_basic AS
 CREATE TABLE app.users (
     user_id uuid DEFAULT gen_random_uuid() NOT NULL,
     username public.citext NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    timezone text DEFAULT 'UTC'::text NOT NULL
 );
 
 
@@ -641,6 +670,13 @@ CREATE TRIGGER trg_create_default_media_version AFTER INSERT ON app.media_item F
 
 
 --
+-- Name: users trg_users_validate_timezone; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_users_validate_timezone BEFORE INSERT OR UPDATE OF timezone ON app.users FOR EACH ROW EXECUTE FUNCTION app.validate_user_timezone();
+
+
+--
 -- Name: watch_event trg_watch_event_set_dedupe_hash; Type: TRIGGER; Schema: app; Owner: -
 --
 
@@ -731,5 +767,5 @@ ALTER TABLE ONLY app.watch_event
 -- PostgreSQL database dump complete
 --
 
-\unrestrict h5vCqRIUiSU3eNbbSxhckS1olOuDinH91iJdTmF0keoinSI2lv8SwZ3cyZ95qlq
+\unrestrict 6F1oEZ5JqmEdG82bUBj8howfqnj5UGaNVmwqJdGb0F1TDdmNWB78pHChgrCkeTE
 

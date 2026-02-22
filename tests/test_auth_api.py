@@ -10,9 +10,10 @@ from app.services.users import UserService
 
 
 class DummyUser:
-    def __init__(self, username: str) -> None:
+    def __init__(self, username: str, timezone: str = "UTC") -> None:
         self.user_id = uuid4()
         self.username = username
+        self.timezone = timezone
         self.created_at = datetime.now(UTC)
 
 
@@ -50,7 +51,7 @@ def test_write_endpoint_requires_api_key_when_configured(monkeypatch) -> None:
     monkeypatch.setattr(
         UserService,
         "create_user",
-        lambda _session, username: DummyUser(username),
+        lambda _session, username, timezone: DummyUser(username, timezone),
     )
 
     client = TestClient(app)
@@ -64,7 +65,7 @@ def test_write_endpoint_rejects_invalid_api_key(monkeypatch) -> None:
     monkeypatch.setattr(
         UserService,
         "create_user",
-        lambda _session, username: DummyUser(username),
+        lambda _session, username, timezone: DummyUser(username, timezone),
     )
 
     client = TestClient(app)
@@ -82,7 +83,7 @@ def test_write_endpoint_accepts_valid_api_key(monkeypatch) -> None:
     monkeypatch.setattr(
         UserService,
         "create_user",
-        lambda _session, username: DummyUser(username),
+        lambda _session, username, timezone: DummyUser(username, timezone),
     )
 
     client = TestClient(app)
@@ -102,7 +103,7 @@ def test_write_endpoint_allows_requests_when_api_key_not_configured(
     monkeypatch.setattr(
         UserService,
         "create_user",
-        lambda _session, username: DummyUser(username),
+        lambda _session, username, timezone: DummyUser(username, timezone),
     )
 
     client = TestClient(app)
@@ -173,7 +174,7 @@ def test_prod_write_requires_api_key_even_when_no_credentials_configured(
     monkeypatch.setattr(
         UserService,
         "create_user",
-        lambda _session, username: DummyUser(username),
+        lambda _session, username, timezone: DummyUser(username, timezone),
     )
 
     client = TestClient(app)
@@ -190,7 +191,7 @@ def test_prod_write_rejects_session_cookie_without_api_key(monkeypatch) -> None:
     monkeypatch.setattr(
         UserService,
         "create_user",
-        lambda _session, username: DummyUser(username),
+        lambda _session, username, timezone: DummyUser(username, timezone),
     )
 
     client = TestClient(app)
@@ -206,7 +207,7 @@ def test_prod_write_accepts_valid_api_key(monkeypatch) -> None:
     monkeypatch.setattr(
         UserService,
         "create_user",
-        lambda _session, username: DummyUser(username),
+        lambda _session, username, timezone: DummyUser(username, timezone),
     )
 
     client = TestClient(app)

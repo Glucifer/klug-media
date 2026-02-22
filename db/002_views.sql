@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict HbH83WshcfcQukzU58tSraEnB2msQlEDpFfqfZQE7VopWFVBdEJTEyzAQi41ysz
+\restrict QEG2CxdtNO2zgig9c14vHdKB3O9dQOTUcAf38n6DosdEQJoTghgJE4sJLQy5L0B
 
 -- Dumped from database version 18.2 (Debian 18.2-1.pgdg13+1)
 -- Dumped by pg_dump version 18.2 (Debian 18.2-1.pgdg13+1)
@@ -291,6 +291,13 @@ CREATE TRIGGER trg_create_default_media_version AFTER INSERT ON app.media_item F
 
 
 --
+-- Name: users trg_users_validate_timezone; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_users_validate_timezone BEFORE INSERT OR UPDATE OF timezone ON app.users FOR EACH ROW EXECUTE FUNCTION app.validate_user_timezone();
+
+
+--
 -- Name: watch_event trg_watch_event_set_dedupe_hash; Type: TRIGGER; Schema: app; Owner: -
 --
 
@@ -381,5 +388,5 @@ ALTER TABLE ONLY app.watch_event
 -- PostgreSQL database dump complete
 --
 
-\unrestrict HbH83WshcfcQukzU58tSraEnB2msQlEDpFfqfZQE7VopWFVBdEJTEyzAQi41ysz
+\unrestrict QEG2CxdtNO2zgig9c14vHdKB3O9dQOTUcAf38n6DosdEQJoTghgJE4sJLQy5L0B
 

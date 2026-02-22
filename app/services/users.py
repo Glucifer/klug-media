@@ -15,13 +15,20 @@ class UserService:
         return user_repository.list_users(session)
 
     @staticmethod
-    def create_user(session: Session, username: str) -> User:
+    def create_user(session: Session, username: str, timezone: str = "UTC") -> User:
         normalized_username = username.strip()
         if not normalized_username:
             raise ValueError("Username must not be empty")
+        normalized_timezone = timezone.strip()
+        if not normalized_timezone:
+            raise ValueError("Timezone must not be empty")
 
         try:
-            user = user_repository.create_user(session, normalized_username)
+            user = user_repository.create_user(
+                session,
+                normalized_username,
+                normalized_timezone,
+            )
             session.commit()
             return user
         except IntegrityError as exc:
