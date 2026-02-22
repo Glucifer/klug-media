@@ -31,6 +31,7 @@ const importHistoryClearFilter = document.getElementById("import-history-clear-f
 const importHistoryStatus = document.getElementById("import-history-status");
 const importHistoryBody = document.getElementById("import-history-body");
 const importDetailStatus = document.getElementById("import-detail-status");
+const importCopyDetail = document.getElementById("import-copy-detail");
 const importDownloadErrors = document.getElementById("import-download-errors");
 const importDetail = document.getElementById("import-detail");
 const historyMediaType = document.getElementById("history-media-type");
@@ -64,6 +65,7 @@ let historyLimit = Number.parseInt(historyLimitSelect.value, 10);
 const importHistoryById = new Map();
 let importHistoryRows = [];
 let selectedImportBatchId = null;
+let selectedImportBatchDetail = null;
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -323,10 +325,13 @@ async function loadImportBatchDetail(importBatchId) {
     }
     const batch = await response.json();
     selectedImportBatchId = importBatchId;
+    selectedImportBatchDetail = batch;
     syncSelectedImportHistoryRow();
     importDetailStatus.textContent = `Showing detail for batch ${importBatchId}`;
     importDetail.textContent = formatImportBatchDetail(batch);
   } catch (_error) {
+    selectedImportBatchDetail = null;
+    syncSelectedImportHistoryRow();
     importDetailStatus.textContent = `Failed to load detail for batch ${importBatchId}.`;
     importDetail.textContent = "";
   }
@@ -339,6 +344,8 @@ function syncSelectedImportHistoryRow() {
     row.classList.toggle("selected", rowBatchId === selectedImportBatchId);
   }
   importDownloadErrors.disabled = selectedImportBatchId === null;
+  importCopyDetail.disabled =
+    selectedImportBatchId === null || selectedImportBatchDetail === null;
 }
 
 function renderImportHistoryRows() {
@@ -385,7 +392,9 @@ async function loadImportHistory() {
   importHistoryStatus.textContent = "Loading import history...";
   importHistoryRows = [];
   selectedImportBatchId = null;
+  selectedImportBatchDetail = null;
   importDownloadErrors.disabled = true;
+  importCopyDetail.disabled = true;
   importHistoryBody.innerHTML = "";
   try {
     const response = await api("/api/v1/import-batches?limit=20");
@@ -705,6 +714,7 @@ importHistoryStatusFilter.addEventListener("change", () => {
     importHistoryStatusFilter.value
   );
   selectedImportBatchId = null;
+  selectedImportBatchDetail = null;
   importDetailStatus.textContent = "Select an import batch to view details.";
   importDetail.textContent = "";
   renderImportHistoryRows();
@@ -714,9 +724,42 @@ importHistoryClearFilter.addEventListener("click", () => {
   importHistoryStatusFilter.value = "";
   window.localStorage.setItem(IMPORT_PREF_KEYS.importHistoryStatusFilter, "");
   selectedImportBatchId = null;
+  selectedImportBatchDetail = null;
   importDetailStatus.textContent = "Select an import batch to view details.";
   importDetail.textContent = "";
   renderImportHistoryRows();
+});
+
+importCopyDetail.addEventListener("click", async () => {
+  if (!selectedImportBatchDetail) {
+    importDetailStatus.textContent = "Select an import batch before copying detail.";
+    return;
+  }
+  const payload = JSON.stringify(selectedImportBatchDetail, null, 2);
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(payload);
+      importDetailStatus.textContent = `Copied detail for batch ${selectedImportBatchDetail.import_batch_id}.`;
+      return;
+    }
+  } catch (_error) {
+    // Fall through to execCommand fallback
+  }
+
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = payload;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "absolute";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+    importDetailStatus.textContent = `Copied detail for batch ${selectedImportBatchDetail.import_batch_id}.`;
+  } catch (_error) {
+    importDetailStatus.textContent = "Failed to copy detail to clipboard.";
+  }
 });
 
 importDownloadErrors.addEventListener("click", async () => {
