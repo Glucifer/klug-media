@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Literal
 from uuid import UUID
 
@@ -27,6 +28,8 @@ def list_watch_events(
     media_item_id: UUID | None = Query(default=None),
     watched_after: AwareDatetime | None = Query(default=None),
     watched_before: AwareDatetime | None = Query(default=None),
+    local_date_from: date | None = Query(default=None),
+    local_date_to: date | None = Query(default=None),
     media_type: Literal["movie", "show", "episode"] | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
@@ -38,6 +41,8 @@ def list_watch_events(
         media_item_id=media_item_id,
         watched_after=watched_after,
         watched_before=watched_before,
+        local_date_from=local_date_from,
+        local_date_to=local_date_to,
         media_type=media_type,
         limit=limit,
         offset=offset,

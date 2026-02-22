@@ -49,3 +49,5 @@ class WatchEventListRead(WatchEventRead):
     media_item_season_number: int | None = None
     media_item_episode_number: int | None = None
     display_title: str | None = None
+    watched_at_local: datetime | None = None
+    user_timezone: str | None = None

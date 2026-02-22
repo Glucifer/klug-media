@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
@@ -28,6 +28,8 @@ class WatchEventService:
         media_item_id: UUID | None,
         watched_after: datetime | None,
         watched_before: datetime | None,
+        local_date_from: date | None,
+        local_date_to: date | None,
         media_type: Literal["movie", "show", "episode"] | None,
         limit: int,
         offset: int,
@@ -40,6 +42,8 @@ class WatchEventService:
             media_item_id=media_item_id,
             watched_after=watched_after,
             watched_before=watched_before,
+            local_date_from=local_date_from,
+            local_date_to=local_date_to,
             media_type=media_type,
             limit=safe_limit,
             offset=safe_offset,

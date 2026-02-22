@@ -63,12 +63,14 @@ def test_list_watch_events_forwards_filters(monkeypatch) -> None:
 
     client = TestClient(app)
     response = client.get(
-        f"/api/v1/watch-events?user_id={event.user_id}&media_type=episode&limit=10&offset=5"
+        f"/api/v1/watch-events?user_id={event.user_id}&media_type=episode&limit=10&offset=5&local_date_from=2026-01-01&local_date_to=2026-01-02"
     )
 
     assert response.status_code == 200
     assert called["user_id"] == event.user_id
     assert called["media_type"] == "episode"
+    assert str(called["local_date_from"]) == "2026-01-01"
+    assert str(called["local_date_to"]) == "2026-01-02"
     assert called["limit"] == 10
     assert called["offset"] == 5
 
@@ -125,6 +127,12 @@ def test_list_watch_events_returns_enriched_media_fields(monkeypatch) -> None:
     assert payload[0]["media_item_season_number"] == 1
     assert payload[0]["media_item_episode_number"] == 8
     assert payload[0]["display_title"] == "Scavengers Reign S01E08"
+
+
+def test_list_watch_events_rejects_invalid_local_date() -> None:
+    client = TestClient(app)
+    response = client.get("/api/v1/watch-events?local_date_from=not-a-date")
+    assert response.status_code == 422
 
 
 def test_create_watch_event_returns_201(monkeypatch) -> None:

@@ -1,11 +1,12 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
-from app.db.models.entities import MediaItem, Show, WatchEvent
+from app.db.models.entities import MediaItem, Show, User, WatchEvent
 
 
 def _format_display_title(
@@ -36,12 +37,23 @@ def list_watch_events(
     media_item_id: UUID | None,
     watched_after: datetime | None,
     watched_before: datetime | None,
+    local_date_from: date | None,
+    local_date_to: date | None,
     media_type: Literal["movie", "show", "episode"] | None,
     limit: int,
     offset: int,
 ) -> list[dict[str, object]]:
     statement: Select[
-        tuple[WatchEvent, str, str, int | None, int | None, int | None, str | None]
+        tuple[
+            WatchEvent,
+            str,
+            str,
+            int | None,
+            int | None,
+            int | None,
+            str | None,
+            str,
+        ]
     ] = (
         select(
             WatchEvent,
@@ -51,7 +63,9 @@ def list_watch_events(
             MediaItem.episode_number,
             MediaItem.year,
             Show.title,
+            User.timezone,
         )
+        .join(User, WatchEvent.user_id == User.user_id)
         .join(
             MediaItem,
             WatchEvent.media_item_id == MediaItem.media_item_id,
@@ -72,6 +86,11 @@ def list_watch_events(
         statement = statement.where(WatchEvent.watched_at >= watched_after)
     if watched_before is not None:
         statement = statement.where(WatchEvent.watched_at <= watched_before)
+    local_watch_date = func.date(func.timezone(User.timezone, WatchEvent.watched_at))
+    if local_date_from is not None:
+        statement = statement.where(local_watch_date >= local_date_from)
+    if local_date_to is not None:
+        statement = statement.where(local_watch_date <= local_date_to)
 
     statement = (
         statement.order_by(WatchEvent.watched_at.desc()).offset(offset).limit(limit)
@@ -86,7 +105,15 @@ def list_watch_events(
         episode_number,
         item_year,
         show_title,
+        user_timezone,
     ) in rows:
+        normalized_user_timezone = user_timezone or "UTC"
+        try:
+            watched_at_local = watch_event.watched_at.astimezone(
+                ZoneInfo(normalized_user_timezone)
+            )
+        except ZoneInfoNotFoundError:
+            watched_at_local = watch_event.watched_at
         payload.append(
             {
                 "watch_id": watch_event.watch_id,
@@ -119,6 +146,8 @@ def list_watch_events(
                     season_number=season_number,
                     episode_number=episode_number,
                 ),
+                "watched_at_local": watched_at_local,
+                "user_timezone": normalized_user_timezone,
             }
         )
     return payload

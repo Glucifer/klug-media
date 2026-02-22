@@ -138,6 +138,8 @@ def test_list_watch_events_clamps_limit(monkeypatch) -> None:
         media_item_id=None,
         watched_after=None,
         watched_before=None,
+        local_date_from=None,
+        local_date_to=None,
         media_type=None,
         limit=1000,
         offset=-5,
