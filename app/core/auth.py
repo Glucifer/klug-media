@@ -121,20 +121,40 @@ def require_request_auth(
     provided_api_key: str | None = Depends(api_key_header),
     settings: Settings = Depends(get_settings),
 ) -> None:
-    if not _is_request_auth_required(request, settings):
+    request_is_write = request.method in {"POST", "PUT", "PATCH", "DELETE"}
+    force_prod_write_auth = settings.app_env == "prod" and request_is_write
+
+    if not _is_request_auth_required(request, settings) and not force_prod_write_auth:
         return
 
     expected_api_key = settings.klug_api_key
     secret = _session_secret(settings)
+    session_authenticated = is_session_authenticated(request, settings)
+
+    provided_valid_api_key = bool(
+        expected_api_key
+        and provided_api_key
+        and compare_digest(provided_api_key, expected_api_key)
+    )
+
+    # In production, writes are fail-closed and require API key auth.
+    # Cookie session auth is read-only in production to avoid CSRF-like write paths.
+    if settings.app_env == "prod" and request_is_write:
+        if provided_valid_api_key:
+            return
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing authentication credentials",
+        )
 
     # If no credential mechanism is configured, keep local-dev permissive behavior.
     if not expected_api_key and not secret:
         return
 
-    if expected_api_key and provided_api_key and compare_digest(provided_api_key, expected_api_key):
+    if provided_valid_api_key:
         return
 
-    if is_session_authenticated(request, settings):
+    if session_authenticated:
         return
 
     raise HTTPException(

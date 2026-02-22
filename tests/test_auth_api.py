@@ -24,7 +24,11 @@ def clear_settings_cache() -> None:
 
 
 def _set_auth(
-    monkeypatch, *, api_key: str | None, auth_mode: str | None = None
+    monkeypatch,
+    *,
+    api_key: str | None,
+    auth_mode: str | None = None,
+    app_env: str | None = None,
 ) -> None:
     if api_key is None:
         monkeypatch.delenv("KLUG_API_KEY", raising=False)
@@ -34,6 +38,10 @@ def _set_auth(
         monkeypatch.delenv("KLUG_API_AUTH_MODE", raising=False)
     else:
         monkeypatch.setenv("KLUG_API_AUTH_MODE", auth_mode)
+    if app_env is None:
+        monkeypatch.delenv("APP_ENV", raising=False)
+    else:
+        monkeypatch.setenv("APP_ENV", app_env)
     get_settings.cache_clear()
 
 
@@ -87,7 +95,9 @@ def test_write_endpoint_accepts_valid_api_key(monkeypatch) -> None:
     assert response.status_code == 201
 
 
-def test_write_endpoint_allows_requests_when_api_key_not_configured(monkeypatch) -> None:
+def test_write_endpoint_allows_requests_when_api_key_not_configured(
+    monkeypatch,
+) -> None:
     _set_auth(monkeypatch, api_key=None, auth_mode="write")
     monkeypatch.setattr(
         UserService,
@@ -154,3 +164,56 @@ def test_all_mode_allows_session_cookie_auth(monkeypatch) -> None:
 
     response = client.get("/api/v1/users")
     assert response.status_code == 200
+
+
+def test_prod_write_requires_api_key_even_when_no_credentials_configured(
+    monkeypatch,
+) -> None:
+    _set_auth(monkeypatch, api_key=None, auth_mode="write", app_env="prod")
+    monkeypatch.setattr(
+        UserService,
+        "create_user",
+        lambda _session, username: DummyUser(username),
+    )
+
+    client = TestClient(app)
+    response = client.post("/api/v1/users", json={"username": "alice"})
+
+    assert response.status_code == 401
+
+
+def test_prod_write_rejects_session_cookie_without_api_key(monkeypatch) -> None:
+    _set_auth(monkeypatch, api_key="secret-key", auth_mode="write", app_env="prod")
+    monkeypatch.setenv("KLUG_SESSION_PASSWORD", "session-pass")
+    monkeypatch.setenv("KLUG_SESSION_SECRET", "session-secret")
+    get_settings.cache_clear()
+    monkeypatch.setattr(
+        UserService,
+        "create_user",
+        lambda _session, username: DummyUser(username),
+    )
+
+    client = TestClient(app)
+    login = client.post("/api/v1/session/login", json={"password": "session-pass"})
+    assert login.status_code == 200
+
+    response = client.post("/api/v1/users", json={"username": "alice"})
+    assert response.status_code == 401
+
+
+def test_prod_write_accepts_valid_api_key(monkeypatch) -> None:
+    _set_auth(monkeypatch, api_key="secret-key", auth_mode="write", app_env="prod")
+    monkeypatch.setattr(
+        UserService,
+        "create_user",
+        lambda _session, username: DummyUser(username),
+    )
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/users",
+        json={"username": "alice"},
+        headers={"X-API-Key": "secret-key"},
+    )
+
+    assert response.status_code == 201

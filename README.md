@@ -80,7 +80,8 @@ export KLUG_IMPORT_UPLOAD_MAX_MB=25
 - `write`: require `X-API-Key` on write methods (`POST/PUT/PATCH/DELETE`)
 - `all`: require `X-API-Key` on all routed endpoints
 
-If `KLUG_API_KEY` is unset, requests are allowed (local dev convenience).
+In `APP_ENV=dev`, if `KLUG_API_KEY` is unset and no session secret/password is configured, requests are allowed (local dev convenience).
+In `APP_ENV=prod`, write requests fail closed and require a valid `X-API-Key` even if a session cookie is present.
 
 Session auth endpoints:
 - `POST /api/v1/session/login` with `{ "password": "<KLUG_SESSION_PASSWORD>" }`
