@@ -10,6 +10,7 @@ from app.api.session import router as session_router
 from app.api.shows import router as shows_router
 from app.api.users import router as users_router
 from app.api.watch_events import router as watch_events_router
+from app.api.webhooks import router as webhooks_router
 from app.core.config import get_settings
 
 
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
     app.include_router(shows_router, prefix=settings.api_v1_prefix)
     app.include_router(media_items_router, prefix=settings.api_v1_prefix)
     app.include_router(watch_events_router, prefix=settings.api_v1_prefix)
+    app.include_router(webhooks_router, prefix=settings.api_v1_prefix)
     return app
 
 
