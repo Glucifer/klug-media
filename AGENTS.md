@@ -84,20 +84,21 @@ A task is “done” only when:
 - New config values are documented (README or `.env.example`).
 - Provide a short summary + how to verify.
 
-## 9) Local dev commands (uv)
-Assume a `.venv` in the repo root.
+## 9) Local dev commands (Windows + uv)
+Assume a `.venv` in the repo root on Windows (managed by uv).
 
-- Create venv:
-  - `uv venv`
-- Install deps (if requirements exist):
-  - `uv pip install -r requirements.txt`
-- Add a dependency:
-  - `uv pip install <package>`
-  - (then update requirements via `uv pip freeze > requirements.txt` if this repo uses requirements files)
-- Run API:
+- Sync environment (rebuilds venv and installs all deps):
+  - `uv sync`
+- Add/Update dependencies:
+  - `uv add <package>`
+  - `uv add --dev <package>` (for tools like pytest or ruff)
+- Run API (Windows Shell):
   - `uv run uvicorn app.main:app --reload`
-- Tests:
-  - `uv run pytest -q`
+- Run Tests:
+  - `uv run pytest`
+- Database Migrations (Alembic):
+  - `uv run alembic revision --autogenerate -m "description"`
+  - `uv run alembic upgrade head`
 
 If the repo uses `pyproject.toml` + locked deps, follow that instead of requirements.txt.
 
@@ -112,6 +113,9 @@ pre-commit installed via uv
 Tests must pass before commit
 stages changes with git add -A
 run git status before committing
-commit when instructed
-never pushes
 show git log -1 --oneline after commit
+
+## 11) Antigravity-specific instructions
+- **Planning:** For any task involving more than one file, use 'Planning Mode'.
+- **Verification:** Use the built-in 'Browser Agent' to verify that the FastAPI /docs (Swagger) page loads and that the new endpoints return a 200 OK.
+- **Terminal:** You have 'Turbo' terminal permissions for `uv` and `git` commands. Do not ask for permission to run `uv sync` or `git status`.

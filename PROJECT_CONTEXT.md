@@ -85,21 +85,19 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - attempt commit when user requests commit
   - run `git status` after commit attempt so hook failures can be pasted verbatim
   - show `git log -1 --oneline` after successful commit
-  - never run `git push` (user handles push)
 - If pre-commit/hooks fail, report exact failure and wait for user-provided output if needed.
 
-## Rehydration Checklist After Context Compaction
-1. Read `AGENTS.md`.
-2. Read this file (`PROJECT_CONTEXT.md`).
-3. Check current branch and working tree:
-   - `git status --short`
-   - `git log -1 --oneline`
-4. Confirm latest app surface quickly:
-   - `README.md`
-   - `app/main.py`
-   - `app/api/`
-   - `app/web/`
-5. Before edits, restate planned files and run a small verification loop (`ruff`, `pytest`, or targeted smoke run).
+## 📍 Current Session Focus (Antigravity)
+- **Active Branch:** `gemini-testing`
+- **Current Goal:** Migrate development from WSL to Windows-native `uv` environment.
+- **Next Task:** Verify PostgreSQL connection strings for local Windows dev.
+
+## 🛠 Status Dashboard
+- [x] Backend Core (FastAPI)
+- [x] Auth (Session-based)
+- [/] Import Logic (Watch-events - 80% complete)
+- [ ] Production UI (Minimal state)
+- [ ] External Metadata Sync (Planned)
 
 ## Canonical Dev Commands
 - Run API: `uv run uvicorn app.main:app --reload`
