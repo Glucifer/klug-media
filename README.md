@@ -52,7 +52,12 @@ The repository currently includes:
 - TMDB metadata sync
 - Jellyfin webhook sync
 - Radarr/Sonarr import
-- One-time Trakt import workflow
+- One-time external watch-history export import workflow
+
+## Naming Note
+
+Internal app code, identifiers, and docs should use `klug` naming rather than third-party service branding.
+An exception is allowed when documenting or handling one-time import of an external export format, where the external service name may be mentioned descriptively.
 
 ## Local Development (Contributor/Personal Use)
 
@@ -66,13 +71,13 @@ uv venv --python 3.12
 uv sync
 ```
 
-3. Configure optional API auth:
-```bash
-export KLUG_API_KEY=replace-with-long-random-value
-export KLUG_API_AUTH_MODE=write
-export KLUG_SESSION_PASSWORD=replace-with-login-password
-export KLUG_SESSION_SECRET=replace-with-session-signing-secret
-export KLUG_IMPORT_UPLOAD_MAX_MB=25
+3. Configure optional API auth (PowerShell):
+```powershell
+$env:KLUG_API_KEY="replace-with-long-random-value"
+$env:KLUG_API_AUTH_MODE="write"
+$env:KLUG_SESSION_PASSWORD="replace-with-login-password"
+$env:KLUG_SESSION_SECRET="replace-with-session-signing-secret"
+$env:KLUG_IMPORT_UPLOAD_MAX_MB="25"
 ```
 
 `KLUG_API_AUTH_MODE` options:
@@ -100,12 +105,13 @@ uv run uvicorn app.main:app --reload
 uv run pytest -q
 ```
 
-6. Run integration tests (PostgreSQL):
-```bash
-KLUG_TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/klug_media_test uv run pytest -q tests/integration
+6. Run integration tests (PostgreSQL, PowerShell):
+```powershell
+$env:KLUG_TEST_DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/klug_media_test"
+uv run pytest -q tests/integration
 ```
 
-7. Run legacy-source watch-event import script:
+7. Run legacy export watch-event import script:
 ```bash
 uv run python -m app.scripts.import_watch_events --input ./path/to/export.json --input-schema legacy_backup --user-id <your-user-uuid> --mode bootstrap
 ```

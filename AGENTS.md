@@ -2,7 +2,7 @@
 
 You are an AI coding agent working in this repository. Follow these rules strictly.
 
-Besides this AGENTS.md file, you also have PROJECT_CONTEXT.md that you maintain. It is to keep track of your notes on the project, projects status, agreedupon workflows, permissions, etc. This is so when your context gets compacted, you can resume work on the project in the expected manner.
+Besides this AGENTS.md file, you also have PROJECT_CONTEXT.md that you maintain. It is to keep track of project status, agreed-upon workflows, permissions, and current working notes so work can resume cleanly after context compaction.
 
 ## 1) Project goal
 Build a self-hosted media tracking app (“Klug Media”) with a Python backend.
@@ -24,7 +24,8 @@ Do NOT introduce alternative frameworks/tools (e.g., Django, Prisma, Tortoise, a
 unless explicitly asked.
 
 ## 3) Naming + repo boundaries
-- Do NOT use the word “trakt” anywhere in code, identifiers, packages, or docs.
+- Do NOT use the word “trakt” in app/internal code identifiers, package names, module names, or internal architecture docs.
+- Exception: the external service name may appear when specifically describing or implementing one-time import/export compatibility with that external data source.
 - Prefer “klug” for internal identifiers (schemas, app names, env vars).
 - Treat `/db` as read-only unless explicitly instructed.
   - The schema backup file in `/db` is a source artifact. Do not edit/format/rename it.
@@ -102,6 +103,8 @@ Assume a `.venv` in the repo root on Windows (managed by uv).
 
 If the repo uses `pyproject.toml` + locked deps, follow that instead of requirements.txt.
 
+Environment variable examples should use PowerShell syntax unless a task explicitly targets another shell.
+
 ## 10) Communication style
 - Be concise and specific.
 - If something is ambiguous, make a reasonable assumption and state it.
@@ -116,6 +119,6 @@ run git status before committing
 show git log -1 --oneline after commit
 
 ## 11) Antigravity-specific instructions
-- **Planning:** For any task involving more than one file, use 'Planning Mode'.
-- **Verification:** Use the built-in 'Browser Agent' to verify that the FastAPI /docs (Swagger) page loads and that the new endpoints return a 200 OK.
-- **Terminal:** You have 'Turbo' terminal permissions for `uv` and `git` commands. Do not ask for permission to run `uv sync` or `git status`.
+- **Planning:** For any task involving more than one file, provide a short plan before editing and keep it updated as work progresses.
+- **Verification:** Prefer verifying `/docs` loads and new endpoints return `200 OK` when the task adds or changes API behavior and the available Codex environment supports browser verification.
+- **Terminal:** Use the active Codex environment's actual permissions and tools rather than assuming VS Code-specific or legacy app capabilities.

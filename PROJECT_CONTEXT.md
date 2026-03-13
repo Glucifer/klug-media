@@ -35,7 +35,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - accepts JSON/CSV multipart uploads
   - supports `input_schema`, `mode`, `dry_run`, `resume_from_latest`
   - enforces max size via `KLUG_IMPORT_UPLOAD_MAX_MB` (default 25 MB)
-- Legacy-source import script:
+- Legacy export import script:
   - `python -m app.scripts.import_watch_events`
   - supports dry run + incremental resume
 - Backfill script:
@@ -63,7 +63,8 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Hardening items likely still needed over time: broader integration coverage, stricter operational docs, and deployment polish.
 
 ## Naming Conventions and Guardrails
-- Do not use the forbidden external service name in code identifiers/docs.
+- Do not use the forbidden external service name in app/internal identifiers, package names, or internal architecture docs.
+- Exception: the external service name may be used when describing import compatibility with an external export/source format.
 - Prefer `klug` for internal naming where applicable.
 - Keep architecture boring and layered: API -> services -> repositories.
 - Return schema DTOs from APIs, not raw ORM models.
@@ -78,6 +79,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Broad/opaque exception handling.
 
 ## Working Agreements With User
+- This file can include short current-status notes that help resume work after context loss, but avoid stale tool-specific assumptions when possible.
 - Commit workflow:
   - stage changes
   - run tests/checks as appropriate
@@ -87,10 +89,10 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - show `git log -1 --oneline` after successful commit
 - If pre-commit/hooks fail, report exact failure and wait for user-provided output if needed.
 
-## 📍 Current Session Focus (Antigravity)
-- **Active Branch:** `gemini-testing`
-- **Current Goal:** Migrate development from WSL to Windows-native `uv` environment.
-- **Next Task:** Verify PostgreSQL connection strings for local Windows dev.
+## Current Working Context
+- Development environment is Windows-native using the Codex desktop app and `uv`.
+- Prefer guidance that remains valid across sessions; update temporary goal notes when they materially change.
+- If adding temporary session notes here, keep them short and remove or refresh them once they become stale.
 
 ## 🛠 Status Dashboard
 - [x] Backend Core (FastAPI)
@@ -103,7 +105,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Run API: `uv run uvicorn app.main:app --reload`
 - Run tests: `uv run pytest -q`
 - Run lint: `uv run ruff check app tests`
-- Run integration tests: `KLUG_TEST_DATABASE_URL=... uv run pytest -q tests/integration`
+- Run integration tests (PowerShell): `$env:KLUG_TEST_DATABASE_URL="..."; uv run pytest -q tests/integration`
 - Legacy import:
   - `uv run python -m app.scripts.import_watch_events ...`
 - Backfill:
