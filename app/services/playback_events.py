@@ -130,6 +130,38 @@ class PlaybackEventService:
             raise PlaybackEventConstraintError("Failed to record playback event") from exc
 
     @staticmethod
+    def update_playback_event_decision(
+        session: Session,
+        *,
+        playback_event: PlaybackEvent,
+        decision_status: str,
+        decision_reason: str | None,
+        watch_id: UUID | None,
+    ) -> PlaybackEvent:
+        normalized_decision_status = decision_status.strip()
+        normalized_decision_reason = (
+            decision_reason.strip() if decision_reason is not None else None
+        )
+        if not normalized_decision_status:
+            raise ValueError("decision_status must not be empty")
+
+        try:
+            updated = playback_event_repository.update_playback_event_decision(
+                session,
+                playback_event=playback_event,
+                decision_status=normalized_decision_status,
+                decision_reason=normalized_decision_reason,
+                watch_id=watch_id,
+            )
+            session.commit()
+            return updated
+        except IntegrityError as exc:
+            session.rollback()
+            raise PlaybackEventConstraintError(
+                "Failed to update playback event decision"
+            ) from exc
+
+    @staticmethod
     def session_has_prior_scrobble_candidate(
         session: Session,
         *,

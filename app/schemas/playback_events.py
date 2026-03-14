@@ -28,6 +28,9 @@ class PlaybackEventRead(KlugORMModel):
     tvdb_id: int | None
     progress_percent: Decimal | None
     payload: dict = Field(default_factory=dict)
+    decision_status: str | None = None
+    decision_reason: str | None = None
+    watch_id: UUID | None = None
     created_at: datetime
 
 

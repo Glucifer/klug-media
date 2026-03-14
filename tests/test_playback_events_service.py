@@ -210,3 +210,31 @@ def test_get_session_max_progress_percent_normalizes_input(monkeypatch) -> None:
     )
 
     assert result == 96.5
+
+
+def test_update_playback_event_decision_normalizes_input(monkeypatch) -> None:
+    session = Mock()
+    playback_event = Mock()
+    updated_event = Mock()
+
+    def fake_update_playback_event_decision(_session, **kwargs):
+        assert kwargs["decision_status"] == "watch_event_created"
+        assert kwargs["decision_reason"] == "Created from stop event"
+        return updated_event
+
+    monkeypatch.setattr(
+        "app.services.playback_events.playback_event_repository.update_playback_event_decision",
+        fake_update_playback_event_decision,
+    )
+
+    event = PlaybackEventService.update_playback_event_decision(
+        session,
+        playback_event=playback_event,
+        decision_status=" watch_event_created ",
+        decision_reason=" Created from stop event ",
+        watch_id=uuid4(),
+    )
+
+    assert event is updated_event
+    session.commit.assert_called_once()
+    session.rollback.assert_not_called()

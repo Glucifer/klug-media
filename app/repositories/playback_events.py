@@ -86,6 +86,22 @@ def create_playback_event(
     return playback_event
 
 
+def update_playback_event_decision(
+    session: Session,
+    *,
+    playback_event: PlaybackEvent,
+    decision_status: str,
+    decision_reason: str | None,
+    watch_id: UUID | None,
+) -> PlaybackEvent:
+    playback_event.decision_status = decision_status
+    playback_event.decision_reason = decision_reason
+    playback_event.watch_id = watch_id
+    session.flush()
+    session.refresh(playback_event)
+    return playback_event
+
+
 def get_playback_event_by_source_event_id(
     session: Session,
     *,

@@ -10,10 +10,15 @@ from app.services.webhooks import WebhookService
 def test_ingest_kodi_pause_records_without_watch_event(monkeypatch) -> None:
     session = Mock()
     recorded_event = Mock()
+    updated_event = Mock()
 
     monkeypatch.setattr(
         "app.services.webhooks.PlaybackEventService.record_playback_event",
         lambda *_args, **_kwargs: recorded_event,
+    )
+    monkeypatch.setattr(
+        "app.services.webhooks.PlaybackEventService.update_playback_event_decision",
+        lambda *_args, **_kwargs: updated_event,
     )
     monkeypatch.setattr(
         "app.services.webhooks.PlaybackEventService.get_session_max_progress_percent",
@@ -37,20 +42,26 @@ def test_ingest_kodi_pause_records_without_watch_event(monkeypatch) -> None:
     )
 
     assert result.action == "recorded_only"
-    assert result.playback_event is recorded_event
+    assert result.playback_event is updated_event
     assert result.watch_event is None
 
 
 def test_ingest_kodi_stop_creates_watch_event(monkeypatch) -> None:
     session = Mock()
     recorded_event = Mock()
+    updated_event = Mock()
     existing_movie = Mock()
     existing_movie.media_item_id = uuid4()
     created_watch_event = Mock()
+    created_watch_event.watch_id = uuid4()
 
     monkeypatch.setattr(
         "app.services.webhooks.PlaybackEventService.record_playback_event",
         lambda *_args, **_kwargs: recorded_event,
+    )
+    monkeypatch.setattr(
+        "app.services.webhooks.PlaybackEventService.update_playback_event_decision",
+        lambda *_args, **_kwargs: updated_event,
     )
     monkeypatch.setattr(
         "app.services.webhooks.WatchEventService.source_event_exists",
@@ -90,17 +101,22 @@ def test_ingest_kodi_stop_creates_watch_event(monkeypatch) -> None:
     )
 
     assert result.action == "watch_event_created"
-    assert result.playback_event is recorded_event
+    assert result.playback_event is updated_event
     assert result.watch_event is created_watch_event
 
 
 def test_ingest_kodi_stop_skips_duplicate_watch_event(monkeypatch) -> None:
     session = Mock()
     recorded_event = Mock()
+    updated_event = Mock()
 
     monkeypatch.setattr(
         "app.services.webhooks.PlaybackEventService.record_playback_event",
         lambda *_args, **_kwargs: recorded_event,
+    )
+    monkeypatch.setattr(
+        "app.services.webhooks.PlaybackEventService.update_playback_event_decision",
+        lambda *_args, **_kwargs: updated_event,
     )
     monkeypatch.setattr(
         "app.services.webhooks.WatchEventService.source_event_exists",
@@ -128,7 +144,7 @@ def test_ingest_kodi_stop_skips_duplicate_watch_event(monkeypatch) -> None:
     )
 
     assert result.action == "duplicate_watch_event_skipped"
-    assert result.playback_event is recorded_event
+    assert result.playback_event is updated_event
     assert result.watch_event is None
 
 
@@ -136,10 +152,15 @@ def test_ingest_kodi_stop_skips_when_session_already_scrobbled(monkeypatch) -> N
     session = Mock()
     recorded_event = Mock()
     recorded_event.playback_event_id = uuid4()
+    updated_event = Mock()
 
     monkeypatch.setattr(
         "app.services.webhooks.PlaybackEventService.record_playback_event",
         lambda *_args, **_kwargs: recorded_event,
+    )
+    monkeypatch.setattr(
+        "app.services.webhooks.PlaybackEventService.update_playback_event_decision",
+        lambda *_args, **_kwargs: updated_event,
     )
     monkeypatch.setattr(
         "app.services.webhooks.WatchEventService.source_event_exists",
@@ -171,7 +192,7 @@ def test_ingest_kodi_stop_skips_when_session_already_scrobbled(monkeypatch) -> N
     )
 
     assert result.action == "duplicate_watch_event_skipped"
-    assert result.playback_event is recorded_event
+    assert result.playback_event is updated_event
     assert result.watch_event is None
     assert result.reason == "Playback session already produced a watch event"
 
@@ -182,13 +203,19 @@ def test_ingest_kodi_stop_uses_prior_session_progress_to_create_watch_event(
     session = Mock()
     recorded_event = Mock()
     recorded_event.playback_event_id = uuid4()
+    updated_event = Mock()
     existing_movie = Mock()
     existing_movie.media_item_id = uuid4()
     created_watch_event = Mock()
+    created_watch_event.watch_id = uuid4()
 
     monkeypatch.setattr(
         "app.services.webhooks.PlaybackEventService.record_playback_event",
         lambda *_args, **_kwargs: recorded_event,
+    )
+    monkeypatch.setattr(
+        "app.services.webhooks.PlaybackEventService.update_playback_event_decision",
+        lambda *_args, **_kwargs: updated_event,
     )
     monkeypatch.setattr(
         "app.services.webhooks.WatchEventService.source_event_exists",
@@ -228,4 +255,5 @@ def test_ingest_kodi_stop_uses_prior_session_progress_to_create_watch_event(
     )
 
     assert result.action == "watch_event_created"
+    assert result.playback_event is updated_event
     assert result.watch_event is created_watch_event

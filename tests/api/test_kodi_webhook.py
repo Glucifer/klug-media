@@ -119,6 +119,9 @@ def test_kodi_event_endpoint_records_without_watch_event(monkeypatch) -> None:
     playback_event.tvdb_id = None
     playback_event.progress_percent = 42.5
     playback_event.payload = {"player_state": "paused"}
+    playback_event.decision_status = "recorded_only"
+    playback_event.decision_reason = "Event recorded for later scrobble evaluation"
+    playback_event.watch_id = None
     playback_event.created_at = "2026-01-01T00:00:01Z"
 
     def fake_ingest(*args, **kwargs):

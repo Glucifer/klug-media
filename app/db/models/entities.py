@@ -334,6 +334,12 @@ class PlaybackEvent(Base):
     payload: Mapped[dict[str, Any]] = mapped_column(
         JSONB, server_default=text("'{}'::jsonb"), nullable=False
     )
+    decision_status: Mapped[str | None] = mapped_column(String)
+    decision_reason: Mapped[str | None] = mapped_column(String)
+    watch_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey(f"{APP_SCHEMA}.watch_event.watch_id", ondelete="SET NULL"),
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )

@@ -57,6 +57,13 @@ class WebhookService:
                 payload=payload,
             )
         if not should_create_watch_event:
+            playback_event = PlaybackEventService.update_playback_event_decision(
+                session,
+                playback_event=playback_event,
+                decision_status="recorded_only",
+                decision_reason="Event recorded for later scrobble evaluation",
+                watch_id=None,
+            )
             return PlaybackIngestResult(
                 action="recorded_only",
                 playback_event=playback_event,
@@ -68,6 +75,13 @@ class WebhookService:
             playback_source=payload.playback_source,
             source_event_id=payload.source_event_id,
         ):
+            playback_event = PlaybackEventService.update_playback_event_decision(
+                session,
+                playback_event=playback_event,
+                decision_status="duplicate_watch_event_skipped",
+                decision_reason="Watch event already exists for this source event",
+                watch_id=None,
+            )
             return PlaybackIngestResult(
                 action="duplicate_watch_event_skipped",
                 playback_event=playback_event,
@@ -82,6 +96,13 @@ class WebhookService:
             session_key=payload.session_key,
             exclude_playback_event_id=playback_event.playback_event_id,
         ):
+            playback_event = PlaybackEventService.update_playback_event_decision(
+                session,
+                playback_event=playback_event,
+                decision_status="duplicate_watch_event_skipped",
+                decision_reason="Playback session already produced a watch event",
+                watch_id=None,
+            )
             return PlaybackIngestResult(
                 action="duplicate_watch_event_skipped",
                 playback_event=playback_event,
@@ -103,6 +124,13 @@ class WebhookService:
             rating_scale=None,
             media_version_id=None,
             source_event_id=payload.source_event_id,
+        )
+        playback_event = PlaybackEventService.update_playback_event_decision(
+            session,
+            playback_event=playback_event,
+            decision_status="watch_event_created",
+            decision_reason=None,
+            watch_id=watch_event.watch_id,
         )
 
         return PlaybackIngestResult(
