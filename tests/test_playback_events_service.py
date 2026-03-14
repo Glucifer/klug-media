@@ -159,3 +159,54 @@ def test_record_playback_event_integrity_error_maps_to_constraint_error(
         )
 
     session.rollback.assert_called_once()
+
+
+def test_session_has_prior_scrobble_candidate_normalizes_input(monkeypatch) -> None:
+    session = Mock()
+
+    def fake_session_has_prior_scrobble_candidate(_session, **kwargs):
+        assert kwargs["collector"] == "node_red"
+        assert kwargs["playback_source"] == "kodi"
+        assert kwargs["session_key"] == "session-1"
+        return True
+
+    monkeypatch.setattr(
+        "app.services.playback_events.playback_event_repository.session_has_prior_scrobble_candidate",
+        fake_session_has_prior_scrobble_candidate,
+    )
+
+    result = PlaybackEventService.session_has_prior_scrobble_candidate(
+        session,
+        collector=" node_red ",
+        playback_source=" kodi ",
+        user_id=uuid4(),
+        session_key=" session-1 ",
+        exclude_playback_event_id=uuid4(),
+    )
+
+    assert result is True
+
+
+def test_get_session_max_progress_percent_normalizes_input(monkeypatch) -> None:
+    session = Mock()
+
+    def fake_get_session_max_progress_percent(_session, **kwargs):
+        assert kwargs["collector"] == "node_red"
+        assert kwargs["playback_source"] == "kodi"
+        assert kwargs["session_key"] == "session-1"
+        return 96.5
+
+    monkeypatch.setattr(
+        "app.services.playback_events.playback_event_repository.get_session_max_progress_percent",
+        fake_get_session_max_progress_percent,
+    )
+
+    result = PlaybackEventService.get_session_max_progress_percent(
+        session,
+        collector=" node_red ",
+        playback_source=" kodi ",
+        user_id=uuid4(),
+        session_key=" session-1 ",
+    )
+
+    assert result == 96.5

@@ -38,8 +38,10 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Kodi playback ingestion endpoints:
   - `POST /api/v1/webhooks/kodi/events`
   - `POST /api/v1/webhooks/kodi/scrobble`
+  - `GET /api/v1/playback-events`
   - raw-ish playback events are now persisted before watch-event decisions are made
   - current decision engine creates watch events for explicit `scrobble` events and high-progress `stop` events
+  - playback-event visibility is available through a filtered read API for debugging collector input and scrobble decisions
 - Legacy export import script:
   - `python -m app.scripts.import_watch_events`
   - supports dry run + incremental resume

@@ -50,7 +50,13 @@ class WebhookService:
             payload=payload.payload,
         )
 
-        if not WebhookService._should_create_watch_event(payload):
+        should_create_watch_event = WebhookService._should_create_watch_event(payload)
+        if not should_create_watch_event:
+            should_create_watch_event = WebhookService._should_create_watch_event_from_session(
+                session,
+                payload=payload,
+            )
+        if not should_create_watch_event:
             return PlaybackIngestResult(
                 action="recorded_only",
                 playback_event=playback_event,
@@ -66,6 +72,20 @@ class WebhookService:
                 action="duplicate_watch_event_skipped",
                 playback_event=playback_event,
                 reason="Watch event already exists for this source event",
+            )
+
+        if payload.session_key and PlaybackEventService.session_has_prior_scrobble_candidate(
+            session,
+            collector="node_red",
+            playback_source=payload.playback_source,
+            user_id=payload.user_id,
+            session_key=payload.session_key,
+            exclude_playback_event_id=playback_event.playback_event_id,
+        ):
+            return PlaybackIngestResult(
+                action="duplicate_watch_event_skipped",
+                playback_event=playback_event,
+                reason="Playback session already produced a watch event",
             )
 
         media_item_id = WebhookService._resolve_media_item_id(session, payload=payload)
@@ -128,6 +148,26 @@ class WebhookService:
             payload.progress_percent is not None
             and payload.progress_percent >= Decimal("90")
         )
+
+    @staticmethod
+    def _should_create_watch_event_from_session(
+        session: Session,
+        *,
+        payload: KodiPlaybackEventPayload,
+    ) -> bool:
+        if payload.event_type != "stop" or not payload.session_key:
+            return False
+
+        max_progress = PlaybackEventService.get_session_max_progress_percent(
+            session,
+            collector="node_red",
+            playback_source=payload.playback_source,
+            user_id=payload.user_id,
+            session_key=payload.session_key,
+        )
+        if max_progress is None:
+            return False
+        return Decimal(str(max_progress)) >= Decimal("90")
 
     @staticmethod
     def _resolve_media_item_id(

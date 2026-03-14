@@ -20,6 +20,41 @@ class PlaybackEventDuplicateError(PlaybackEventConstraintError):
 
 class PlaybackEventService:
     @staticmethod
+    def list_playback_events(
+        session: Session,
+        *,
+        user_id: UUID | None,
+        playback_source: str | None,
+        collector: str | None,
+        session_key: str | None,
+        event_type: str | None,
+        media_type: str | None,
+        limit: int,
+        offset: int,
+    ) -> list[PlaybackEvent]:
+        safe_limit = max(1, min(limit, 100))
+        safe_offset = max(0, offset)
+        normalized_playback_source = (
+            playback_source.strip() if playback_source is not None else None
+        )
+        normalized_collector = collector.strip() if collector is not None else None
+        normalized_session_key = session_key.strip() if session_key is not None else None
+        normalized_event_type = event_type.strip() if event_type is not None else None
+        normalized_media_type = media_type.strip() if media_type is not None else None
+
+        return playback_event_repository.list_playback_events(
+            session,
+            user_id=user_id,
+            playback_source=normalized_playback_source,
+            collector=normalized_collector,
+            session_key=normalized_session_key,
+            event_type=normalized_event_type,
+            media_type=normalized_media_type,
+            limit=safe_limit,
+            offset=safe_offset,
+        )
+
+    @staticmethod
     def record_playback_event(
         session: Session,
         *,
@@ -93,3 +128,61 @@ class PlaybackEventService:
             if constraint_name == "ux_playback_event_source_event":
                 raise PlaybackEventDuplicateError("Playback event already exists") from exc
             raise PlaybackEventConstraintError("Failed to record playback event") from exc
+
+    @staticmethod
+    def session_has_prior_scrobble_candidate(
+        session: Session,
+        *,
+        collector: str,
+        playback_source: str,
+        user_id: UUID,
+        session_key: str,
+        exclude_playback_event_id: UUID,
+    ) -> bool:
+        normalized_collector = collector.strip()
+        normalized_playback_source = playback_source.strip()
+        normalized_session_key = session_key.strip()
+
+        if not normalized_collector:
+            raise ValueError("collector must not be empty")
+        if not normalized_playback_source:
+            raise ValueError("playback_source must not be empty")
+        if not normalized_session_key:
+            raise ValueError("session_key must not be empty")
+
+        return playback_event_repository.session_has_prior_scrobble_candidate(
+            session,
+            collector=normalized_collector,
+            playback_source=normalized_playback_source,
+            user_id=user_id,
+            session_key=normalized_session_key,
+            exclude_playback_event_id=exclude_playback_event_id,
+        )
+
+    @staticmethod
+    def get_session_max_progress_percent(
+        session: Session,
+        *,
+        collector: str,
+        playback_source: str,
+        user_id: UUID,
+        session_key: str,
+    ) -> float | None:
+        normalized_collector = collector.strip()
+        normalized_playback_source = playback_source.strip()
+        normalized_session_key = session_key.strip()
+
+        if not normalized_collector:
+            raise ValueError("collector must not be empty")
+        if not normalized_playback_source:
+            raise ValueError("playback_source must not be empty")
+        if not normalized_session_key:
+            raise ValueError("session_key must not be empty")
+
+        return playback_event_repository.get_session_max_progress_percent(
+            session,
+            collector=normalized_collector,
+            playback_source=normalized_playback_source,
+            user_id=user_id,
+            session_key=normalized_session_key,
+        )

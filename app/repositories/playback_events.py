@@ -1,9 +1,43 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db.models.entities import PlaybackEvent
+
+
+def list_playback_events(
+    session: Session,
+    *,
+    user_id: UUID | None,
+    playback_source: str | None,
+    collector: str | None,
+    session_key: str | None,
+    event_type: str | None,
+    media_type: str | None,
+    limit: int,
+    offset: int,
+) -> list[PlaybackEvent]:
+    statement: Select[tuple[PlaybackEvent]] = select(PlaybackEvent)
+    if user_id is not None:
+        statement = statement.where(PlaybackEvent.user_id == user_id)
+    if playback_source is not None:
+        statement = statement.where(PlaybackEvent.playback_source == playback_source)
+    if collector is not None:
+        statement = statement.where(PlaybackEvent.collector == collector)
+    if session_key is not None:
+        statement = statement.where(PlaybackEvent.session_key == session_key)
+    if event_type is not None:
+        statement = statement.where(PlaybackEvent.event_type == event_type)
+    if media_type is not None:
+        statement = statement.where(PlaybackEvent.media_type == media_type)
+
+    statement = (
+        statement.order_by(PlaybackEvent.occurred_at.desc(), PlaybackEvent.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    return list(session.scalars(statement))
 
 
 def create_playback_event(
@@ -63,3 +97,51 @@ def get_playback_event_by_source_event_id(
         PlaybackEvent.source_event_id == source_event_id,
     )
     return session.scalar(statement)
+
+
+def session_has_prior_scrobble_candidate(
+    session: Session,
+    *,
+    collector: str,
+    playback_source: str,
+    user_id: UUID,
+    session_key: str,
+    exclude_playback_event_id: UUID,
+) -> bool:
+    statement = select(PlaybackEvent.playback_event_id).where(
+        PlaybackEvent.collector == collector,
+        PlaybackEvent.playback_source == playback_source,
+        PlaybackEvent.user_id == user_id,
+        PlaybackEvent.session_key == session_key,
+        PlaybackEvent.playback_event_id != exclude_playback_event_id,
+        or_(
+            PlaybackEvent.event_type == "scrobble",
+            (
+                (PlaybackEvent.event_type == "stop")
+                & (PlaybackEvent.progress_percent.is_not(None))
+                & (PlaybackEvent.progress_percent >= 90)
+            ),
+        ),
+    )
+    return session.scalar(statement) is not None
+
+
+def get_session_max_progress_percent(
+    session: Session,
+    *,
+    collector: str,
+    playback_source: str,
+    user_id: UUID,
+    session_key: str,
+) -> float | None:
+    statement = select(func.max(PlaybackEvent.progress_percent)).where(
+        PlaybackEvent.collector == collector,
+        PlaybackEvent.playback_source == playback_source,
+        PlaybackEvent.user_id == user_id,
+        PlaybackEvent.session_key == session_key,
+        PlaybackEvent.progress_percent.is_not(None),
+    )
+    max_progress = session.scalar(statement)
+    if max_progress is None:
+        return None
+    return float(max_progress)
