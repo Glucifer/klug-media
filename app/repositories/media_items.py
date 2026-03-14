@@ -18,6 +18,10 @@ def create_media_item(
     tmdb_id: int | None,
     imdb_id: str | None,
     tvdb_id: int | None,
+    show_tmdb_id: int | None = None,
+    season_number: int | None = None,
+    episode_number: int | None = None,
+    show_id=None,
 ) -> MediaItem:
     media_item = MediaItem(
         type=media_type,
@@ -26,6 +30,10 @@ def create_media_item(
         tmdb_id=tmdb_id,
         imdb_id=imdb_id,
         tvdb_id=tvdb_id,
+        show_tmdb_id=show_tmdb_id,
+        season_number=season_number,
+        episode_number=episode_number,
+        show_id=show_id,
     )
     session.add(media_item)
     session.flush()
@@ -59,6 +67,22 @@ def find_media_item_by_external_ids(
             return found
 
     return None
+
+
+def find_episode_media_item(
+    session: Session,
+    *,
+    show_tmdb_id: int,
+    season_number: int,
+    episode_number: int,
+) -> MediaItem | None:
+    statement = select(MediaItem).where(
+        MediaItem.type == "episode",
+        MediaItem.show_tmdb_id == show_tmdb_id,
+        MediaItem.season_number == season_number,
+        MediaItem.episode_number == episode_number,
+    )
+    return session.scalar(statement)
 
 
 def list_episode_media_items_missing_show_id(

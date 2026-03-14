@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.core.config import get_settings
 from app.main import app
+from app.services.webhooks import PlaybackIngestResult
 from app.services.webhooks import WebhookService
 
 
@@ -95,6 +96,63 @@ def test_kodi_movie_scrobble(monkeypatch) -> None:
     assert called is True
     data = response.json()
     assert data["playback_source"] == "Kodi Node-Red"
+
+
+def test_kodi_event_endpoint_records_without_watch_event(monkeypatch) -> None:
+    _set_auth(monkeypatch, api_key=None, auth_mode="write", app_env="dev")
+    playback_event = MagicMock()
+    playback_event.playback_event_id = uuid4()
+    playback_event.collector = "node_red"
+    playback_event.playback_source = "kodi"
+    playback_event.event_type = "pause"
+    playback_event.user_id = uuid4()
+    playback_event.occurred_at = "2026-01-01T00:00:00Z"
+    playback_event.source_event_id = "evt-1"
+    playback_event.session_key = "session-1"
+    playback_event.media_type = "movie"
+    playback_event.title = "The Matrix"
+    playback_event.year = 1999
+    playback_event.season_number = None
+    playback_event.episode_number = None
+    playback_event.tmdb_id = 603
+    playback_event.imdb_id = None
+    playback_event.tvdb_id = None
+    playback_event.progress_percent = 42.5
+    playback_event.payload = {"player_state": "paused"}
+    playback_event.created_at = "2026-01-01T00:00:01Z"
+
+    def fake_ingest(*args, **kwargs):
+        return PlaybackIngestResult(
+            action="recorded_only",
+            reason="Event recorded for later scrobble evaluation",
+            playback_event=playback_event,
+        )
+
+    monkeypatch.setattr(WebhookService, "ingest_kodi_playback_event", fake_ingest)
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/webhooks/kodi/events",
+        json={
+            "user_id": str(uuid4()),
+            "event_type": "pause",
+            "occurred_at": "2026-01-01T00:00:00Z",
+            "source_event_id": "evt-1",
+            "session_key": "session-1",
+            "media_type": "movie",
+            "title": "The Matrix",
+            "year": 1999,
+            "tmdb_id": 603,
+            "progress_percent": 42.5,
+            "payload": {"player_state": "paused"},
+        },
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["action"] == "recorded_only"
+    assert data["watch_event"] is None
+    assert data["playback_event"]["event_type"] == "pause"
 
 
 def test_kodi_episode_missing_show_metadata(monkeypatch) -> None:

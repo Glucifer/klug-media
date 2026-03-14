@@ -291,6 +291,54 @@ class User(Base):
     watch_events: Mapped[list[WatchEvent]] = relationship(back_populates="user")
 
 
+class PlaybackEvent(Base):
+    __tablename__ = "playback_event"
+    __table_args__ = (
+        Index(
+            "ux_playback_event_source_event",
+            "collector",
+            "source_event_id",
+            unique=True,
+            postgresql_where=text("source_event_id IS NOT NULL"),
+        ),
+        Index("ix_playback_event_user_time", "user_id", text("occurred_at DESC")),
+        Index("ix_playback_event_source_time", "playback_source", text("occurred_at DESC")),
+        {"schema": APP_SCHEMA},
+    )
+
+    playback_event_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    collector: Mapped[str] = mapped_column(String, nullable=False)
+    playback_source: Mapped[str] = mapped_column(String, nullable=False)
+    event_type: Mapped[str] = mapped_column(String, nullable=False)
+    user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey(f"{APP_SCHEMA}.users.user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    source_event_id: Mapped[str | None] = mapped_column(String)
+    session_key: Mapped[str | None] = mapped_column(String)
+    media_type: Mapped[str] = mapped_column(MEDIA_TYPE_ENUM, nullable=False)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    year: Mapped[int | None] = mapped_column(Integer)
+    season_number: Mapped[int | None] = mapped_column(Integer)
+    episode_number: Mapped[int | None] = mapped_column(Integer)
+    tmdb_id: Mapped[int | None] = mapped_column(Integer)
+    imdb_id: Mapped[str | None] = mapped_column(String)
+    tvdb_id: Mapped[int | None] = mapped_column(Integer)
+    progress_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    payload: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, server_default=text("'{}'::jsonb"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+
+
 class WatchEvent(Base):
     __tablename__ = "watch_event"
     __table_args__ = (

@@ -35,6 +35,11 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - accepts JSON/CSV multipart uploads
   - supports `input_schema`, `mode`, `dry_run`, `resume_from_latest`
   - enforces max size via `KLUG_IMPORT_UPLOAD_MAX_MB` (default 25 MB)
+- Kodi playback ingestion endpoints:
+  - `POST /api/v1/webhooks/kodi/events`
+  - `POST /api/v1/webhooks/kodi/scrobble`
+  - raw-ish playback events are now persisted before watch-event decisions are made
+  - current decision engine creates watch events for explicit `scrobble` events and high-progress `stop` events
 - Legacy export import script:
   - `python -m app.scripts.import_watch_events`
   - supports dry run + incremental resume
@@ -60,6 +65,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Production-grade frontend UI (current page is intentionally minimal).
 - Full watch-history browsing UX polish (sorting/search/column customization, richer metadata views).
 - Planned external sync integrations (metadata/webhooks/automation connectors) are not fully implemented.
+- Scrobbler pipeline is only partially implemented: Kodi/Node-RED ingestion now exists, but richer session/resume handling and additional playback sources still need work.
 - Hardening items likely still needed over time: broader integration coverage, stricter operational docs, and deployment polish.
 
 ## Naming Conventions and Guardrails
