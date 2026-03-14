@@ -26,6 +26,8 @@ class DummyPlaybackEvent:
         self.tmdb_id = 603
         self.imdb_id = "tt0133093"
         self.tvdb_id = None
+        self.total_seconds = 8160
+        self.watched_seconds = 7752
         self.progress_percent = Decimal("95.00")
         self.payload = {"state": "stopped"}
         self.created_at = datetime.now(UTC)
@@ -54,6 +56,8 @@ def test_list_playback_events_returns_items(monkeypatch) -> None:
     payload = response.json()
     assert len(payload) == 1
     assert payload[0]["playback_source"] == "kodi"
+    assert payload[0]["total_seconds"] == 8160
+    assert payload[0]["watched_seconds"] == 7752
     assert payload[0]["payload"]["state"] == "stopped"
 
 

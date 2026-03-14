@@ -330,6 +330,8 @@ class PlaybackEvent(Base):
     tmdb_id: Mapped[int | None] = mapped_column(Integer)
     imdb_id: Mapped[str | None] = mapped_column(String)
     tvdb_id: Mapped[int | None] = mapped_column(Integer)
+    total_seconds: Mapped[int | None] = mapped_column(Integer)
+    watched_seconds: Mapped[int | None] = mapped_column(Integer)
     progress_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     payload: Mapped[dict[str, Any]] = mapped_column(
         JSONB, server_default=text("'{}'::jsonb"), nullable=False

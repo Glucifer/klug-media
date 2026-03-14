@@ -23,6 +23,8 @@ def test_record_playback_event_normalizes_input(monkeypatch) -> None:
         assert kwargs["event_type"] == "stop"
         assert kwargs["title"] == "The Matrix"
         assert kwargs["imdb_id"] == "tt0133093"
+        assert kwargs["total_seconds"] == 7200
+        assert kwargs["watched_seconds"] == 7020
         return expected_event
 
     monkeypatch.setattr(
@@ -47,6 +49,8 @@ def test_record_playback_event_normalizes_input(monkeypatch) -> None:
         tmdb_id=603,
         imdb_id=" tt0133093 ",
         tvdb_id=None,
+        total_seconds=7200,
+        watched_seconds=7020,
         progress_percent=Decimal("97.50"),
         payload={"state": "stopped"},
     )
@@ -77,6 +81,8 @@ def test_record_playback_event_empty_title_raises_value_error() -> None:
             tmdb_id=None,
             imdb_id=None,
             tvdb_id=None,
+            total_seconds=None,
+            watched_seconds=None,
             progress_percent=None,
             payload={},
         )
@@ -116,6 +122,8 @@ def test_record_playback_event_duplicate_maps_to_domain_error(monkeypatch) -> No
             tmdb_id=603,
             imdb_id=None,
             tvdb_id=None,
+            total_seconds=None,
+            watched_seconds=None,
             progress_percent=Decimal("98.00"),
             payload={},
         )
@@ -154,6 +162,8 @@ def test_record_playback_event_integrity_error_maps_to_constraint_error(
             tmdb_id=603,
             imdb_id=None,
             tvdb_id=None,
+            total_seconds=None,
+            watched_seconds=None,
             progress_percent=Decimal("98.00"),
             payload={},
         )

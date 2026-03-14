@@ -117,6 +117,8 @@ def test_kodi_event_endpoint_records_without_watch_event(monkeypatch) -> None:
     playback_event.tmdb_id = 603
     playback_event.imdb_id = None
     playback_event.tvdb_id = None
+    playback_event.total_seconds = 7200
+    playback_event.watched_seconds = 3060
     playback_event.progress_percent = 42.5
     playback_event.payload = {"player_state": "paused"}
     playback_event.decision_status = "recorded_only"
@@ -146,6 +148,8 @@ def test_kodi_event_endpoint_records_without_watch_event(monkeypatch) -> None:
             "title": "The Matrix",
             "year": 1999,
             "tmdb_id": 603,
+            "total_seconds": 7200,
+            "watched_seconds": 3060,
             "progress_percent": 42.5,
             "payload": {"player_state": "paused"},
         },

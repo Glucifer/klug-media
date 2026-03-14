@@ -58,6 +58,8 @@ def create_playback_event(
     tmdb_id: int | None,
     imdb_id: str | None,
     tvdb_id: int | None,
+    total_seconds: int | None,
+    watched_seconds: int | None,
     progress_percent,
     payload: dict,
 ) -> PlaybackEvent:
@@ -77,6 +79,8 @@ def create_playback_event(
         tmdb_id=tmdb_id,
         imdb_id=imdb_id,
         tvdb_id=tvdb_id,
+        total_seconds=total_seconds,
+        watched_seconds=watched_seconds,
         progress_percent=progress_percent,
         payload=payload,
     )

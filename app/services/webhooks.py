@@ -46,6 +46,8 @@ class WebhookService:
             tmdb_id=payload.tmdb_id,
             imdb_id=payload.imdb_id,
             tvdb_id=payload.tvdb_id,
+            total_seconds=payload.total_seconds,
+            watched_seconds=payload.watched_seconds,
             progress_percent=payload.progress_percent,
             payload=payload.payload,
         )

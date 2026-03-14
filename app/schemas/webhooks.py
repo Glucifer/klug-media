@@ -24,6 +24,8 @@ class KodiPlaybackEventPayload(KlugBaseModel):
     tmdb_id: int | None = None
     imdb_id: str | None = None
     tvdb_id: int | None = None
+    total_seconds: int | None = Field(default=None, ge=0)
+    watched_seconds: int | None = Field(default=None, ge=0)
     progress_percent: Decimal | None = Field(default=None, ge=0, le=100)
     playback_source: str = Field(default="kodi", min_length=1, max_length=100)
     payload: dict = Field(default_factory=dict)

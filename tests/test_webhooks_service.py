@@ -37,6 +37,8 @@ def test_ingest_kodi_pause_records_without_watch_event(monkeypatch) -> None:
             title="The Matrix",
             year=1999,
             tmdb_id=603,
+            total_seconds=7200,
+            watched_seconds=3240,
             progress_percent=Decimal("45.00"),
         ),
     )
@@ -96,6 +98,8 @@ def test_ingest_kodi_stop_creates_watch_event(monkeypatch) -> None:
             title="The Matrix",
             year=1999,
             tmdb_id=603,
+            total_seconds=7200,
+            watched_seconds=6840,
             progress_percent=Decimal("95.00"),
         ),
     )
@@ -139,6 +143,8 @@ def test_ingest_kodi_stop_skips_duplicate_watch_event(monkeypatch) -> None:
             title="The Matrix",
             year=1999,
             tmdb_id=603,
+            total_seconds=7200,
+            watched_seconds=6912,
             progress_percent=Decimal("96.00"),
         ),
     )
@@ -187,6 +193,8 @@ def test_ingest_kodi_stop_skips_when_session_already_scrobbled(monkeypatch) -> N
             title="The Matrix",
             year=1999,
             tmdb_id=603,
+            total_seconds=7200,
+            watched_seconds=6912,
             progress_percent=Decimal("96.00"),
         ),
     )
@@ -250,6 +258,8 @@ def test_ingest_kodi_stop_uses_prior_session_progress_to_create_watch_event(
             title="The Matrix",
             year=1999,
             tmdb_id=603,
+            total_seconds=7200,
+            watched_seconds=5904,
             progress_percent=Decimal("82.00"),
         ),
     )

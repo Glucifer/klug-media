@@ -73,6 +73,8 @@ class PlaybackEventService:
         tmdb_id: int | None,
         imdb_id: str | None,
         tvdb_id: int | None,
+        total_seconds: int | None,
+        watched_seconds: int | None,
         progress_percent: Decimal | None,
         payload: dict,
     ) -> PlaybackEvent:
@@ -115,6 +117,8 @@ class PlaybackEventService:
                 tmdb_id=tmdb_id,
                 imdb_id=normalized_imdb_id,
                 tvdb_id=tvdb_id,
+                total_seconds=total_seconds,
+                watched_seconds=watched_seconds,
                 progress_percent=progress_percent,
                 payload=payload,
             )
