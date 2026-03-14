@@ -168,15 +168,12 @@ class WebhookService:
             return True
         if payload.event_type != "stop":
             return False
-        if payload.progress_percent is None:
-            return False
-        return payload.progress_percent >= Decimal("90")
+        return WebhookService._effective_completion_ratio(payload) >= Decimal("0.90")
 
     @staticmethod
     def _is_completed(payload: KodiPlaybackEventPayload) -> bool:
         return payload.event_type == "scrobble" or (
-            payload.progress_percent is not None
-            and payload.progress_percent >= Decimal("90")
+            WebhookService._effective_completion_ratio(payload) >= Decimal("0.90")
         )
 
     @staticmethod
@@ -198,6 +195,21 @@ class WebhookService:
         if max_progress is None:
             return False
         return Decimal(str(max_progress)) >= Decimal("90")
+
+    @staticmethod
+    def _effective_completion_ratio(payload: KodiPlaybackEventPayload) -> Decimal:
+        if payload.progress_percent is not None:
+            return payload.progress_percent / Decimal("100")
+
+        if (
+            payload.total_seconds is not None
+            and payload.total_seconds > 0
+            and payload.watched_seconds is not None
+        ):
+            watched_seconds = min(payload.watched_seconds, payload.total_seconds)
+            return Decimal(watched_seconds) / Decimal(payload.total_seconds)
+
+        return Decimal("0")
 
     @staticmethod
     def _resolve_media_item_id(
