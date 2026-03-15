@@ -18,6 +18,10 @@ class PlaybackEventDuplicateError(PlaybackEventConstraintError):
     """Raised when the same playback event is recorded more than once."""
 
 
+class PlaybackEventNotFoundError(Exception):
+    """Raised when a playback event does not exist."""
+
+
 class PlaybackEventService:
     @staticmethod
     def list_playback_events(
@@ -29,6 +33,7 @@ class PlaybackEventService:
         session_key: str | None,
         event_type: str | None,
         media_type: str | None,
+        decision_status: str | None,
         limit: int,
         offset: int,
     ) -> list[PlaybackEvent]:
@@ -41,6 +46,9 @@ class PlaybackEventService:
         normalized_session_key = session_key.strip() if session_key is not None else None
         normalized_event_type = event_type.strip() if event_type is not None else None
         normalized_media_type = media_type.strip() if media_type is not None else None
+        normalized_decision_status = (
+            decision_status.strip() if decision_status is not None else None
+        )
 
         return playback_event_repository.list_playback_events(
             session,
@@ -50,9 +58,24 @@ class PlaybackEventService:
             session_key=normalized_session_key,
             event_type=normalized_event_type,
             media_type=normalized_media_type,
+            decision_status=normalized_decision_status,
             limit=safe_limit,
             offset=safe_offset,
         )
+
+    @staticmethod
+    def get_playback_event(
+        session: Session,
+        *,
+        playback_event_id: UUID,
+    ) -> PlaybackEvent:
+        playback_event = playback_event_repository.get_playback_event(
+            session,
+            playback_event_id=playback_event_id,
+        )
+        if playback_event is None:
+            raise PlaybackEventNotFoundError(str(playback_event_id))
+        return playback_event
 
     @staticmethod
     def record_playback_event(

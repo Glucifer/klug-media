@@ -13,6 +13,7 @@ def test_list_playback_events_normalizes_filters_and_clamps_paging(monkeypatch) 
         assert kwargs["session_key"] == "session-1"
         assert kwargs["event_type"] == "stop"
         assert kwargs["media_type"] == "movie"
+        assert kwargs["decision_status"] == "watch_event_created"
         assert kwargs["limit"] == 100
         assert kwargs["offset"] == 0
         return []
@@ -30,6 +31,7 @@ def test_list_playback_events_normalizes_filters_and_clamps_paging(monkeypatch) 
         session_key=" session-1 ",
         event_type=" stop ",
         media_type=" movie ",
+        decision_status=" watch_event_created ",
         limit=500,
         offset=-10,
     )

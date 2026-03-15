@@ -77,7 +77,7 @@ def test_list_playback_events_forwards_filters(monkeypatch) -> None:
 
     client = TestClient(app)
     response = client.get(
-        f"/api/v1/playback-events?user_id={event.user_id}&playback_source=kodi&collector=node_red&session_key=session-1&event_type=stop&media_type=movie&limit=10&offset=5"
+        f"/api/v1/playback-events?user_id={event.user_id}&playback_source=kodi&collector=node_red&session_key=session-1&event_type=stop&media_type=movie&decision_status=watch_event_created&limit=10&offset=5"
     )
 
     assert response.status_code == 200
@@ -87,6 +87,7 @@ def test_list_playback_events_forwards_filters(monkeypatch) -> None:
     assert called["session_key"] == "session-1"
     assert called["event_type"] == "stop"
     assert called["media_type"] == "movie"
+    assert called["decision_status"] == "watch_event_created"
     assert called["limit"] == 10
     assert called["offset"] == 5
 
@@ -95,3 +96,19 @@ def test_list_playback_events_invalid_media_type_returns_422() -> None:
     client = TestClient(app)
     response = client.get("/api/v1/playback-events?media_type=bad")
     assert response.status_code == 422
+
+
+def test_get_playback_event_returns_item(monkeypatch) -> None:
+    event = DummyPlaybackEvent()
+
+    monkeypatch.setattr(
+        PlaybackEventService,
+        "get_playback_event",
+        lambda _session, **_kwargs: event,
+    )
+
+    client = TestClient(app)
+    response = client.get(f"/api/v1/playback-events/{event.playback_event_id}")
+
+    assert response.status_code == 200
+    assert response.json()["playback_event_id"] == str(event.playback_event_id)

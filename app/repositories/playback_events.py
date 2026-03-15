@@ -15,6 +15,7 @@ def list_playback_events(
     session_key: str | None,
     event_type: str | None,
     media_type: str | None,
+    decision_status: str | None,
     limit: int,
     offset: int,
 ) -> list[PlaybackEvent]:
@@ -31,6 +32,8 @@ def list_playback_events(
         statement = statement.where(PlaybackEvent.event_type == event_type)
     if media_type is not None:
         statement = statement.where(PlaybackEvent.media_type == media_type)
+    if decision_status is not None:
+        statement = statement.where(PlaybackEvent.decision_status == decision_status)
 
     statement = (
         statement.order_by(PlaybackEvent.occurred_at.desc(), PlaybackEvent.created_at.desc())
@@ -38,6 +41,17 @@ def list_playback_events(
         .limit(limit)
     )
     return list(session.scalars(statement))
+
+
+def get_playback_event(
+    session: Session,
+    *,
+    playback_event_id: UUID,
+) -> PlaybackEvent | None:
+    statement = select(PlaybackEvent).where(
+        PlaybackEvent.playback_event_id == playback_event_id
+    )
+    return session.scalar(statement)
 
 
 def create_playback_event(
