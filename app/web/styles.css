@@ -99,11 +99,19 @@ ul {
   cursor: pointer;
 }
 
+#enrichment-body tr {
+  cursor: pointer;
+}
+
 #import-history-body tr.selected {
   background: #eef4ff;
 }
 
 #activity-body tr.selected {
+  background: #eef4ff;
+}
+
+#enrichment-body tr.selected {
   background: #eef4ff;
 }
 

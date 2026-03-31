@@ -17,7 +17,7 @@ def _set_auth(
     app_env: str | None = None,
 ) -> None:
     if api_key is None:
-        monkeypatch.delenv("KLUG_API_KEY", raising=False)
+        monkeypatch.setenv("KLUG_API_KEY", "")
     else:
         monkeypatch.setenv("KLUG_API_KEY", api_key)
     if auth_mode is None:
@@ -28,6 +28,8 @@ def _set_auth(
         monkeypatch.delenv("APP_ENV", raising=False)
     else:
         monkeypatch.setenv("APP_ENV", app_env)
+    monkeypatch.setenv("KLUG_SESSION_PASSWORD", "")
+    monkeypatch.setenv("KLUG_SESSION_SECRET", "")
     get_settings.cache_clear()
 
 

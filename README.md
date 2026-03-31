@@ -83,6 +83,9 @@ $env:KLUG_IMPORT_UPLOAD_MAX_MB="25"
 $env:KLUG_SCROBBLE_MIN_PROGRESS_PERCENT="90"
 $env:KLUG_SCROBBLE_MIN_COMPLETION_RATIO="0.90"
 $env:KLUG_WATCH_COLLISION_WINDOW_SECONDS="300"
+$env:KLUG_TMDB_API_KEY="replace-with-tmdb-api-key"
+$env:KLUG_METADATA_ENRICHMENT_ENABLED="true"
+$env:KLUG_METADATA_CACHE_TTL_HOURS="168"
 ```
 
 `KLUG_API_AUTH_MODE` options:
@@ -104,6 +107,11 @@ Scrobbler threshold options:
 - `KLUG_SCROBBLE_MIN_PROGRESS_PERCENT`: progress percent required for stop-event scrobbling when progress data is present
 - `KLUG_SCROBBLE_MIN_COMPLETION_RATIO`: watched/total ratio required for stop-event scrobbling when duration data is used
 - `KLUG_WATCH_COLLISION_WINDOW_SECONDS`: conservative matching window used to deduplicate import/live watch collisions into one final `watch_event`
+
+Metadata enrichment options:
+- `KLUG_TMDB_API_KEY`: TMDB API key used for async metadata enrichment and external-id lookups
+- `KLUG_METADATA_ENRICHMENT_ENABLED`: enables the operator-driven TMDB enrichment queue
+- `KLUG_METADATA_CACHE_TTL_HOURS`: cache lifetime for TMDB payloads stored in `app.tmdb_metadata_cache`
 
 5. Run API:
 ```bash

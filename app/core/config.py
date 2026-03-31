@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     klug_scrobble_min_progress_percent: Decimal = Decimal("90")
     klug_scrobble_min_completion_ratio: Decimal = Decimal("0.90")
     klug_watch_collision_window_seconds: int = 300
+    klug_tmdb_api_key: str | None = None
+    klug_metadata_enrichment_enabled: bool = True
+    klug_metadata_cache_ttl_hours: int = 24 * 7
     database_url: str = (
         "postgresql+psycopg://postgres:postgres@localhost:5432/klug_media"
     )

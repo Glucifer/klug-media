@@ -44,6 +44,11 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - stop-event thresholds are configurable with `KLUG_SCROBBLE_MIN_PROGRESS_PERCENT` and `KLUG_SCROBBLE_MIN_COMPLETION_RATIO`
   - playback-event visibility is available through a filtered read API for debugging collector input and scrobble decisions
   - a first Node-RED collector flow now exists in the live `Kodi Scrobbler` tab and is exported in `docs/node_red/kodi_scrobbler_flow.json`
+- Metadata enrichment:
+  - TMDB-first enrichment queue is now modeled on `media_item`
+  - operator endpoints exist under `/api/v1/metadata-enrichment/*`
+  - enrichment is ID-first and uses TMDB `/find` for Kodi-style `imdb_id` and `tvdb_id` resolution
+  - raw provider payloads are cached in `app.tmdb_metadata_cache`
 - Legacy export import script:
   - `python -m app.scripts.import_watch_events`
   - supports dry run + incremental resume
@@ -64,11 +69,14 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - import error drilldown + JSON export
   - import batch detail JSON copy action
   - “reuse settings” from prior import batches
+  - scrobble activity operator view
+  - metadata enrichment operator queue with process/retry actions
 
 ## What Is Not Implemented Yet (or only partial)
 - Production-grade frontend UI (current page is intentionally minimal).
 - Full watch-history browsing UX polish (sorting/search/column customization, richer metadata views).
 - Planned external sync integrations (metadata/webhooks/automation connectors) are not fully implemented.
+- Metadata enrichment exists in a first operator-focused form, but there is not yet a polished end-user metadata UI or manual correction workflow.
 - Scrobbler pipeline is only partially implemented: Kodi/Node-RED ingestion now exists, but richer session/resume handling and additional playback sources still need work.
 - Hardening items likely still needed over time: broader integration coverage, stricter operational docs, and deployment polish.
 
@@ -122,7 +130,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - [x] Auth (Session-based)
 - [/] Import Logic (Watch-events - 80% complete)
 - [ ] Production UI (Minimal state)
-- [ ] External Metadata Sync (Planned)
+- [/] External Metadata Sync (TMDB-first operator queue in place)
 
 ## Canonical Dev Commands
 - Run API: `uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8010`

@@ -60,6 +60,25 @@ def create_show(
     return show
 
 
+def update_show(
+    session: Session,
+    *,
+    show: Show,
+    title: str,
+    year: int | None,
+    tvdb_id: int | None,
+    imdb_id: str | None,
+) -> Show:
+    show.title = title
+    show.year = year
+    show.tvdb_id = tvdb_id
+    show.imdb_id = imdb_id
+    session.add(show)
+    session.flush()
+    session.refresh(show)
+    return show
+
+
 def list_shows(session: Session) -> list[Show]:
     statement = select(Show).order_by(Show.title.asc(), Show.created_at.asc())
     return list(session.scalars(statement))

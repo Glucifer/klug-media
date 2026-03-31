@@ -414,6 +414,7 @@ def _create_media_item_from_backup_row(
 
     season_number, episode_number = _extract_season_episode_numbers(row, media_type)
     show_tmdb_id = _extract_show_tmdb_id(row, media_type)
+    tvdb_id = _extract_tvdb_id(row, media_type)
     show_id: UUID | None = None
     show_created = False
 
@@ -431,18 +432,28 @@ def _create_media_item_from_backup_row(
         show_id = show.show_id
         show_created = existing_show is None
 
+    enrichment_state = MediaItemService.determine_initial_enrichment_state(
+        media_type=media_type,
+        tmdb_id=tmdb_id,
+        imdb_id=imdb_id,
+        tvdb_id=tvdb_id,
+        show_tmdb_id=show_tmdb_id,
+    )
+
     media_item = MediaItem(
         type=media_type,
         title=title,
         year=_extract_media_year(row, media_type),
         tmdb_id=tmdb_id,
         imdb_id=imdb_id,
-        tvdb_id=_extract_tvdb_id(row, media_type),
+        tvdb_id=tvdb_id,
         show_tmdb_id=show_tmdb_id,
         season_number=season_number,
         episode_number=episode_number,
         show_id=show_id,
         metadata_source="legacy_backup",
+        enrichment_status=enrichment_state.status,
+        enrichment_error=enrichment_state.error,
     )
     session.add(media_item)
     session.flush()

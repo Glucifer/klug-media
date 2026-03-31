@@ -13,6 +13,8 @@ def test_create_media_item_strips_values(monkeypatch) -> None:
     def fake_create_media_item(_session, **kwargs):
         assert kwargs["title"] == "Alien"
         assert kwargs["imdb_id"] == "tt0078748"
+        assert kwargs["enrichment_status"] == "pending"
+        assert kwargs["enrichment_error"] is None
         return expected_item
 
     monkeypatch.setattr(
@@ -73,3 +75,16 @@ def test_create_media_item_integrity_error_maps_to_domain_error(monkeypatch) -> 
         )
 
     session.rollback.assert_called_once()
+
+
+def test_determine_initial_enrichment_state_for_episode_tvdb_only() -> None:
+    state = MediaItemService.determine_initial_enrichment_state(
+        media_type="episode",
+        tmdb_id=None,
+        imdb_id=None,
+        tvdb_id=10706489,
+        show_tmdb_id=None,
+    )
+
+    assert state.status == "pending"
+    assert state.error is None

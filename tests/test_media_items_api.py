@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from app.core.config import get_settings
 from app.main import app
 from app.services.media_items import MediaItemAlreadyExistsError, MediaItemService
 
@@ -13,13 +14,35 @@ class DummyMediaItem:
         self.type = media_type
         self.title = title
         self.year = 2025
+        self.summary = None
+        self.poster_url = None
+        self.release_date = None
         self.tmdb_id = 100
         self.imdb_id = "tt1234567"
         self.tvdb_id = None
+        self.show_tmdb_id = None
+        self.season_number = None
+        self.episode_number = None
+        self.metadata_source = None
+        self.metadata_updated_at = None
+        self.base_runtime_seconds = None
+        self.enrichment_status = "pending"
+        self.enrichment_error = None
+        self.enrichment_attempted_at = None
         self.created_at = datetime.now(UTC)
 
 
+def _set_permissive_auth(monkeypatch) -> None:
+    monkeypatch.setenv("KLUG_API_KEY", "")
+    monkeypatch.setenv("KLUG_API_AUTH_MODE", "write")
+    monkeypatch.setenv("APP_ENV", "dev")
+    monkeypatch.setenv("KLUG_SESSION_PASSWORD", "")
+    monkeypatch.setenv("KLUG_SESSION_SECRET", "")
+    get_settings.cache_clear()
+
+
 def test_list_media_items_returns_items(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
     expected_item = DummyMediaItem(media_type="movie", title="Alien")
 
     def fake_list_media_items(_session):
@@ -37,6 +60,7 @@ def test_list_media_items_returns_items(monkeypatch) -> None:
 
 
 def test_create_media_item_returns_201(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
     created_item = DummyMediaItem(media_type="movie", title="The Thing")
 
     def fake_create_media_item(_session, **kwargs):
@@ -58,6 +82,7 @@ def test_create_media_item_returns_201(monkeypatch) -> None:
 
 
 def test_create_media_item_duplicate_returns_409(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
     def fake_create_media_item(_session, **_kwargs):
         raise MediaItemAlreadyExistsError("Duplicate media reference")
 

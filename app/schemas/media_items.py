@@ -1,3 +1,4 @@
+from datetime import date
 from datetime import datetime
 from enum import Enum
 from uuid import UUID
@@ -27,7 +28,19 @@ class MediaItemRead(KlugORMModel):
     type: MediaItemType
     title: str
     year: int | None
+    summary: str | None = None
+    poster_url: str | None = None
+    release_date: date | None = None
     tmdb_id: int | None
     imdb_id: str | None
     tvdb_id: int | None
+    show_tmdb_id: int | None = None
+    season_number: int | None = None
+    episode_number: int | None = None
+    metadata_source: str | None = None
+    metadata_updated_at: datetime | None = None
+    base_runtime_seconds: int | None = None
+    enrichment_status: str
+    enrichment_error: str | None = None
+    enrichment_attempted_at: datetime | None = None
     created_at: datetime

@@ -214,6 +214,46 @@
         </div>
         <p id="activity-detail-status" class="muted">Select an activity row to inspect the raw payload.</p>
         <pre id="activity-detail" class="code-block"></pre>
+
+        <h2 style="margin-top: 18px">Metadata Enrichment</h2>
+        <div class="row">
+          <label for="enrichment-status-filter">Status</label>
+          <select id="enrichment-status-filter">
+            <option value="">All</option>
+            <option value="pending">pending</option>
+            <option value="failed">failed</option>
+            <option value="skipped">skipped</option>
+            <option value="enriched">enriched</option>
+          </select>
+          <label class="checkbox">
+            <input id="enrichment-missing-ids" type="checkbox" />
+            Missing IDs Only
+          </label>
+          <label for="enrichment-limit">Rows</label>
+          <select id="enrichment-limit">
+            <option value="10">10</option>
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+          </select>
+          <button id="enrichment-apply" class="secondary">Apply</button>
+          <button id="enrichment-process-pending" class="secondary">Process Pending</button>
+        </div>
+        <p id="enrichment-status-text" class="muted">Loading metadata enrichment queue...</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Type</th>
+              <th>IDs</th>
+              <th>Status</th>
+              <th>Metadata</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="enrichment-body"></tbody>
+        </table>
+        <p id="enrichment-detail-status" class="muted">Select a media item to inspect enrichment detail.</p>
+        <pre id="enrichment-detail" class="code-block"></pre>
       </div>
 
       <div id="detail-card" class="card hidden">

@@ -55,6 +55,15 @@ const activityNext = document.getElementById("activity-next");
 const activityPage = document.getElementById("activity-page");
 const activityDetailStatus = document.getElementById("activity-detail-status");
 const activityDetail = document.getElementById("activity-detail");
+const enrichmentStatusFilter = document.getElementById("enrichment-status-filter");
+const enrichmentMissingIds = document.getElementById("enrichment-missing-ids");
+const enrichmentLimitSelect = document.getElementById("enrichment-limit");
+const enrichmentApply = document.getElementById("enrichment-apply");
+const enrichmentProcessPending = document.getElementById("enrichment-process-pending");
+const enrichmentStatusText = document.getElementById("enrichment-status-text");
+const enrichmentBody = document.getElementById("enrichment-body");
+const enrichmentDetailStatus = document.getElementById("enrichment-detail-status");
+const enrichmentDetail = document.getElementById("enrichment-detail");
 const refreshData = document.getElementById("refresh-data");
 const logoutBtn = document.getElementById("logout-btn");
 const detailTitle = document.getElementById("detail-title");
@@ -78,6 +87,8 @@ let historyLimit = Number.parseInt(historyLimitSelect.value, 10);
 let activityOffset = 0;
 let activityLimit = Number.parseInt(activityLimitSelect.value, 10);
 let selectedActivityId = null;
+let enrichmentLimit = Number.parseInt(enrichmentLimitSelect.value, 10);
+let selectedEnrichmentId = null;
 const importHistoryById = new Map();
 let importHistoryRows = [];
 let selectedImportBatchId = null;
@@ -151,6 +162,7 @@ async function loadDashboardData() {
     loadHistory(),
     loadImportHistory(),
     loadScrobbleActivity(),
+    loadMetadataEnrichment(),
   ]);
   setLastRefreshNow();
 }
@@ -749,6 +761,129 @@ function formatActivityDetail(event) {
   ].join("\n");
 }
 
+function syncSelectedEnrichmentRow() {
+  const rows = enrichmentBody.querySelectorAll("tr[data-media-item-id]");
+  for (const row of rows) {
+    const mediaItemId = row.getAttribute("data-media-item-id");
+    row.classList.toggle("selected", mediaItemId === selectedEnrichmentId);
+  }
+}
+
+function buildEnrichmentQuery() {
+  const params = new URLSearchParams();
+  params.set("limit", String(enrichmentLimit));
+  if (enrichmentStatusFilter.value) {
+    params.set("enrichment_status", enrichmentStatusFilter.value);
+  }
+  if (enrichmentMissingIds.checked) {
+    params.set("missing_ids_only", "true");
+  }
+  return params.toString();
+}
+
+function formatEnrichmentIds(row) {
+  return [`tmdb:${row.tmdb_id || "-"}`, `tvdb:${row.tvdb_id || "-"}`, `imdb:${row.imdb_id || "-"}`].join(" ");
+}
+
+function formatEnrichmentMetadata(row) {
+  return row.metadata_updated_at ? new Date(row.metadata_updated_at).toLocaleString() : "not enriched";
+}
+
+function formatEnrichmentDetail(row) {
+  return [
+    `media_item_id: ${row.media_item_id}`,
+    `title: ${row.title}`,
+    `type: ${row.type}`,
+    `year: ${row.year || "n/a"}`,
+    `tmdb_id: ${row.tmdb_id || "n/a"}`,
+    `tvdb_id: ${row.tvdb_id || "n/a"}`,
+    `imdb_id: ${row.imdb_id || "n/a"}`,
+    `show_tmdb_id: ${row.show_tmdb_id || "n/a"}`,
+    `season_number: ${row.season_number ?? "n/a"}`,
+    `episode_number: ${row.episode_number ?? "n/a"}`,
+    `enrichment_status: ${row.enrichment_status}`,
+    `enrichment_error: ${row.enrichment_error || "n/a"}`,
+    `metadata_source: ${row.metadata_source || "n/a"}`,
+    `metadata_updated_at: ${row.metadata_updated_at || "n/a"}`,
+    `base_runtime_seconds: ${row.base_runtime_seconds ?? "n/a"}`,
+    "",
+    row.summary || "No summary",
+  ].join("\n");
+}
+
+async function loadMetadataEnrichment() {
+  enrichmentStatusText.textContent = "Loading metadata enrichment queue...";
+  enrichmentBody.innerHTML = "";
+  selectedEnrichmentId = null;
+  try {
+    const response = await api(`/api/v1/metadata-enrichment/items?${buildEnrichmentQuery()}`);
+    if (!response.ok) {
+      enrichmentStatusText.textContent = "Failed to load metadata enrichment queue";
+      enrichmentDetailStatus.textContent = "Select a media item to inspect enrichment detail.";
+      enrichmentDetail.textContent = "";
+      return;
+    }
+    const rows = await response.json();
+    if (rows.length === 0) {
+      enrichmentStatusText.textContent = "No media items for current filter";
+      enrichmentDetailStatus.textContent = "Select a media item to inspect enrichment detail.";
+      enrichmentDetail.textContent = "";
+      return;
+    }
+    for (const row of rows) {
+      const tr = document.createElement("tr");
+      tr.dataset.mediaItemId = row.media_item_id;
+      tr.innerHTML = `
+        <td>${row.title}</td>
+        <td>${row.type}</td>
+        <td>${formatEnrichmentIds(row)}</td>
+        <td>${row.enrichment_status}</td>
+        <td>${formatEnrichmentMetadata(row)}</td>
+        <td><button class="secondary" data-media-item-id="${row.media_item_id}" data-action="retry-enrichment">Retry</button></td>
+      `;
+      enrichmentBody.appendChild(tr);
+    }
+    enrichmentStatusText.textContent = `Loaded ${rows.length} media item(s)`;
+    selectedEnrichmentId = rows[0].media_item_id;
+    syncSelectedEnrichmentRow();
+    enrichmentDetailStatus.textContent = `Showing enrichment detail for ${rows[0].title}`;
+    enrichmentDetail.textContent = formatEnrichmentDetail(rows[0]);
+  } catch (_error) {
+    enrichmentStatusText.textContent = "Failed to load metadata enrichment queue";
+    enrichmentDetailStatus.textContent = "Select a media item to inspect enrichment detail.";
+    enrichmentDetail.textContent = "";
+  }
+}
+
+async function retryMetadataEnrichment(mediaItemId) {
+  enrichmentDetailStatus.textContent = `Retrying enrichment for ${mediaItemId}...`;
+  const response = await api(`/api/v1/metadata-enrichment/items/${mediaItemId}/retry`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    enrichmentDetailStatus.textContent = `Failed to retry enrichment for ${mediaItemId}.`;
+    return;
+  }
+  const payload = await response.json();
+  selectedEnrichmentId = payload.media_item_id;
+  await loadMetadataEnrichment();
+}
+
+async function processPendingMetadataEnrichment() {
+  enrichmentStatusText.textContent = "Processing pending metadata enrichment...";
+  const response = await api(
+    `/api/v1/metadata-enrichment/process-pending?limit=${enrichmentLimit}`,
+    { method: "POST" }
+  );
+  if (!response.ok) {
+    enrichmentStatusText.textContent = "Failed to process pending metadata enrichment";
+    return;
+  }
+  const payload = await response.json();
+  enrichmentStatusText.textContent = `Processed ${payload.processed_count} pending media item(s)`;
+  await loadMetadataEnrichment();
+}
+
 async function loadScrobbleActivityDetail(playbackEventId) {
   activityDetailStatus.textContent = `Loading detail for ${playbackEventId}...`;
   try {
@@ -909,6 +1044,65 @@ activityBody.addEventListener("click", async (event) => {
     return;
   }
   await loadScrobbleActivityDetail(playbackEventId);
+});
+
+enrichmentApply.addEventListener("click", async () => {
+  enrichmentLimit = Number.parseInt(enrichmentLimitSelect.value, 10);
+  await loadMetadataEnrichment();
+});
+
+enrichmentStatusFilter.addEventListener("change", async () => {
+  await loadMetadataEnrichment();
+});
+
+enrichmentMissingIds.addEventListener("change", async () => {
+  await loadMetadataEnrichment();
+});
+
+enrichmentProcessPending.addEventListener("click", async () => {
+  await processPendingMetadataEnrichment();
+});
+
+enrichmentBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const button = target.closest("button[data-media-item-id]");
+  if (button instanceof HTMLButtonElement) {
+    const mediaItemId = button.dataset.mediaItemId;
+    const action = button.dataset.action;
+    if (mediaItemId && action === "retry-enrichment") {
+      await retryMetadataEnrichment(mediaItemId);
+    }
+    return;
+  }
+  const row = target.closest("tr[data-media-item-id]");
+  if (!(row instanceof HTMLTableRowElement)) {
+    return;
+  }
+  const mediaItemId = row.dataset.mediaItemId;
+  if (!mediaItemId) {
+    return;
+  }
+  selectedEnrichmentId = mediaItemId;
+  syncSelectedEnrichmentRow();
+  const cells = row.querySelectorAll("td");
+  if (cells.length > 0) {
+    enrichmentDetailStatus.textContent = `Showing enrichment detail for ${cells[0].textContent}`;
+  }
+  const response = await api(`/api/v1/metadata-enrichment/items?${buildEnrichmentQuery()}`);
+  if (!response.ok) {
+    enrichmentDetailStatus.textContent = `Failed to load enrichment detail for ${mediaItemId}.`;
+    return;
+  }
+  const rows = await response.json();
+  const selectedRow = rows.find((item) => item.media_item_id === mediaItemId);
+  if (!selectedRow) {
+    enrichmentDetailStatus.textContent = `Failed to load enrichment detail for ${mediaItemId}.`;
+    return;
+  }
+  enrichmentDetail.textContent = formatEnrichmentDetail(selectedRow);
 });
 
 importForm.addEventListener("submit", runImport);

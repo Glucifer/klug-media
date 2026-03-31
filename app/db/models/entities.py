@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -8,6 +8,7 @@ from uuid import UUID
 from sqlalchemy import (
     Boolean,
     Computed,
+    Date,
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
@@ -165,6 +166,9 @@ class MediaItem(Base):
     type: Mapped[str] = mapped_column(MEDIA_TYPE_ENUM, nullable=False)
     title: Mapped[str] = mapped_column(String, nullable=False)
     year: Mapped[int | None] = mapped_column(Integer)
+    summary: Mapped[str | None] = mapped_column(String)
+    poster_url: Mapped[str | None] = mapped_column(String)
+    release_date: Mapped[date | None] = mapped_column(Date)
     tmdb_id: Mapped[int | None] = mapped_column(Integer)
     imdb_id: Mapped[str | None] = mapped_column(String)
     tvdb_id: Mapped[int | None] = mapped_column(Integer)
@@ -179,6 +183,15 @@ class MediaItem(Base):
     base_runtime_seconds: Mapped[int | None] = mapped_column(Integer)
     metadata_source: Mapped[str | None] = mapped_column(String)
     metadata_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    enrichment_status: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        server_default=text("'pending'::text"),
+    )
+    enrichment_error: Mapped[str | None] = mapped_column(String)
+    enrichment_attempted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True)
     )
     show_id: Mapped[UUID | None] = mapped_column(
