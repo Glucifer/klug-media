@@ -52,6 +52,10 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - queue behavior is now operator-focused: `Process Pending` only handles `pending` rows, failed/skipped rows require explicit retry
   - `metadata_updated_at` now represents successful metadata writes only, while `enrichment_attempted_at` tracks all attempts
   - operator responses now include normalized failure codes and suggested next actions
+- Watch-event corrections:
+  - `watch_event` now supports lightweight correction metadata (`updated_*`) and soft delete fields (`is_deleted`, `deleted_*`)
+  - correction endpoints now exist under `/api/v1/watch-events/{watch_id}/delete|restore|correct`
+  - default watch history and show-progress reads now exclude soft-deleted watch events
 - Legacy export import script:
   - `python -m app.scripts.import_watch_events`
   - supports dry run + incremental resume
@@ -65,6 +69,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - session login/logout and auth status
   - ops strip (API health, auth mode, session state, last refresh)
   - watch history table with pagination/filtering
+  - watch history detail/editor panel for safe corrections and restore
   - import runner (file upload + mode/dry-run/resume options)
   - cursor visibility (`cursor_before`, `cursor_after`, local last cursor)
   - import batch history with status filter (persisted)
@@ -79,7 +84,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Production-grade frontend UI (current page is intentionally minimal).
 - Full watch-history browsing UX polish (sorting/search/column customization, richer metadata views).
 - Planned external sync integrations (metadata/webhooks/automation connectors) are not fully implemented.
-- Metadata enrichment exists in a first operator-focused form, but there is not yet a polished end-user metadata UI or manual correction workflow.
+- Metadata enrichment exists in a first operator-focused form, but there is not yet a polished end-user metadata UI.
 - Scrobbler pipeline is only partially implemented: Kodi/Node-RED ingestion now exists, but richer session/resume handling and additional playback sources still need work.
 - Hardening items likely still needed over time: broader integration coverage, stricter operational docs, and deployment polish.
 

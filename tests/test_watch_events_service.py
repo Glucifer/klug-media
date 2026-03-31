@@ -285,6 +285,179 @@ def test_list_watch_events_clamps_limit(monkeypatch) -> None:
         local_date_from=None,
         local_date_to=None,
         media_type=None,
+        include_deleted=False,
+        deleted_only=False,
         limit=1000,
         offset=-5,
     )
+
+
+def test_soft_delete_watch_event_marks_deleted(monkeypatch) -> None:
+    session = Mock()
+    watch_id = uuid4()
+    event = Mock(
+        watch_id=watch_id,
+        user_id=uuid4(),
+        media_item_id=uuid4(),
+        is_deleted=False,
+        rewatch=True,
+        dedupe_hash="abc",
+    )
+
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.get_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.update_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+    recompute = Mock()
+    monkeypatch.setattr(
+        "app.services.watch_events.WatchEventService._recompute_rewatch_for_media_timeline",
+        recompute,
+    )
+
+    result = WatchEventService.soft_delete_watch_event(
+        session,
+        watch_id=watch_id,
+        updated_by="operator",
+        update_reason="duplicate",
+    )
+
+    assert result.is_deleted is True
+    assert result.deleted_by == "operator"
+    assert result.deleted_reason == "duplicate"
+    assert result.rewatch is False
+    assert result.dedupe_hash is None
+    recompute.assert_called_once()
+    session.commit.assert_called_once()
+
+
+def test_restore_watch_event_clears_deleted_fields(monkeypatch) -> None:
+    session = Mock()
+    watch_id = uuid4()
+    event = Mock(
+        watch_id=watch_id,
+        user_id=uuid4(),
+        media_item_id=uuid4(),
+        is_deleted=True,
+        deleted_at=datetime.now(UTC),
+        deleted_by="operator",
+        deleted_reason="duplicate",
+        dedupe_hash="abc",
+    )
+
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.get_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.update_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.WatchEventService._recompute_rewatch_for_media_timeline",
+        Mock(),
+    )
+
+    result = WatchEventService.restore_watch_event(
+        session,
+        watch_id=watch_id,
+        updated_by="operator",
+        update_reason="restored",
+    )
+
+    assert result.is_deleted is False
+    assert result.deleted_at is None
+    assert result.deleted_by is None
+    assert result.deleted_reason is None
+    assert result.dedupe_hash is None
+    session.commit.assert_called_once()
+
+
+def test_correct_watch_event_reassigns_media_item_and_clears_invalid_media_version(monkeypatch) -> None:
+    session = Mock()
+    old_media_item_id = uuid4()
+    new_media_item_id = uuid4()
+    event = Mock(
+        watch_id=uuid4(),
+        user_id=uuid4(),
+        media_item_id=old_media_item_id,
+        watched_at=datetime.now(UTC),
+        media_version_id=uuid4(),
+        completed=True,
+        rewatch=False,
+        dedupe_hash="abc",
+    )
+
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.get_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.MediaItemService.get_media_item",
+        lambda *_args, **_kwargs: Mock(media_item_id=new_media_item_id),
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.media_version_matches_media_item",
+        lambda *_args, **_kwargs: False,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.update_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+    recompute = Mock()
+    monkeypatch.setattr(
+        "app.services.watch_events.WatchEventService._recompute_rewatch_for_media_timeline",
+        recompute,
+    )
+
+    result = WatchEventService.correct_watch_event(
+        session,
+        watch_id=event.watch_id,
+        updated_by="operator",
+        update_reason="wrong match",
+        watched_at=None,
+        media_item_id=new_media_item_id,
+        completed=None,
+        rewatch=None,
+    )
+
+    assert result.media_item_id == new_media_item_id
+    assert result.media_version_id is None
+    assert result.updated_by == "operator"
+    assert result.update_reason == "wrong match"
+    assert result.dedupe_hash is None
+    assert recompute.call_count == 2
+    session.commit.assert_called_once()
+
+
+def test_correct_watch_event_requires_changes() -> None:
+    session = Mock()
+    event = Mock(
+        watch_id=uuid4(),
+        user_id=uuid4(),
+        media_item_id=uuid4(),
+        watched_at=datetime.now(UTC),
+    )
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.get_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+
+    try:
+        with pytest.raises(ValueError, match="At least one correction field"):
+            WatchEventService.correct_watch_event(
+                session,
+                watch_id=uuid4(),
+                updated_by="operator",
+                update_reason=None,
+                watched_at=None,
+                media_item_id=None,
+                completed=None,
+                rewatch=None,
+            )
+    finally:
+        monkeypatch.undo()

@@ -139,6 +139,7 @@ def list_show_episodes(
         FROM app.media_item AS mi
         LEFT JOIN app.watch_event AS we
           ON we.media_item_id = mi.media_item_id
+         AND COALESCE(we.is_deleted, FALSE) = FALSE
         WHERE mi.type = 'episode'::public.media_type
           AND mi.show_id = :show_id
         GROUP BY mi.media_item_id, mi.title, mi.season_number, mi.episode_number

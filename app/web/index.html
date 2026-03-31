@@ -134,6 +134,10 @@
             <option value="show">Show</option>
             <option value="episode">Episode</option>
           </select>
+          <label class="checkbox">
+            <input id="history-include-deleted" type="checkbox" />
+            Include Deleted
+          </label>
           <label for="history-limit">Rows</label>
           <select id="history-limit">
             <option value="10">10</option>
@@ -161,6 +165,33 @@
           <button id="history-next" class="secondary">Next</button>
           <span id="history-page" class="muted">Page 1</span>
         </div>
+        <p id="history-detail-status" class="muted">Select a watch event to inspect or correct.</p>
+        <div class="row">
+          <label for="history-editor-updated-by">Updated By</label>
+          <input id="history-editor-updated-by" type="text" placeholder="operator name" />
+          <label for="history-editor-reason">Reason</label>
+          <input id="history-editor-reason" type="text" placeholder="optional reason" />
+        </div>
+        <div class="row">
+          <label for="history-editor-watched-at">Watched At</label>
+          <input id="history-editor-watched-at" type="datetime-local" />
+          <label for="history-editor-media-item-id">Media Item ID</label>
+          <input id="history-editor-media-item-id" type="text" placeholder="media item uuid" />
+        </div>
+        <div class="row">
+          <label class="checkbox">
+            <input id="history-editor-completed" type="checkbox" />
+            Completed
+          </label>
+          <label class="checkbox">
+            <input id="history-editor-rewatch" type="checkbox" />
+            Rewatch
+          </label>
+          <button id="history-save" class="secondary" type="button">Save Correction</button>
+          <button id="history-delete" class="secondary" type="button">Soft Delete</button>
+          <button id="history-restore" class="secondary" type="button">Restore</button>
+        </div>
+        <pre id="history-detail" class="code-block"></pre>
 
         <h2 style="margin-top: 18px">Scrobble Activity</h2>
         <div class="row">

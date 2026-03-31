@@ -40,7 +40,14 @@ class WatchEventRead(KlugORMModel):
     origin_kind: str
     origin_playback_event_id: UUID | None
     created_at: datetime
+    updated_at: datetime | None = None
+    updated_by: str | None = None
+    update_reason: str | None = None
     rewatch: bool
+    is_deleted: bool = False
+    deleted_at: datetime | None = None
+    deleted_by: str | None = None
+    deleted_reason: str | None = None
     dedupe_hash: str | None
     created_by: str | None
     source_event_id: str | None
@@ -54,3 +61,22 @@ class WatchEventListRead(WatchEventRead):
     display_title: str | None = None
     watched_at_local: datetime | None = None
     user_timezone: str | None = None
+
+
+class WatchEventDelete(KlugBaseModel):
+    updated_by: str = Field(min_length=1, max_length=100)
+    update_reason: str | None = Field(default=None, max_length=500)
+
+
+class WatchEventRestore(KlugBaseModel):
+    updated_by: str = Field(min_length=1, max_length=100)
+    update_reason: str | None = Field(default=None, max_length=500)
+
+
+class WatchEventCorrect(KlugBaseModel):
+    updated_by: str = Field(min_length=1, max_length=100)
+    update_reason: str | None = Field(default=None, max_length=500)
+    watched_at: AwareDatetime | None = None
+    media_item_id: UUID | None = None
+    completed: bool | None = None
+    rewatch: bool | None = None

@@ -68,7 +68,14 @@ def test_kodi_movie_scrobble(monkeypatch) -> None:
     mock_watch_event.origin_kind = "live_playback"
     mock_watch_event.origin_playback_event_id = uuid4()
     mock_watch_event.created_at = "2026-01-01T00:00:00Z"
+    mock_watch_event.updated_at = None
+    mock_watch_event.updated_by = None
+    mock_watch_event.update_reason = None
     mock_watch_event.rewatch = False
+    mock_watch_event.is_deleted = False
+    mock_watch_event.deleted_at = None
+    mock_watch_event.deleted_by = None
+    mock_watch_event.deleted_reason = None
     mock_watch_event.dedupe_hash = None
     mock_watch_event.created_by = None
     mock_watch_event.source_event_id = None

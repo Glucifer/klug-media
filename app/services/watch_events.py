@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.datetime_utils import ensure_timezone_aware
 from app.db.models.entities import WatchEvent
+from app.services.media_items import MediaItemService
 from app.repositories import watch_events as watch_event_repository
 
 
@@ -43,6 +44,8 @@ class WatchEventService:
         local_date_from: date | None,
         local_date_to: date | None,
         media_type: Literal["movie", "show", "episode"] | None,
+        include_deleted: bool,
+        deleted_only: bool,
         limit: int,
         offset: int,
     ) -> list[dict[str, object]]:
@@ -57,9 +60,177 @@ class WatchEventService:
             local_date_from=local_date_from,
             local_date_to=local_date_to,
             media_type=media_type,
+            include_deleted=include_deleted,
+            deleted_only=deleted_only,
             limit=safe_limit,
             offset=safe_offset,
         )
+
+    @staticmethod
+    def soft_delete_watch_event(
+        session: Session,
+        *,
+        watch_id: UUID,
+        updated_by: str,
+        update_reason: str | None,
+    ) -> WatchEvent:
+        watch_event = WatchEventService._get_watch_event_or_raise(session, watch_id=watch_id)
+        normalized_updated_by = WatchEventService._normalize_updated_by(updated_by)
+        normalized_reason = WatchEventService._normalize_update_reason(update_reason)
+        now = datetime.now(UTC)
+
+        if watch_event.is_deleted:
+            raise ValueError("Watch event is already deleted")
+
+        watch_event.is_deleted = True
+        watch_event.deleted_at = now
+        watch_event.deleted_by = normalized_updated_by
+        watch_event.deleted_reason = normalized_reason
+        watch_event.updated_at = now
+        watch_event.updated_by = normalized_updated_by
+        watch_event.update_reason = normalized_reason
+        watch_event.rewatch = False
+        watch_event.dedupe_hash = None
+        try:
+            updated = watch_event_repository.update_watch_event(session, watch_event=watch_event)
+            WatchEventService._recompute_rewatch_for_media_timeline(
+                session,
+                user_id=updated.user_id,
+                media_item_id=updated.media_item_id,
+            )
+            session.commit()
+            return updated
+        except IntegrityError as exc:
+            session.rollback()
+            raise WatchEventConstraintError("Watch event failed database constraints") from exc
+
+    @staticmethod
+    def restore_watch_event(
+        session: Session,
+        *,
+        watch_id: UUID,
+        updated_by: str,
+        update_reason: str | None,
+    ) -> WatchEvent:
+        watch_event = WatchEventService._get_watch_event_or_raise(session, watch_id=watch_id)
+        normalized_updated_by = WatchEventService._normalize_updated_by(updated_by)
+        normalized_reason = WatchEventService._normalize_update_reason(update_reason)
+        now = datetime.now(UTC)
+
+        if not watch_event.is_deleted:
+            raise ValueError("Watch event is not deleted")
+
+        watch_event.is_deleted = False
+        watch_event.deleted_at = None
+        watch_event.deleted_by = None
+        watch_event.deleted_reason = None
+        watch_event.updated_at = now
+        watch_event.updated_by = normalized_updated_by
+        watch_event.update_reason = normalized_reason
+        watch_event.dedupe_hash = None
+        try:
+            updated = watch_event_repository.update_watch_event(session, watch_event=watch_event)
+            WatchEventService._recompute_rewatch_for_media_timeline(
+                session,
+                user_id=updated.user_id,
+                media_item_id=updated.media_item_id,
+            )
+            session.commit()
+            return updated
+        except IntegrityError as exc:
+            session.rollback()
+            raise WatchEventConstraintError("Watch event failed database constraints") from exc
+
+    @staticmethod
+    def correct_watch_event(
+        session: Session,
+        *,
+        watch_id: UUID,
+        updated_by: str,
+        update_reason: str | None,
+        watched_at: datetime | None,
+        media_item_id: UUID | None,
+        completed: bool | None,
+        rewatch: bool | None,
+    ) -> WatchEvent:
+        watch_event = WatchEventService._get_watch_event_or_raise(session, watch_id=watch_id)
+        normalized_updated_by = WatchEventService._normalize_updated_by(updated_by)
+        normalized_reason = WatchEventService._normalize_update_reason(update_reason)
+
+        if (
+            watched_at is None
+            and media_item_id is None
+            and completed is None
+            and rewatch is None
+        ):
+            raise ValueError("At least one correction field must be provided")
+
+        previous_media_item_id = watch_event.media_item_id
+        new_watched_at = (
+            ensure_timezone_aware(watched_at, field_name="watched_at").astimezone(UTC)
+            if watched_at is not None
+            else watch_event.watched_at
+        )
+        if media_item_id is not None:
+            media_item = MediaItemService.get_media_item(session, media_item_id=media_item_id)
+            if media_item is None:
+                raise ValueError(f"Media item '{media_item_id}' not found")
+            watch_event.media_item_id = media_item_id
+            if (
+                watch_event.media_version_id is not None
+                and not watch_event_repository.media_version_matches_media_item(
+                    session,
+                    media_version_id=watch_event.media_version_id,
+                    media_item_id=media_item_id,
+                )
+            ):
+                watch_event.media_version_id = None
+
+        watch_event.watched_at = new_watched_at
+        if completed is not None:
+            watch_event.completed = completed
+        if rewatch is not None:
+            watch_event.rewatch = rewatch
+
+        now = datetime.now(UTC)
+        watch_event.updated_at = now
+        watch_event.updated_by = normalized_updated_by
+        watch_event.update_reason = normalized_reason
+        if (
+            media_item_id is not None
+            or watched_at is not None
+            or completed is not None
+        ):
+            watch_event.dedupe_hash = None
+        try:
+            updated = watch_event_repository.update_watch_event(session, watch_event=watch_event)
+
+            if media_item_id is not None or watched_at is not None:
+                WatchEventService._recompute_rewatch_for_media_timeline(
+                    session,
+                    user_id=updated.user_id,
+                    media_item_id=previous_media_item_id,
+                )
+                if updated.media_item_id != previous_media_item_id:
+                    WatchEventService._recompute_rewatch_for_media_timeline(
+                        session,
+                        user_id=updated.user_id,
+                        media_item_id=updated.media_item_id,
+                    )
+            elif rewatch is None:
+                updated.rewatch = watch_event_repository.prior_watch_event_exists(
+                    session,
+                    user_id=updated.user_id,
+                    media_item_id=updated.media_item_id,
+                    watched_at=updated.watched_at,
+                )
+                updated = watch_event_repository.update_watch_event(session, watch_event=updated)
+
+            session.commit()
+            return updated
+        except IntegrityError as exc:
+            session.rollback()
+            raise WatchEventConstraintError("Watch event failed database constraints") from exc
 
     @staticmethod
     def create_watch_event(
@@ -196,3 +367,45 @@ class WatchEventService:
     @staticmethod
     def _watch_collision_window_seconds() -> int:
         return max(0, get_settings().klug_watch_collision_window_seconds)
+
+    @staticmethod
+    def _get_watch_event_or_raise(session: Session, *, watch_id: UUID) -> WatchEvent:
+        watch_event = watch_event_repository.get_watch_event(session, watch_id=watch_id)
+        if watch_event is None:
+            raise ValueError(f"Watch event '{watch_id}' not found")
+        return watch_event
+
+    @staticmethod
+    def _normalize_updated_by(updated_by: str) -> str:
+        normalized = updated_by.strip()
+        if not normalized:
+            raise ValueError("updated_by must not be empty")
+        return normalized
+
+    @staticmethod
+    def _normalize_update_reason(update_reason: str | None) -> str | None:
+        if update_reason is None:
+            return None
+        normalized = update_reason.strip()
+        return normalized or None
+
+    @staticmethod
+    def _recompute_rewatch_for_media_timeline(
+        session: Session,
+        *,
+        user_id: UUID,
+        media_item_id: UUID,
+    ) -> None:
+        watch_events = watch_event_repository.list_user_media_watch_events(
+            session,
+            user_id=user_id,
+            media_item_id=media_item_id,
+        )
+        seen_active_watch = False
+        for watch_event in watch_events:
+            desired_rewatch = False if watch_event.is_deleted else seen_active_watch
+            if watch_event.rewatch != desired_rewatch:
+                watch_event.rewatch = desired_rewatch
+                session.add(watch_event)
+            if not watch_event.is_deleted:
+                seen_active_watch = True

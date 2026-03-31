@@ -2,8 +2,10 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 
+from app.core.config import get_settings
 from app.main import app
 from app.services.watch_events import WatchEventConstraintError, WatchEventService
 from app.services.watch_events import WatchEventCreateResult
@@ -27,13 +29,30 @@ class DummyWatchEvent:
         self.origin_kind = "manual_entry"
         self.origin_playback_event_id = None
         self.created_at = datetime.now(UTC)
+        self.updated_at = None
+        self.updated_by = None
+        self.update_reason = None
         self.rewatch = False
+        self.is_deleted = False
+        self.deleted_at = None
+        self.deleted_by = None
+        self.deleted_reason = None
         self.dedupe_hash = "abc123"
         self.created_by = None
         self.source_event_id = "evt-1"
 
 
+def _set_permissive_auth(monkeypatch) -> None:
+    monkeypatch.setenv("KLUG_API_KEY", "")
+    monkeypatch.setenv("KLUG_API_AUTH_MODE", "write")
+    monkeypatch.setenv("APP_ENV", "dev")
+    monkeypatch.setenv("KLUG_SESSION_PASSWORD", "")
+    monkeypatch.setenv("KLUG_SESSION_SECRET", "")
+    get_settings.cache_clear()
+
+
 def test_list_watch_events_returns_items(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
     event = DummyWatchEvent()
     called: dict[str, object] = {}
 
@@ -49,12 +68,15 @@ def test_list_watch_events_returns_items(monkeypatch) -> None:
     assert response.status_code == 200
     assert called["offset"] == 0
     assert called["media_type"] is None
+    assert called["include_deleted"] is False
+    assert called["deleted_only"] is False
     payload = response.json()
     assert len(payload) == 1
     assert payload[0]["playback_source"] == "jellyfin"
 
 
 def test_list_watch_events_forwards_filters(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
     event = DummyWatchEvent()
     called: dict[str, object] = {}
 
@@ -74,8 +96,27 @@ def test_list_watch_events_forwards_filters(monkeypatch) -> None:
     assert called["media_type"] == "episode"
     assert str(called["local_date_from"]) == "2026-01-01"
     assert str(called["local_date_to"]) == "2026-01-02"
+    assert called["include_deleted"] is False
     assert called["limit"] == 10
     assert called["offset"] == 5
+
+
+def test_list_watch_events_forwards_include_deleted(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    event = DummyWatchEvent()
+    called: dict[str, object] = {}
+
+    def fake_list_watch_events(_session, **_kwargs):
+        called.update(_kwargs)
+        return [event]
+
+    monkeypatch.setattr(WatchEventService, "list_watch_events", fake_list_watch_events)
+
+    client = TestClient(app)
+    response = client.get("/api/v1/watch-events?include_deleted=true")
+
+    assert response.status_code == 200
+    assert called["include_deleted"] is True
 
 
 def test_list_watch_events_invalid_media_type_returns_422() -> None:
@@ -85,6 +126,7 @@ def test_list_watch_events_invalid_media_type_returns_422() -> None:
 
 
 def test_list_watch_events_returns_enriched_media_fields(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
     watch_id = uuid4()
     user_id = uuid4()
     media_item_id = uuid4()
@@ -108,7 +150,14 @@ def test_list_watch_events_returns_enriched_media_fields(monkeypatch) -> None:
                 "origin_kind": "manual_import",
                 "origin_playback_event_id": None,
                 "created_at": datetime.now(UTC),
+                "updated_at": None,
+                "updated_by": None,
+                "update_reason": None,
                 "rewatch": False,
+                "is_deleted": False,
+                "deleted_at": None,
+                "deleted_by": None,
+                "deleted_reason": None,
                 "dedupe_hash": None,
                 "created_by": None,
                 "source_event_id": "evt-9",
@@ -141,6 +190,7 @@ def test_list_watch_events_rejects_invalid_local_date() -> None:
 
 
 def test_create_watch_event_returns_201(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
     event = DummyWatchEvent()
 
     def fake_create_watch_event(_session, **kwargs):
@@ -171,6 +221,8 @@ def test_create_watch_event_returns_201(monkeypatch) -> None:
 
 
 def test_create_watch_event_rejects_naive_watched_at() -> None:
+    monkeypatch = pytest.MonkeyPatch()
+    _set_permissive_auth(monkeypatch)
     client = TestClient(app)
     response = client.post(
         "/api/v1/watch-events",
@@ -184,9 +236,11 @@ def test_create_watch_event_rejects_naive_watched_at() -> None:
     )
 
     assert response.status_code == 422
+    monkeypatch.undo()
 
 
 def test_create_watch_event_constraint_error_returns_409(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
     event = DummyWatchEvent()
 
     def fake_create_watch_event(_session, **_kwargs):
@@ -210,3 +264,75 @@ def test_create_watch_event_constraint_error_returns_409(monkeypatch) -> None:
 
     assert response.status_code == 409
     assert response.json()["detail"] == "Watch event failed database constraints"
+
+
+def test_delete_watch_event_returns_updated_row(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    event = DummyWatchEvent()
+    event.is_deleted = True
+    event.deleted_by = "operator"
+    event.deleted_reason = "duplicate"
+
+    monkeypatch.setattr(
+        WatchEventService,
+        "soft_delete_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+
+    client = TestClient(app)
+    response = client.post(
+        f"/api/v1/watch-events/{event.watch_id}/delete",
+        json={"updated_by": "operator", "update_reason": "duplicate"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_deleted"] is True
+
+
+def test_restore_watch_event_returns_updated_row(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    event = DummyWatchEvent()
+
+    monkeypatch.setattr(
+        WatchEventService,
+        "restore_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+
+    client = TestClient(app)
+    response = client.post(
+        f"/api/v1/watch-events/{event.watch_id}/restore",
+        json={"updated_by": "operator", "update_reason": "restored"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_deleted"] is False
+
+
+def test_correct_watch_event_returns_updated_row(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    event = DummyWatchEvent()
+    event.updated_by = "operator"
+    event.update_reason = "timezone fix"
+
+    monkeypatch.setattr(
+        WatchEventService,
+        "correct_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+
+    client = TestClient(app)
+    response = client.post(
+        f"/api/v1/watch-events/{event.watch_id}/correct",
+        json={
+            "updated_by": "operator",
+            "update_reason": "timezone fix",
+            "completed": True,
+            "rewatch": False,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["updated_by"] == "operator"
+    assert payload["update_reason"] == "timezone fix"

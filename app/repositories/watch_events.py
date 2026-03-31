@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
-from app.db.models.entities import MediaItem, Show, User, WatchEvent
+from app.db.models.entities import MediaItem, MediaVersion, Show, User, WatchEvent
 
 
 def _format_display_title(
@@ -40,6 +40,8 @@ def list_watch_events(
     local_date_from: date | None,
     local_date_to: date | None,
     media_type: Literal["movie", "show", "episode"] | None,
+    include_deleted: bool,
+    deleted_only: bool,
     limit: int,
     offset: int,
 ) -> list[dict[str, object]]:
@@ -77,6 +79,10 @@ def list_watch_events(
     )
     if media_type is not None:
         statement = statement.where(MediaItem.type == media_type)
+    if deleted_only:
+        statement = statement.where(WatchEvent.is_deleted.is_(True))
+    elif not include_deleted:
+        statement = statement.where(WatchEvent.is_deleted.is_(False))
 
     if user_id is not None:
         statement = statement.where(WatchEvent.user_id == user_id)
@@ -132,7 +138,14 @@ def list_watch_events(
                 "origin_kind": watch_event.origin_kind,
                 "origin_playback_event_id": watch_event.origin_playback_event_id,
                 "created_at": watch_event.created_at,
+                "updated_at": watch_event.updated_at,
+                "updated_by": watch_event.updated_by,
+                "update_reason": watch_event.update_reason,
                 "rewatch": watch_event.rewatch,
+                "is_deleted": watch_event.is_deleted,
+                "deleted_at": watch_event.deleted_at,
+                "deleted_by": watch_event.deleted_by,
+                "deleted_reason": watch_event.deleted_reason,
                 "dedupe_hash": watch_event.dedupe_hash,
                 "created_by": watch_event.created_by,
                 "source_event_id": watch_event.source_event_id,
@@ -227,6 +240,11 @@ def get_watch_event_by_source_event(
     return session.scalar(statement)
 
 
+def get_watch_event(session: Session, *, watch_id: UUID) -> WatchEvent | None:
+    statement = select(WatchEvent).where(WatchEvent.watch_id == watch_id)
+    return session.scalar(statement)
+
+
 def prior_watch_event_exists(
     session: Session,
     *,
@@ -238,6 +256,7 @@ def prior_watch_event_exists(
         WatchEvent.user_id == user_id,
         WatchEvent.media_item_id == media_item_id,
         WatchEvent.watched_at < watched_at,
+        WatchEvent.is_deleted.is_(False),
     )
     return session.scalar(statement) is not None
 
@@ -260,6 +279,7 @@ def find_matching_watch_event(
             WatchEvent.user_id == user_id,
             WatchEvent.media_item_id == media_item_id,
             WatchEvent.completed == completed,
+            WatchEvent.is_deleted.is_(False),
             WatchEvent.watched_at >= lower_bound,
             WatchEvent.watched_at <= upper_bound,
         )
@@ -267,3 +287,44 @@ def find_matching_watch_event(
         .limit(1)
     )
     return session.scalar(statement)
+
+
+def media_version_matches_media_item(
+    session: Session,
+    *,
+    media_version_id: UUID,
+    media_item_id: UUID,
+) -> bool:
+    statement = select(MediaVersion.media_version_id).where(
+        MediaVersion.media_version_id == media_version_id,
+        MediaVersion.media_item_id == media_item_id,
+    )
+    return session.scalar(statement) is not None
+
+
+def update_watch_event(
+    session: Session,
+    *,
+    watch_event: WatchEvent,
+) -> WatchEvent:
+    session.add(watch_event)
+    session.flush()
+    session.refresh(watch_event)
+    return watch_event
+
+
+def list_user_media_watch_events(
+    session: Session,
+    *,
+    user_id: UUID,
+    media_item_id: UUID,
+) -> list[WatchEvent]:
+    statement = (
+        select(WatchEvent)
+        .where(
+            WatchEvent.user_id == user_id,
+            WatchEvent.media_item_id == media_item_id,
+        )
+        .order_by(WatchEvent.watched_at.asc(), WatchEvent.created_at.asc())
+    )
+    return list(session.scalars(statement))

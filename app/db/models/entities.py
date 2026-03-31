@@ -382,6 +382,7 @@ class WatchEvent(Base):
         Index("ix_watch_event_user_time", "user_id", text("watched_at DESC")),
         Index("ix_watch_event_watched_at", text("watched_at DESC")),
         Index("ix_watch_event_origin_playback", "origin_playback_event_id"),
+        Index("ix_watch_event_is_deleted", "is_deleted"),
         Index(
             "ux_watch_event_dedupe_hash",
             "dedupe_hash",
@@ -432,9 +433,18 @@ class WatchEvent(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_by: Mapped[str | None] = mapped_column(String)
+    update_reason: Mapped[str | None] = mapped_column(String)
     rewatch: Mapped[bool] = mapped_column(
         Boolean, server_default=text("false"), nullable=False
     )
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean, server_default=text("false"), nullable=False
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_by: Mapped[str | None] = mapped_column(String)
+    deleted_reason: Mapped[str | None] = mapped_column(String)
     media_version_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey(f"{APP_SCHEMA}.media_version.media_version_id", ondelete="SET NULL"),

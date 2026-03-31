@@ -35,6 +35,7 @@ const importCopyDetail = document.getElementById("import-copy-detail");
 const importDownloadErrors = document.getElementById("import-download-errors");
 const importDetail = document.getElementById("import-detail");
 const historyMediaType = document.getElementById("history-media-type");
+const historyIncludeDeleted = document.getElementById("history-include-deleted");
 const historyLimitSelect = document.getElementById("history-limit");
 const historyApply = document.getElementById("history-apply");
 const historyStatus = document.getElementById("history-status");
@@ -42,6 +43,17 @@ const historyBody = document.getElementById("history-body");
 const historyPrev = document.getElementById("history-prev");
 const historyNext = document.getElementById("history-next");
 const historyPage = document.getElementById("history-page");
+const historyDetailStatus = document.getElementById("history-detail-status");
+const historyDetail = document.getElementById("history-detail");
+const historyEditorUpdatedBy = document.getElementById("history-editor-updated-by");
+const historyEditorReason = document.getElementById("history-editor-reason");
+const historyEditorWatchedAt = document.getElementById("history-editor-watched-at");
+const historyEditorMediaItemId = document.getElementById("history-editor-media-item-id");
+const historyEditorCompleted = document.getElementById("history-editor-completed");
+const historyEditorRewatch = document.getElementById("history-editor-rewatch");
+const historySave = document.getElementById("history-save");
+const historyDelete = document.getElementById("history-delete");
+const historyRestore = document.getElementById("history-restore");
 const activitySource = document.getElementById("activity-source");
 const activityStatus = document.getElementById("activity-status");
 const activityOnlyUnmatched = document.getElementById("activity-only-unmatched");
@@ -84,6 +96,8 @@ const IMPORT_UPLOAD_MAX_BYTES = IMPORT_UPLOAD_MAX_MB * 1024 * 1024;
 
 let historyOffset = 0;
 let historyLimit = Number.parseInt(historyLimitSelect.value, 10);
+let historyRows = [];
+let selectedHistoryId = null;
 let activityOffset = 0;
 let activityLimit = Number.parseInt(activityLimitSelect.value, 10);
 let selectedActivityId = null;
@@ -649,23 +663,84 @@ function buildHistoryQuery() {
   if (historyMediaType.value) {
     params.set("media_type", historyMediaType.value);
   }
+  if (historyIncludeDeleted.checked) {
+    params.set("include_deleted", "true");
+  }
   return params.toString();
+}
+
+function syncSelectedHistoryRow() {
+  const rows = historyBody.querySelectorAll("tr[data-watch-id]");
+  for (const row of rows) {
+    row.classList.toggle("selected", row.dataset.watchId === selectedHistoryId);
+  }
+}
+
+function toDateTimeLocalValue(value) {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return offsetDate.toISOString().slice(0, 16);
+}
+
+function formatHistoryDetail(row) {
+  return [
+    `watch_id: ${row.watch_id}`,
+    `display_title: ${row.display_title || row.media_item_title || row.media_item_id}`,
+    `watched_at_utc: ${row.watched_at}`,
+    `watched_at_local: ${row.watched_at_local || "n/a"}`,
+    `user_timezone: ${row.user_timezone || "n/a"}`,
+    `media_item_id: ${row.media_item_id}`,
+    `media_item_type: ${row.media_item_type || "n/a"}`,
+    `playback_source: ${row.playback_source}`,
+    `completed: ${row.completed}`,
+    `rewatch: ${row.rewatch}`,
+    `is_deleted: ${row.is_deleted}`,
+    `updated_at: ${row.updated_at || "n/a"}`,
+    `updated_by: ${row.updated_by || "n/a"}`,
+    `update_reason: ${row.update_reason || "n/a"}`,
+    `deleted_at: ${row.deleted_at || "n/a"}`,
+    `deleted_by: ${row.deleted_by || "n/a"}`,
+    `deleted_reason: ${row.deleted_reason || "n/a"}`,
+  ].join("\n");
+}
+
+function populateHistoryEditor(row) {
+  selectedHistoryId = row.watch_id;
+  syncSelectedHistoryRow();
+  historyDetailStatus.textContent = `Showing correction detail for ${row.display_title || row.media_item_title || row.watch_id}`;
+  historyDetail.textContent = formatHistoryDetail(row);
+  historyEditorWatchedAt.value = toDateTimeLocalValue(row.watched_at);
+  historyEditorMediaItemId.value = row.media_item_id || "";
+  historyEditorCompleted.checked = Boolean(row.completed);
+  historyEditorRewatch.checked = Boolean(row.rewatch);
+  historyDelete.disabled = row.is_deleted;
+  historyRestore.disabled = !row.is_deleted;
 }
 
 async function loadHistory() {
   historyStatus.textContent = "Loading history...";
   historyBody.innerHTML = "";
+  historyRows = [];
+  selectedHistoryId = null;
   try {
     const response = await api(`/api/v1/watch-events?${buildHistoryQuery()}`);
     if (!response.ok) {
       historyStatus.textContent = "Failed to load history";
       setHistoryPagination(0);
+      historyDetailStatus.textContent = "Select a watch event to inspect or correct.";
+      historyDetail.textContent = "";
       return;
     }
     const rows = await response.json();
+    historyRows = rows;
     if (rows.length === 0) {
       historyStatus.textContent = "No events for current filter/page";
       setHistoryPagination(0);
+      historyDetailStatus.textContent = "Select a watch event to inspect or correct.";
+      historyDetail.textContent = "";
       return;
     }
     for (const row of rows) {
@@ -675,9 +750,11 @@ async function loadHistory() {
       const progress = row.progress_percent === null ? "-" : `${row.progress_percent}%`;
       const title = row.display_title || row.media_item_title || row.media_item_id;
       const type = row.media_item_type || "-";
+      const deletedBadge = row.is_deleted ? " [deleted]" : "";
+      tr.dataset.watchId = row.watch_id;
       tr.innerHTML = `
         <td>${watchedAt}</td>
-        <td>${title}</td>
+        <td>${title}${deletedBadge}</td>
         <td>${type}</td>
         <td>${row.playback_source}</td>
         <td>${completed}</td>
@@ -687,10 +764,65 @@ async function loadHistory() {
     }
     historyStatus.textContent = `Loaded ${rows.length} event(s)`;
     setHistoryPagination(rows.length);
+    populateHistoryEditor(rows[0]);
   } catch (_error) {
     historyStatus.textContent = "Failed to load history";
     setHistoryPagination(0);
+    historyDetailStatus.textContent = "Select a watch event to inspect or correct.";
+    historyDetail.textContent = "";
   }
+}
+
+async function correctHistoryWatch() {
+  if (!selectedHistoryId) {
+    historyDetailStatus.textContent = "Select a watch event before saving a correction.";
+    return;
+  }
+  const payload = {
+    updated_by: historyEditorUpdatedBy.value.trim(),
+    update_reason: historyEditorReason.value.trim() || null,
+    watched_at: historyEditorWatchedAt.value ? new Date(historyEditorWatchedAt.value).toISOString() : null,
+    media_item_id: historyEditorMediaItemId.value.trim() || null,
+    completed: historyEditorCompleted.checked,
+    rewatch: historyEditorRewatch.checked,
+  };
+  const response = await api(`/api/v1/watch-events/${selectedHistoryId}/correct`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => null);
+    historyDetailStatus.textContent = errorPayload?.detail || "Failed to save correction.";
+    return;
+  }
+  const updated = await response.json();
+  historyDetailStatus.textContent = `Saved correction for ${updated.display_title || updated.media_item_id || updated.watch_id}`;
+  await loadHistory();
+  const selectedRow = historyRows.find((item) => item.watch_id === updated.watch_id);
+  if (selectedRow) {
+    populateHistoryEditor(selectedRow);
+  }
+}
+
+async function setHistoryDeletedState(action) {
+  if (!selectedHistoryId) {
+    historyDetailStatus.textContent = "Select a watch event first.";
+    return;
+  }
+  const payload = {
+    updated_by: historyEditorUpdatedBy.value.trim(),
+    update_reason: historyEditorReason.value.trim() || null,
+  };
+  const response = await api(`/api/v1/watch-events/${selectedHistoryId}/${action}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => null);
+    historyDetailStatus.textContent = errorPayload?.detail || `Failed to ${action} watch event.`;
+    return;
+  }
+  await loadHistory();
 }
 
 function setActivityPagination(rowsLoaded) {
@@ -998,6 +1130,11 @@ historyMediaType.addEventListener("change", async () => {
   await loadHistory();
 });
 
+historyIncludeDeleted.addEventListener("change", async () => {
+  historyOffset = 0;
+  await loadHistory();
+});
+
 historyPrev.addEventListener("click", async () => {
   historyOffset = Math.max(0, historyOffset - historyLimit);
   await loadHistory();
@@ -1006,6 +1143,34 @@ historyPrev.addEventListener("click", async () => {
 historyNext.addEventListener("click", async () => {
   historyOffset += historyLimit;
   await loadHistory();
+});
+
+historyBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const row = target.closest("tr[data-watch-id]");
+  if (!(row instanceof HTMLTableRowElement)) {
+    return;
+  }
+  const selectedRow = historyRows.find((item) => item.watch_id === row.dataset.watchId);
+  if (!selectedRow) {
+    return;
+  }
+  populateHistoryEditor(selectedRow);
+});
+
+historySave.addEventListener("click", async () => {
+  await correctHistoryWatch();
+});
+
+historyDelete.addEventListener("click", async () => {
+  await setHistoryDeletedState("delete");
+});
+
+historyRestore.addEventListener("click", async () => {
+  await setHistoryDeletedState("restore");
 });
 
 activityApply.addEventListener("click", async () => {
