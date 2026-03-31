@@ -274,7 +274,7 @@ class MediaEnrichmentService:
                 external_source="tvdb_id",
                 media_type="tv",
             )
-            show_tmdb_id = match.tmdb_id
+            show_tmdb_id = match.resolved_show_tmdb_id or match.tmdb_id
 
         if media_item.season_number is None or media_item.episode_number is None:
             raise TmdbLookupError("missing_season_or_episode_number")

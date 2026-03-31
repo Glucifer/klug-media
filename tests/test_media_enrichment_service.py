@@ -107,7 +107,12 @@ def test_enrich_episode_resolves_show_tmdb_id_from_tvdb(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         "app.services.media_enrichment.TmdbService.find_by_external_id",
-        lambda *_args, **_kwargs: SimpleNamespace(tmdb_id=204154, media_type="tv", payload={}),
+        lambda *_args, **_kwargs: SimpleNamespace(
+            tmdb_id=166773,
+            media_type="tv_episode",
+            payload={},
+            resolved_show_tmdb_id=204154,
+        ),
     )
     monkeypatch.setattr(
         "app.services.media_enrichment.TmdbService.get_tv_details",

@@ -25,6 +25,7 @@ class TmdbFindResult:
     tmdb_id: int
     media_type: str
     payload: dict[str, Any]
+    resolved_show_tmdb_id: int | None = None
 
 
 class TmdbService:
@@ -53,20 +54,53 @@ class TmdbService:
             url_path=f"/find/{external_id}",
             params={"external_source": external_source},
         )
-        result_key = "movie_results" if media_type == "movie" else "tv_results"
-        results = payload.get(result_key)
-        if not isinstance(results, list) or not results:
-            raise TmdbLookupError(
-                f"TMDB /find returned no {media_type} result for {external_source}"
+        if media_type == "movie":
+            results = payload.get("movie_results")
+            if not isinstance(results, list) or not results:
+                raise TmdbLookupError(
+                    f"TMDB /find returned no {media_type} result for {external_source}"
+                )
+            first = results[0]
+            tmdb_id = first.get("id")
+            if not isinstance(tmdb_id, int):
+                raise TmdbLookupError("TMDB /find result did not include an integer id")
+            return TmdbFindResult(
+                tmdb_id=tmdb_id,
+                media_type=media_type,
+                payload=first,
             )
-        first = results[0]
-        tmdb_id = first.get("id")
-        if not isinstance(tmdb_id, int):
-            raise TmdbLookupError("TMDB /find result did not include an integer id")
-        return TmdbFindResult(
-            tmdb_id=tmdb_id,
-            media_type=media_type,
-            payload=first,
+
+        tv_results = payload.get("tv_results")
+        if isinstance(tv_results, list) and tv_results:
+            first = tv_results[0]
+            tmdb_id = first.get("id")
+            if not isinstance(tmdb_id, int):
+                raise TmdbLookupError("TMDB /find tv result did not include an integer id")
+            return TmdbFindResult(
+                tmdb_id=tmdb_id,
+                media_type="tv",
+                payload=first,
+                resolved_show_tmdb_id=tmdb_id,
+            )
+
+        tv_episode_results = payload.get("tv_episode_results")
+        if isinstance(tv_episode_results, list) and tv_episode_results:
+            first = tv_episode_results[0]
+            episode_tmdb_id = first.get("id")
+            show_tmdb_id = first.get("show_id")
+            if not isinstance(episode_tmdb_id, int) or not isinstance(show_tmdb_id, int):
+                raise TmdbLookupError(
+                    "TMDB /find tv episode result did not include integer episode/show ids"
+                )
+            return TmdbFindResult(
+                tmdb_id=episode_tmdb_id,
+                media_type="tv_episode",
+                payload=first,
+                resolved_show_tmdb_id=show_tmdb_id,
+            )
+
+        raise TmdbLookupError(
+            f"TMDB /find returned no {media_type} result for {external_source}"
         )
 
     @staticmethod
