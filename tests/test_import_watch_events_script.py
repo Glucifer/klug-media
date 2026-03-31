@@ -89,6 +89,7 @@ def test_run_executes_import_service(monkeypatch, tmp_path: Path) -> None:
         processed_count=1,
         inserted_count=1,
         skipped_count=0,
+        collision_deduped_count=0,
         error_count=0,
     )
 
@@ -145,6 +146,7 @@ def test_run_legacy_backup_writes_error_report(monkeypatch, tmp_path: Path) -> N
         processed_count=1,
         inserted_count=1,
         skipped_count=0,
+        collision_deduped_count=0,
         error_count=0,
     )
 

@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from unittest.mock import Mock
 from uuid import UUID, uuid4
 
 from sqlalchemy.orm import Session
@@ -11,6 +12,7 @@ from app.schemas.imports import (
     WatchEventImportRequest,
 )
 from app.services.imports import WatchEventImportService
+from app.services.watch_events import WatchEventCreateResult
 from app.services.watch_events import WatchEventDuplicateError
 
 
@@ -54,7 +56,7 @@ def test_run_import_all_success(monkeypatch) -> None:
 
     def fake_create_watch_event(_session: Session, **_kwargs):
         assert _session is session_obj
-        return None
+        return WatchEventCreateResult(watch_event=Mock(), created=True)
 
     def fake_add_import_batch_error(_session: Session, **_kwargs):
         raise AssertionError("No errors expected")
@@ -110,7 +112,7 @@ def test_run_import_partial_failure_and_duplicate_skip(monkeypatch) -> None:
             raise WatchEventDuplicateError("Watch event already exists")
         if calls["create"] == 2:
             raise ValueError("bad row")
-        return None
+        return WatchEventCreateResult(watch_event=Mock(), created=True)
 
     def fake_add_import_batch_error(_session: Session, **kwargs):
         calls["errors"] += 1
@@ -144,6 +146,7 @@ def test_run_import_partial_failure_and_duplicate_skip(monkeypatch) -> None:
     assert result.status == "completed_with_errors"
     assert result.inserted_count == 0
     assert result.skipped_count == 1
+    assert result.collision_deduped_count == 0
     assert result.error_count == 1
     assert result.rejected_before_import == 1
     assert calls["errors"] == 1
@@ -169,6 +172,7 @@ def test_run_import_dry_run_skips_db_writes(monkeypatch) -> None:
     assert result.dry_run is True
     assert result.inserted_count == 2
     assert result.skipped_count == 0
+    assert result.collision_deduped_count == 0
     assert result.error_count == 0
     assert result.rejected_before_import == 1
 
@@ -209,6 +213,7 @@ def test_run_legacy_source_import_maps_rows(monkeypatch) -> None:
                 "processed_count": 1,
                 "inserted_count": 1,
                 "skipped_count": 0,
+                "collision_deduped_count": 0,
                 "error_count": 0,
             },
         )()
@@ -293,7 +298,9 @@ def test_run_incremental_resume_skips_rows_before_cursor(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         "app.services.imports.WatchEventService.create_watch_event",
-        lambda *_args, **_kwargs: None,
+        lambda *_args, **_kwargs: WatchEventCreateResult(
+            watch_event=Mock(), created=True
+        ),
     )
     monkeypatch.setattr(
         "app.services.imports.ImportBatchService.add_import_batch_error",
@@ -315,6 +322,7 @@ def test_run_incremental_resume_skips_rows_before_cursor(monkeypatch) -> None:
     result = WatchEventImportService.run_import(session_obj, payload=payload)
     assert result.inserted_count == 1
     assert result.skipped_count == 2
+    assert result.collision_deduped_count == 0
     assert result.error_count == 0
     assert result.rejected_before_import == 2
 
@@ -375,4 +383,57 @@ def test_run_incremental_skips_existing_source_event_id(monkeypatch) -> None:
     result = WatchEventImportService.run_import(session_obj, payload=payload)
     assert result.inserted_count == 0
     assert result.skipped_count == 1
+    assert result.collision_deduped_count == 0
     assert result.rejected_before_import == 3
+
+
+def test_run_import_counts_collision_deduped_rows(monkeypatch) -> None:
+    session_obj = object()
+    batch_id = uuid4()
+
+    class DummyBatch:
+        def __init__(self, import_batch_id: UUID, status: str = "running") -> None:
+            self.import_batch_id = import_batch_id
+            self.status = status
+
+    def fake_start_import_batch(_session: Session, **_kwargs):
+        return DummyBatch(batch_id)
+
+    calls = {"create": 0}
+
+    def fake_create_watch_event(_session: Session, **_kwargs):
+        calls["create"] += 1
+        return WatchEventCreateResult(
+            watch_event=Mock(),
+            created=calls["create"] == 1,
+            matched_existing=calls["create"] != 1,
+            match_reason="collision_window" if calls["create"] != 1 else None,
+        )
+
+    def fake_finish_import_batch(_session: Session, **kwargs):
+        assert kwargs["watch_events_inserted"] == 1
+        assert kwargs["parameters_patch"]["collision_deduped_count"] == 1
+        return DummyBatch(batch_id, status="completed")
+
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.start_import_batch",
+        fake_start_import_batch,
+    )
+    monkeypatch.setattr(
+        "app.services.imports.WatchEventService.create_watch_event",
+        fake_create_watch_event,
+    )
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.add_import_batch_error",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.finish_import_batch",
+        fake_finish_import_batch,
+    )
+
+    result = WatchEventImportService.run_import(session_obj, payload=_payload())
+
+    assert result.inserted_count == 1
+    assert result.skipped_count == 1
+    assert result.collision_deduped_count == 1

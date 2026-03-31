@@ -56,7 +56,7 @@ def create_watch_event(
     session: Session = Depends(get_db_session),
 ) -> WatchEventRead:
     try:
-        watch_event = WatchEventService.create_watch_event(
+        result = WatchEventService.create_watch_event(
             session,
             user_id=payload.user_id,
             media_item_id=payload.media_item_id,
@@ -70,6 +70,8 @@ def create_watch_event(
             rating_scale=payload.rating_scale,
             media_version_id=payload.media_version_id,
             source_event_id=payload.source_event_id,
+            created_by=payload.created_by,
+            origin_kind="manual_entry",
         )
     except WatchEventConstraintError as exc:
         raise HTTPException(
@@ -81,4 +83,4 @@ def create_watch_event(
             detail=str(exc),
         ) from exc
 
-    return WatchEventRead.model_validate(watch_event)
+    return WatchEventRead.model_validate(result.watch_event)

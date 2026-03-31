@@ -20,6 +20,7 @@ class WatchEventCreate(KlugBaseModel):
     rating_scale: str | None = Field(default=None, max_length=50)
     media_version_id: UUID | None = None
     source_event_id: str | None = Field(default=None, max_length=255)
+    created_by: str | None = Field(default=None, max_length=100)
 
 
 class WatchEventRead(KlugORMModel):
@@ -36,6 +37,8 @@ class WatchEventRead(KlugORMModel):
     rating_scale: str | None
     media_version_id: UUID | None
     import_batch_id: UUID | None
+    origin_kind: str
+    origin_playback_event_id: UUID | None
     created_at: datetime
     rewatch: bool
     dedupe_hash: str | None

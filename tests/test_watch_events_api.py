@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.services.watch_events import WatchEventConstraintError, WatchEventService
+from app.services.watch_events import WatchEventCreateResult
 
 
 class DummyWatchEvent:
@@ -23,6 +24,8 @@ class DummyWatchEvent:
         self.rating_scale = "5-star"
         self.media_version_id = None
         self.import_batch_id = None
+        self.origin_kind = "manual_entry"
+        self.origin_playback_event_id = None
         self.created_at = datetime.now(UTC)
         self.rewatch = False
         self.dedupe_hash = "abc123"
@@ -102,6 +105,8 @@ def test_list_watch_events_returns_enriched_media_fields(monkeypatch) -> None:
                 "rating_scale": None,
                 "media_version_id": None,
                 "import_batch_id": None,
+                "origin_kind": "manual_import",
+                "origin_playback_event_id": None,
                 "created_at": datetime.now(UTC),
                 "rewatch": False,
                 "dedupe_hash": None,
@@ -140,7 +145,7 @@ def test_create_watch_event_returns_201(monkeypatch) -> None:
 
     def fake_create_watch_event(_session, **kwargs):
         assert kwargs["playback_source"] == "jellyfin"
-        return event
+        return WatchEventCreateResult(watch_event=event, created=True)
 
     monkeypatch.setattr(
         WatchEventService, "create_watch_event", fake_create_watch_event

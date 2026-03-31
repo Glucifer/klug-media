@@ -80,6 +80,7 @@ $env:KLUG_SESSION_SECRET="replace-with-session-signing-secret"
 $env:KLUG_IMPORT_UPLOAD_MAX_MB="25"
 $env:KLUG_SCROBBLE_MIN_PROGRESS_PERCENT="90"
 $env:KLUG_SCROBBLE_MIN_COMPLETION_RATIO="0.90"
+$env:KLUG_WATCH_COLLISION_WINDOW_SECONDS="300"
 ```
 
 `KLUG_API_AUTH_MODE` options:
@@ -100,6 +101,7 @@ When logged in, a signed `klug_session` cookie can satisfy API auth checks (API 
 Scrobbler threshold options:
 - `KLUG_SCROBBLE_MIN_PROGRESS_PERCENT`: progress percent required for stop-event scrobbling when progress data is present
 - `KLUG_SCROBBLE_MIN_COMPLETION_RATIO`: watched/total ratio required for stop-event scrobbling when duration data is used
+- `KLUG_WATCH_COLLISION_WINDOW_SECONDS`: conservative matching window used to deduplicate import/live watch collisions into one final `watch_event`
 
 4. Run API:
 ```bash

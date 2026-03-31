@@ -113,7 +113,7 @@ class WebhookService:
             )
 
         media_item_id = WebhookService._resolve_media_item_id(session, payload=payload)
-        watch_event = WatchEventService.create_watch_event(
+        watch_result = WatchEventService.create_watch_event(
             session,
             user_id=payload.user_id,
             media_item_id=media_item_id,
@@ -127,7 +127,24 @@ class WebhookService:
             rating_scale=None,
             media_version_id=None,
             source_event_id=payload.source_event_id,
+            origin_kind="live_playback",
+            origin_playback_event_id=playback_event.playback_event_id,
         )
+        if not watch_result.created:
+            playback_event = PlaybackEventService.update_playback_event_decision(
+                session,
+                playback_event=playback_event,
+                decision_status="duplicate_watch_event_skipped",
+                decision_reason="Matched existing watch event by collision window",
+                watch_id=watch_result.watch_event.watch_id,
+            )
+            return PlaybackIngestResult(
+                action="duplicate_watch_event_skipped",
+                playback_event=playback_event,
+                watch_event=watch_result.watch_event,
+                reason="Matched existing watch event by collision window",
+            )
+        watch_event = watch_result.watch_event
         playback_event = PlaybackEventService.update_playback_event_decision(
             session,
             playback_event=playback_event,

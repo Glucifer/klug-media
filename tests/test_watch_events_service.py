@@ -14,6 +14,14 @@ def test_create_watch_event_normalizes_input(monkeypatch) -> None:
     expected_event = Mock()
 
     monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.get_watch_event_by_source_event",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.find_matching_watch_event",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
         "app.services.watch_events.watch_event_repository.prior_watch_event_exists",
         lambda *_args, **_kwargs: False,
     )
@@ -21,6 +29,8 @@ def test_create_watch_event_normalizes_input(monkeypatch) -> None:
     def fake_create_watch_event(_session, **kwargs):
         assert kwargs["playback_source"] == "jellyfin"
         assert kwargs["rating_scale"] == "5-star"
+        assert kwargs["origin_kind"] == "manual_entry"
+        assert kwargs["origin_playback_event_id"] is None
         assert kwargs["rewatch"] is False
         return expected_event
 
@@ -29,7 +39,7 @@ def test_create_watch_event_normalizes_input(monkeypatch) -> None:
         fake_create_watch_event,
     )
 
-    event = WatchEventService.create_watch_event(
+    result = WatchEventService.create_watch_event(
         session,
         user_id=uuid4(),
         media_item_id=uuid4(),
@@ -45,7 +55,8 @@ def test_create_watch_event_normalizes_input(monkeypatch) -> None:
         source_event_id="evt-1",
     )
 
-    assert event is expected_event
+    assert result.watch_event is expected_event
+    assert result.created is True
     session.commit.assert_called_once()
     session.rollback.assert_not_called()
 
@@ -98,6 +109,14 @@ def test_create_watch_event_integrity_error_maps_to_domain_error(monkeypatch) ->
     session = Mock()
 
     monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.get_watch_event_by_source_event",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.find_matching_watch_event",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
         "app.services.watch_events.watch_event_repository.prior_watch_event_exists",
         lambda *_args, **_kwargs: False,
     )
@@ -135,6 +154,14 @@ def test_create_watch_event_marks_rewatch_when_prior_watch_exists(monkeypatch) -
     expected_event = Mock()
 
     monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.get_watch_event_by_source_event",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.find_matching_watch_event",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
         "app.services.watch_events.watch_event_repository.prior_watch_event_exists",
         lambda *_args, **_kwargs: True,
     )
@@ -148,7 +175,7 @@ def test_create_watch_event_marks_rewatch_when_prior_watch_exists(monkeypatch) -
         fake_create_watch_event,
     )
 
-    event = WatchEventService.create_watch_event(
+    result = WatchEventService.create_watch_event(
         session,
         user_id=uuid4(),
         media_item_id=uuid4(),
@@ -164,8 +191,76 @@ def test_create_watch_event_marks_rewatch_when_prior_watch_exists(monkeypatch) -
         source_event_id="evt-2",
     )
 
-    assert event is expected_event
+    assert result.watch_event is expected_event
+    assert result.created is True
     session.commit.assert_called_once()
+
+
+def test_create_watch_event_returns_existing_source_event_match(monkeypatch) -> None:
+    session = Mock()
+    existing_event = Mock()
+
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.get_watch_event_by_source_event",
+        lambda *_args, **_kwargs: existing_event,
+    )
+
+    result = WatchEventService.create_watch_event(
+        session,
+        user_id=uuid4(),
+        media_item_id=uuid4(),
+        watched_at=datetime.now(UTC),
+        playback_source="jellyfin",
+        total_seconds=None,
+        watched_seconds=None,
+        progress_percent=None,
+        completed=True,
+        rating_value=None,
+        rating_scale=None,
+        media_version_id=None,
+        source_event_id="evt-existing",
+    )
+
+    assert result.watch_event is existing_event
+    assert result.created is False
+    assert result.match_reason == "source_event"
+    session.commit.assert_not_called()
+
+
+def test_create_watch_event_returns_existing_collision_match(monkeypatch) -> None:
+    session = Mock()
+    existing_event = Mock()
+
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.get_watch_event_by_source_event",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.find_matching_watch_event",
+        lambda *_args, **_kwargs: existing_event,
+    )
+
+    result = WatchEventService.create_watch_event(
+        session,
+        user_id=uuid4(),
+        media_item_id=uuid4(),
+        watched_at=datetime.now(UTC),
+        playback_source="jellyfin",
+        total_seconds=None,
+        watched_seconds=None,
+        progress_percent=None,
+        completed=True,
+        rating_value=None,
+        rating_scale=None,
+        media_version_id=None,
+        source_event_id=None,
+        origin_kind="manual_import",
+    )
+
+    assert result.watch_event is existing_event
+    assert result.created is False
+    assert result.match_reason == "collision_window"
+    session.commit.assert_not_called()
 
 
 def test_list_watch_events_clamps_limit(monkeypatch) -> None:

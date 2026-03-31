@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -129,6 +129,8 @@ def list_watch_events(
                 "rating_scale": watch_event.rating_scale,
                 "media_version_id": watch_event.media_version_id,
                 "import_batch_id": watch_event.import_batch_id,
+                "origin_kind": watch_event.origin_kind,
+                "origin_playback_event_id": watch_event.origin_playback_event_id,
                 "created_at": watch_event.created_at,
                 "rewatch": watch_event.rewatch,
                 "dedupe_hash": watch_event.dedupe_hash,
@@ -168,6 +170,10 @@ def create_watch_event(
     rating_scale: str | None,
     media_version_id: UUID | None,
     source_event_id: str | None,
+    created_by: str | None,
+    import_batch_id: UUID | None,
+    origin_kind: str,
+    origin_playback_event_id: UUID | None,
     rewatch: bool,
 ) -> WatchEvent:
     watch_event = WatchEvent(
@@ -182,7 +188,11 @@ def create_watch_event(
         rating_value=rating_value,
         rating_scale=rating_scale,
         media_version_id=media_version_id,
+        import_batch_id=import_batch_id,
+        origin_kind=origin_kind,
+        origin_playback_event_id=origin_playback_event_id,
         source_event_id=source_event_id,
+        created_by=created_by,
         rewatch=rewatch,
     )
     session.add(watch_event)
@@ -204,6 +214,19 @@ def source_event_exists(
     return session.scalar(statement) is not None
 
 
+def get_watch_event_by_source_event(
+    session: Session,
+    *,
+    playback_source: str,
+    source_event_id: str,
+) -> WatchEvent | None:
+    statement = select(WatchEvent).where(
+        WatchEvent.playback_source == playback_source,
+        WatchEvent.source_event_id == source_event_id,
+    )
+    return session.scalar(statement)
+
+
 def prior_watch_event_exists(
     session: Session,
     *,
@@ -217,3 +240,30 @@ def prior_watch_event_exists(
         WatchEvent.watched_at < watched_at,
     )
     return session.scalar(statement) is not None
+
+
+def find_matching_watch_event(
+    session: Session,
+    *,
+    user_id: UUID,
+    media_item_id: UUID,
+    watched_at: datetime,
+    completed: bool,
+    collision_window_seconds: int,
+) -> WatchEvent | None:
+    collision_window = timedelta(seconds=max(0, collision_window_seconds))
+    lower_bound = watched_at - collision_window
+    upper_bound = watched_at + collision_window
+    statement = (
+        select(WatchEvent)
+        .where(
+            WatchEvent.user_id == user_id,
+            WatchEvent.media_item_id == media_item_id,
+            WatchEvent.completed == completed,
+            WatchEvent.watched_at >= lower_bound,
+            WatchEvent.watched_at <= upper_bound,
+        )
+        .order_by(WatchEvent.watched_at.desc(), WatchEvent.created_at.desc())
+        .limit(1)
+    )
+    return session.scalar(statement)

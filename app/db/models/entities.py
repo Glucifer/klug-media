@@ -368,6 +368,7 @@ class WatchEvent(Base):
         ),
         Index("ix_watch_event_user_time", "user_id", text("watched_at DESC")),
         Index("ix_watch_event_watched_at", text("watched_at DESC")),
+        Index("ix_watch_event_origin_playback", "origin_playback_event_id"),
         Index(
             "ux_watch_event_dedupe_hash",
             "dedupe_hash",
@@ -405,6 +406,15 @@ class WatchEvent(Base):
     import_batch_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey(f"{APP_SCHEMA}.import_batch.import_batch_id", ondelete="SET NULL"),
+    )
+    origin_kind: Mapped[str] = mapped_column(
+        String,
+        server_default=text("'manual_entry'::text"),
+        nullable=False,
+    )
+    origin_playback_event_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey(f"{APP_SCHEMA}.playback_event.playback_event_id", ondelete="SET NULL"),
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False

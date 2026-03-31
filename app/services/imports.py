@@ -29,6 +29,7 @@ class WatchEventImportResult:
     processed_count: int
     inserted_count: int
     skipped_count: int
+    collision_deduped_count: int
     error_count: int
     rejected_before_import: int = 0
     media_items_created: int = 0
@@ -149,6 +150,7 @@ class WatchEventImportService:
 
         inserted_count = 0
         skipped_count = 0
+        collision_deduped_count = 0
         error_count = 0
 
         if payload.dry_run:
@@ -181,6 +183,7 @@ class WatchEventImportService:
                 processed_count=len(payload.events),
                 inserted_count=inserted_count,
                 skipped_count=skipped_count,
+                collision_deduped_count=collision_deduped_count,
                 error_count=error_count,
                 rejected_before_import=payload.rejected_before_import,
                 media_items_created=payload.media_items_created,
@@ -234,7 +237,7 @@ class WatchEventImportService:
                         )
                         continue
 
-                WatchEventService.create_watch_event(
+                create_result = WatchEventService.create_watch_event(
                     session,
                     user_id=mapped.user_id,
                     media_item_id=mapped.media_item_id,
@@ -248,8 +251,15 @@ class WatchEventImportService:
                     rating_scale=mapped.rating_scale,
                     media_version_id=mapped.media_version_id,
                     source_event_id=mapped.source_event_id,
+                    import_batch_id=batch.import_batch_id,
+                    origin_kind="manual_import",
                 )
-                inserted_count += 1
+                if create_result.created:
+                    inserted_count += 1
+                else:
+                    skipped_count += 1
+                    if create_result.match_reason == "collision_window":
+                        collision_deduped_count += 1
                 cursor_after = WatchEventImportService._max_cursor(
                     cursor_after, row_cursor
                 )
@@ -287,6 +297,7 @@ class WatchEventImportService:
                 "rejected_before_import": payload.rejected_before_import,
                 "media_items_created": payload.media_items_created,
                 "shows_created": payload.shows_created,
+                "collision_deduped_count": collision_deduped_count,
             },
         )
 
@@ -297,6 +308,7 @@ class WatchEventImportService:
             processed_count=len(payload.events),
             inserted_count=inserted_count,
             skipped_count=skipped_count,
+            collision_deduped_count=collision_deduped_count,
             error_count=error_count,
             rejected_before_import=payload.rejected_before_import,
             media_items_created=payload.media_items_created,

@@ -17,6 +17,7 @@ def test_import_watch_events_returns_summary(monkeypatch) -> None:
         processed_count=3,
         inserted_count=1,
         skipped_count=1,
+        collision_deduped_count=0,
         error_count=1,
         rejected_before_import=2,
     )
@@ -108,6 +109,7 @@ def test_import_legacy_source_watch_events_endpoint(monkeypatch) -> None:
         processed_count=1,
         inserted_count=1,
         skipped_count=0,
+        collision_deduped_count=0,
         error_count=0,
         rejected_before_import=4,
     )
@@ -153,6 +155,7 @@ def test_import_legacy_source_watch_events_upload_endpoint(monkeypatch) -> None:
         processed_count=1,
         inserted_count=1,
         skipped_count=0,
+        collision_deduped_count=0,
         error_count=0,
         rejected_before_import=0,
     )

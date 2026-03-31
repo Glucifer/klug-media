@@ -35,6 +35,7 @@ def _to_import_response(result: WatchEventImportResult) -> WatchEventImportRespo
         processed_count=result.processed_count,
         inserted_count=result.inserted_count,
         skipped_count=result.skipped_count,
+        collision_deduped_count=result.collision_deduped_count,
         error_count=result.error_count,
         rejected_before_import=result.rejected_before_import,
         media_items_created=result.media_items_created,

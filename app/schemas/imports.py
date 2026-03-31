@@ -47,6 +47,7 @@ class WatchEventImportResponse(KlugBaseModel):
     processed_count: int
     inserted_count: int
     skipped_count: int
+    collision_deduped_count: int = 0
     error_count: int
     rejected_before_import: int = 0
     media_items_created: int = 0

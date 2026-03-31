@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     klug_import_upload_max_mb: int = 25
     klug_scrobble_min_progress_percent: Decimal = Decimal("90")
     klug_scrobble_min_completion_ratio: Decimal = Decimal("0.90")
+    klug_watch_collision_window_seconds: int = 300
     database_url: str = (
         "postgresql+psycopg://postgres:postgres@localhost:5432/klug_media"
     )

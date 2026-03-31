@@ -63,6 +63,8 @@ def test_kodi_movie_scrobble(monkeypatch) -> None:
     mock_watch_event.rating_scale = None
     mock_watch_event.media_version_id = None
     mock_watch_event.import_batch_id = None
+    mock_watch_event.origin_kind = "live_playback"
+    mock_watch_event.origin_playback_event_id = uuid4()
     mock_watch_event.created_at = "2026-01-01T00:00:00Z"
     mock_watch_event.rewatch = False
     mock_watch_event.dedupe_hash = None
