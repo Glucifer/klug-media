@@ -71,7 +71,9 @@ uv venv --python 3.12
 uv sync
 ```
 
-3. Configure optional API auth (PowerShell):
+3. Copy `.env.example` to `.env` and replace `DATABASE_URL` with your real database host, user, password, and database name before starting the app.
+
+4. Configure optional API auth (PowerShell):
 ```powershell
 $env:KLUG_API_KEY="replace-with-long-random-value"
 $env:KLUG_API_AUTH_MODE="write"
@@ -103,7 +105,7 @@ Scrobbler threshold options:
 - `KLUG_SCROBBLE_MIN_COMPLETION_RATIO`: watched/total ratio required for stop-event scrobbling when duration data is used
 - `KLUG_WATCH_COLLISION_WINDOW_SECONDS`: conservative matching window used to deduplicate import/live watch collisions into one final `watch_event`
 
-4. Run API:
+5. Run API:
 ```bash
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8010
 ```
@@ -111,18 +113,18 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8010
 For this environment, Klug runs on the Windows host at `172.20.1.10:8010`.
 That allows Docker-hosted services on `172.20.1.20` such as Node-RED and Home Assistant to reach the API over the LAN.
 
-5. Run tests:
+6. Run tests:
 ```bash
 uv run pytest -q
 ```
 
-6. Run integration tests (PostgreSQL, PowerShell):
+7. Run integration tests (PostgreSQL, PowerShell):
 ```powershell
 $env:KLUG_TEST_DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/klug_media_test"
 uv run pytest -q tests/integration
 ```
 
-7. Run legacy export watch-event import script:
+8. Run legacy export watch-event import script:
 ```bash
 uv run python -m app.scripts.import_watch_events --input ./path/to/export.json --input-schema legacy_backup --user-id <your-user-uuid> --mode bootstrap
 ```
@@ -137,7 +139,7 @@ Incremental resume example:
 uv run python -m app.scripts.import_watch_events --input ./path/to/export.csv --input-schema legacy_backup --user-id <your-user-uuid> --mode incremental --resume-from-latest --error-report ./import_errors.json
 ```
 
-8. Backfill episode `show_id` links for older data:
+9. Backfill episode `show_id` links for older data:
 ```bash
 uv run python -m app.scripts.backfill_episode_shows --dry-run
 ```
