@@ -3,6 +3,7 @@ from decimal import Decimal
 from unittest.mock import Mock
 from uuid import uuid4
 
+from app.core.config import get_settings
 from app.schemas.webhooks import KodiPlaybackEventPayload
 from app.services.webhooks import WebhookService
 
@@ -366,3 +367,127 @@ def test_ingest_kodi_stop_records_only_when_duration_ratio_is_low(monkeypatch) -
     assert result.action == "recorded_only"
     assert result.playback_event is updated_event
     assert result.watch_event is None
+
+
+def test_ingest_kodi_stop_respects_configured_progress_threshold(monkeypatch) -> None:
+    session = Mock()
+    recorded_event = Mock()
+    recorded_event.playback_event_id = uuid4()
+    updated_event = Mock()
+    existing_movie = Mock()
+    existing_movie.media_item_id = uuid4()
+    created_watch_event = Mock()
+    created_watch_event.watch_id = uuid4()
+
+    monkeypatch.setenv("KLUG_SCROBBLE_MIN_PROGRESS_PERCENT", "80")
+    get_settings.cache_clear()
+    monkeypatch.setattr(
+        "app.services.webhooks.PlaybackEventService.record_playback_event",
+        lambda *_args, **_kwargs: recorded_event,
+    )
+    monkeypatch.setattr(
+        "app.services.webhooks.PlaybackEventService.update_playback_event_decision",
+        lambda *_args, **_kwargs: updated_event,
+    )
+    monkeypatch.setattr(
+        "app.services.webhooks.WatchEventService.source_event_exists",
+        lambda *_args, **_kwargs: False,
+    )
+    monkeypatch.setattr(
+        "app.services.webhooks.PlaybackEventService.session_has_prior_scrobble_candidate",
+        lambda *_args, **_kwargs: False,
+    )
+    monkeypatch.setattr(
+        "app.services.webhooks.MediaItemService.find_media_item_by_external_ids",
+        lambda *_args, **_kwargs: existing_movie,
+    )
+    monkeypatch.setattr(
+        "app.services.webhooks.WatchEventService.create_watch_event",
+        lambda *_args, **_kwargs: created_watch_event,
+    )
+
+    result = WebhookService.ingest_kodi_playback_event(
+        session,
+        payload=KodiPlaybackEventPayload(
+            user_id=uuid4(),
+            event_type="stop",
+            occurred_at=datetime.now(UTC),
+            source_event_id="evt-8",
+            session_key="session-8",
+            media_type="movie",
+            title="The Matrix",
+            year=1999,
+            tmdb_id=603,
+            total_seconds=7200,
+            watched_seconds=5760,
+            progress_percent=Decimal("82.00"),
+        ),
+    )
+
+    assert result.action == "watch_event_created"
+    assert result.watch_event is created_watch_event
+    get_settings.cache_clear()
+
+
+def test_ingest_kodi_stop_respects_configured_completion_ratio(monkeypatch) -> None:
+    session = Mock()
+    recorded_event = Mock()
+    recorded_event.playback_event_id = uuid4()
+    updated_event = Mock()
+    existing_movie = Mock()
+    existing_movie.media_item_id = uuid4()
+    created_watch_event = Mock()
+    created_watch_event.watch_id = uuid4()
+
+    monkeypatch.setenv("KLUG_SCROBBLE_MIN_COMPLETION_RATIO", "0.50")
+    get_settings.cache_clear()
+    monkeypatch.setattr(
+        "app.services.webhooks.PlaybackEventService.record_playback_event",
+        lambda *_args, **_kwargs: recorded_event,
+    )
+    monkeypatch.setattr(
+        "app.services.webhooks.PlaybackEventService.update_playback_event_decision",
+        lambda *_args, **_kwargs: updated_event,
+    )
+    monkeypatch.setattr(
+        "app.services.webhooks.WatchEventService.source_event_exists",
+        lambda *_args, **_kwargs: False,
+    )
+    monkeypatch.setattr(
+        "app.services.webhooks.PlaybackEventService.session_has_prior_scrobble_candidate",
+        lambda *_args, **_kwargs: False,
+    )
+    monkeypatch.setattr(
+        "app.services.webhooks.PlaybackEventService.get_session_max_progress_percent",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.webhooks.MediaItemService.find_media_item_by_external_ids",
+        lambda *_args, **_kwargs: existing_movie,
+    )
+    monkeypatch.setattr(
+        "app.services.webhooks.WatchEventService.create_watch_event",
+        lambda *_args, **_kwargs: created_watch_event,
+    )
+
+    result = WebhookService.ingest_kodi_playback_event(
+        session,
+        payload=KodiPlaybackEventPayload(
+            user_id=uuid4(),
+            event_type="stop",
+            occurred_at=datetime.now(UTC),
+            source_event_id="evt-9",
+            session_key="session-9",
+            media_type="movie",
+            title="The Matrix",
+            year=1999,
+            tmdb_id=603,
+            total_seconds=7200,
+            watched_seconds=3600,
+            progress_percent=None,
+        ),
+    )
+
+    assert result.action == "watch_event_created"
+    assert result.watch_event is created_watch_event
+    get_settings.cache_clear()

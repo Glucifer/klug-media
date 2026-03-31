@@ -4,6 +4,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.db.models.entities import PlaybackEvent
 from app.db.models.entities import WatchEvent
 from app.services.playback_events import PlaybackEventService
@@ -168,12 +169,26 @@ class WebhookService:
             return True
         if payload.event_type != "stop":
             return False
-        return WebhookService._effective_completion_ratio(payload) >= Decimal("0.90")
+        return WebhookService._meets_stop_scrobble_threshold(payload)
 
     @staticmethod
     def _is_completed(payload: KodiPlaybackEventPayload) -> bool:
         return payload.event_type == "scrobble" or (
-            WebhookService._effective_completion_ratio(payload) >= Decimal("0.90")
+            WebhookService._effective_completion_ratio(payload)
+            >= WebhookService._scrobble_min_completion_ratio()
+        )
+
+    @staticmethod
+    def _meets_stop_scrobble_threshold(payload: KodiPlaybackEventPayload) -> bool:
+        if payload.progress_percent is not None:
+            return (
+                payload.progress_percent
+                >= WebhookService._scrobble_min_progress_percent()
+            )
+
+        return (
+            WebhookService._effective_completion_ratio(payload)
+            >= WebhookService._scrobble_min_completion_ratio()
         )
 
     @staticmethod
@@ -194,7 +209,7 @@ class WebhookService:
         )
         if max_progress is None:
             return False
-        return Decimal(str(max_progress)) >= Decimal("90")
+        return Decimal(str(max_progress)) >= WebhookService._scrobble_min_progress_percent()
 
     @staticmethod
     def _effective_completion_ratio(payload: KodiPlaybackEventPayload) -> Decimal:
@@ -210,6 +225,14 @@ class WebhookService:
             return Decimal(watched_seconds) / Decimal(payload.total_seconds)
 
         return Decimal("0")
+
+    @staticmethod
+    def _scrobble_min_progress_percent() -> Decimal:
+        return get_settings().klug_scrobble_min_progress_percent
+
+    @staticmethod
+    def _scrobble_min_completion_ratio() -> Decimal:
+        return get_settings().klug_scrobble_min_completion_ratio
 
     @staticmethod
     def _resolve_media_item_id(

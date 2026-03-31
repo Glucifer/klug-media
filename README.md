@@ -78,6 +78,8 @@ $env:KLUG_API_AUTH_MODE="write"
 $env:KLUG_SESSION_PASSWORD="replace-with-login-password"
 $env:KLUG_SESSION_SECRET="replace-with-session-signing-secret"
 $env:KLUG_IMPORT_UPLOAD_MAX_MB="25"
+$env:KLUG_SCROBBLE_MIN_PROGRESS_PERCENT="90"
+$env:KLUG_SCROBBLE_MIN_COMPLETION_RATIO="0.90"
 ```
 
 `KLUG_API_AUTH_MODE` options:
@@ -94,6 +96,10 @@ Session auth endpoints:
 - `GET /api/v1/session/me`
 
 When logged in, a signed `klug_session` cookie can satisfy API auth checks (API key remains supported for scripts/admin usage).
+
+Scrobbler threshold options:
+- `KLUG_SCROBBLE_MIN_PROGRESS_PERCENT`: progress percent required for stop-event scrobbling when progress data is present
+- `KLUG_SCROBBLE_MIN_COMPLETION_RATIO`: watched/total ratio required for stop-event scrobbling when duration data is used
 
 4. Run API:
 ```bash
