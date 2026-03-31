@@ -266,10 +266,33 @@ class WebhookService:
             raise ValueError(
                 "Episode playback event requires season and episode numbers"
             )
-        if payload.tmdb_id is None:
-            raise ValueError(
-                "Episode playback event currently requires a tmdb_id to map to a Show."
+
+        if payload.tvdb_id is not None:
+            existing_by_tvdb = MediaItemService.find_media_item_by_external_ids(
+                session,
+                media_type="episode",
+                tmdb_id=None,
+                imdb_id=None,
+                tvdb_id=payload.tvdb_id,
             )
+            if existing_by_tvdb is not None:
+                return existing_by_tvdb.media_item_id
+
+        if payload.tmdb_id is None:
+            fallback_episode_title = payload.payload.get("media_title") or payload.title
+            new_item = MediaItemService.create_media_item(
+                session,
+                media_type="episode",
+                title=fallback_episode_title,
+                year=payload.year,
+                tmdb_id=None,
+                imdb_id=None,
+                tvdb_id=payload.tvdb_id,
+                season_number=payload.season,
+                episode_number=payload.episode,
+                show_id=None,
+            )
+            return new_item.media_item_id
 
         existing_episode = MediaItemService.find_episode_media_item(
             session,

@@ -12,6 +12,15 @@ down_revision = "0004_align_show_progress_view_with_backup"
 branch_labels = None
 depends_on = None
 
+media_type_enum = postgresql.ENUM(
+    "movie",
+    "show",
+    "episode",
+    name="media_type",
+    schema="public",
+    create_type=False,
+)
+
 
 def upgrade() -> None:
     op.create_table(
@@ -31,14 +40,7 @@ def upgrade() -> None:
         sa.Column("session_key", sa.String(), nullable=True),
         sa.Column(
             "media_type",
-            sa.Enum(
-                "movie",
-                "show",
-                "episode",
-                name="media_type",
-                schema="public",
-                create_type=False,
-            ),
+            media_type_enum,
             nullable=False,
         ),
         sa.Column("title", sa.String(), nullable=False),

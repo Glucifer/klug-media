@@ -63,12 +63,14 @@ class MediaItemService:
         media_type: str,
         tmdb_id: int | None,
         imdb_id: str | None,
+        tvdb_id: int | None = None,
     ) -> MediaItem | None:
         return media_item_repository.find_media_item_by_external_ids(
             session,
             media_type=media_type,
             tmdb_id=tmdb_id,
             imdb_id=imdb_id,
+            tvdb_id=tvdb_id,
         )
 
     @staticmethod

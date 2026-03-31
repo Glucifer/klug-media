@@ -1,0 +1,324 @@
+{
+  "id": "93be44293fd20e20",
+  "label": "Kodi Scrobbler",
+  "disabled": false,
+  "info": "",
+  "env": [
+    {
+      "name": "KLUG_API_BASE_URL",
+      "value": "http://172.20.1.10:8010",
+      "type": "str"
+    },
+    {
+      "name": "KLUG_API_KEY",
+      "value": "",
+      "type": "str"
+    },
+    {
+      "name": "KLUG_USER_ID",
+      "value": "a11adb0f-7a6b-43a0-99ba-5ed0ebf58a39",
+      "type": "str"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "km-comment-collector",
+      "type": "comment",
+      "z": "93be44293fd20e20",
+      "name": "Uses flow env vars first, then Node-RED global values",
+      "info": "Kodi playback collector. Home Assistant state changes and a lightweight progress poll are normalized here, then posted to Klug. Business rules stay in the API.",
+      "x": 300,
+      "y": 40,
+      "wires": []
+    },
+    {
+      "id": "km-kodi-state",
+      "type": "server-state-changed",
+      "z": "93be44293fd20e20",
+      "name": "Kodi Playback State",
+      "server": "43982b64.b17454",
+      "version": 5,
+      "outputs": 1,
+      "exposeAsEntityConfig": "",
+      "entityId": "media_player.kodi",
+      "entityIdType": "exact",
+      "outputInitially": false,
+      "stateType": "str",
+      "ifState": "",
+      "ifStateType": "str",
+      "ifStateOperator": "is",
+      "outputOnlyOnStateChange": true,
+      "for": "",
+      "forType": "num",
+      "forUnits": "minutes",
+      "ignorePrevStateNull": false,
+      "ignorePrevStateUnknown": false,
+      "ignorePrevStateUnavailable": false,
+      "ignoreCurrentStateUnknown": false,
+      "ignoreCurrentStateUnavailable": false,
+      "outputProperties": [
+        {
+          "property": "payload",
+          "propertyType": "msg",
+          "value": "",
+          "valueType": "entityState"
+        },
+        {
+          "property": "data",
+          "propertyType": "msg",
+          "value": "",
+          "valueType": "eventData"
+        },
+        {
+          "property": "topic",
+          "propertyType": "msg",
+          "value": "",
+          "valueType": "triggerId"
+        }
+      ],
+      "x": 150,
+      "y": 120,
+      "wires": [
+        [
+          "km-normalize-state",
+          "57ae2b23e7646a71"
+        ]
+      ]
+    },
+    {
+      "id": "km-normalize-state",
+      "type": "function",
+      "z": "93be44293fd20e20",
+      "name": "Normalize Kodi State Change",
+      "func": "const oldState = msg.data?.old_state?.state ?? null;\nconst newState = msg.data?.new_state?.state ?? null;\n\nfunction readConfig(name) {\n    return env.get(name) || global.get(name) || null;\n}\n\nfunction mapEventType(previous, current) {\n    if (current === 'playing' && previous === 'paused') return 'resume';\n    if (current === 'playing') return 'play';\n    if (current === 'paused') return 'pause';\n    if ((current === 'idle' || current === 'off') && (previous === 'playing' || previous === 'paused')) return 'stop';\n    return null;\n}\n\nfunction toInt(value) {\n    if (value === null || value === undefined || value === '') return null;\n    const parsed = Number(value);\n    if (!Number.isFinite(parsed)) return null;\n    return Math.max(0, Math.round(parsed));\n}\n\nfunction toYear(value) {\n    const parsed = toInt(value);\n    if (parsed === null || parsed < 1800 || parsed > 3000) return null;\n    return parsed;\n}\n\nfunction normalizeMediaContentId(value) {\n    if (!value) return null;\n    if (typeof value === 'string' || typeof value === 'number') return String(value);\n    if (typeof value === 'object') return JSON.stringify(value);\n    return null;\n}\n\nfunction extractExternalIds(attrs) {\n    const mediaContentId = attrs.media_content_id;\n    const ids = typeof mediaContentId === 'object' && mediaContentId !== null ? mediaContentId : {};\n    return {\n        tmdbId: toInt(attrs.tmdb_id ?? ids.tmdb),\n        tvdbId: toInt(attrs.tvdb_id ?? ids.tvdb),\n        imdbId: typeof (attrs.imdb_id ?? ids.imdb) === 'string' ? (attrs.imdb_id ?? ids.imdb).trim() || null : null,\n        normalizedMediaContentId: normalizeMediaContentId(mediaContentId)\n    };\n}\n\nfunction buildMediaSignature(mediaType, title, season, episode, externalIds, attrs) {\n    return JSON.stringify({\n        mediaType,\n        title,\n        season,\n        episode,\n        tmdbId: externalIds.tmdbId,\n        tvdbId: externalIds.tvdbId,\n        imdbId: externalIds.imdbId,\n        mediaContentId: externalIds.normalizedMediaContentId,\n        seriesTitle: attrs.media_series_title ?? null\n    });\n}\n\nfunction nextSessionKey(signature) {\n    const timestamp = Date.now();\n    const nonce = Math.random().toString(36).slice(2, 10);\n    return `kodi:${timestamp}:${nonce}:${signature}`;\n}\n\nconst configuredUserId = readConfig('KLUG_USER_ID');\nif (!configuredUserId) node.warn('KLUG_USER_ID is not configured');\n\nconst eventType = mapEventType(oldState, newState);\nif (!eventType) return null;\n\nconst stateForMedia = eventType === 'stop' ? (msg.data?.old_state ?? msg.data?.new_state) : (msg.data?.new_state ?? msg.data?.old_state);\nconst attrs = stateForMedia?.attributes ?? {};\n\nconst season = toInt(attrs.media_season);\nconst episode = toInt(attrs.media_episode);\nconst contentType = String(attrs.media_content_type ?? '').toLowerCase();\nconst mediaType = (season !== null && episode !== null) || contentType === 'episode' || contentType === 'tvshow' ? 'episode' : 'movie';\nconst title = mediaType === 'episode' ? (attrs.media_series_title || attrs.tvshowtitle || attrs.media_title || attrs.friendly_name) : (attrs.media_title || attrs.friendly_name);\nif (!title) return null;\n\nconst totalSeconds = toInt(attrs.media_duration);\nconst watchedSeconds = toInt(attrs.media_position);\nconst progressPercent = totalSeconds && watchedSeconds !== null ? Number(((Math.min(watchedSeconds, totalSeconds) / totalSeconds) * 100).toFixed(2)) : null;\nconst externalIds = extractExternalIds(attrs);\n\nconst signature = buildMediaSignature(mediaType, title, season, episode, externalIds, attrs);\nlet sessionKey = flow.get('kodi_session_key');\nconst existingSignature = flow.get('kodi_media_signature');\nif (!sessionKey || existingSignature !== signature || eventType === 'play') sessionKey = nextSessionKey(signature);\n\nflow.set('kodi_session_key', sessionKey);\nflow.set('kodi_media_signature', signature);\nflow.set('kodi_last_progress_seconds', watchedSeconds);\n\nconst currentState = msg.data?.new_state ?? {};\nconst sourceStamp = currentState.context?.id || currentState.last_updated || currentState.last_changed || Date.now();\nmsg.payload = {\n    user_id: configuredUserId,\n    event_type: eventType,\n    occurred_at: currentState.last_updated || currentState.last_changed || new Date().toISOString(),\n    source_event_id: `kodi:${eventType}:${sourceStamp}`,\n    session_key: sessionKey,\n    media_type: mediaType,\n    title,\n    year: toYear(attrs.year),\n    season,\n    episode,\n    tmdb_id: externalIds.tmdbId,\n    imdb_id: externalIds.imdbId,\n    tvdb_id: externalIds.tvdbId,\n    total_seconds: totalSeconds,\n    watched_seconds: watchedSeconds,\n    progress_percent: progressPercent,\n    playback_source: 'kodi',\n    payload: {\n        entity_id: msg.data?.entity_id ?? 'media_player.kodi',\n        old_state: oldState,\n        new_state: newState,\n        media_title: attrs.media_title ?? null,\n        media_series_title: attrs.media_series_title ?? null,\n        media_content_id: externalIds.normalizedMediaContentId,\n        media_content_type: attrs.media_content_type ?? null,\n        app_name: attrs.app_name ?? null\n    }\n};\n\nif (eventType === 'stop') flow.set('kodi_last_progress_seconds', null);\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 430,
+      "y": 120,
+      "wires": [
+        [
+          "km-prepare-request"
+        ]
+      ]
+    },
+    {
+      "id": "km-progress-inject",
+      "type": "inject",
+      "z": "93be44293fd20e20",
+      "name": "Poll Kodi Progress",
+      "props": [
+        {
+          "p": "payload"
+        },
+        {
+          "p": "topic",
+          "vt": "str"
+        }
+      ],
+      "repeat": "300",
+      "crontab": "",
+      "once": false,
+      "onceDelay": 0.1,
+      "topic": "",
+      "payload": "",
+      "payloadType": "date",
+      "x": 140,
+      "y": 220,
+      "wires": [
+        [
+          "km-kodi-current"
+        ]
+      ]
+    },
+    {
+      "id": "km-kodi-current",
+      "type": "api-current-state",
+      "z": "93be44293fd20e20",
+      "name": "Kodi Current State",
+      "server": "43982b64.b17454",
+      "version": 3,
+      "outputs": 1,
+      "halt_if": "",
+      "halt_if_type": "str",
+      "halt_if_compare": "is",
+      "entity_id": "media_player.kodi",
+      "state_type": "str",
+      "blockInputOverrides": true,
+      "outputProperties": [
+        {
+          "property": "payload",
+          "propertyType": "msg",
+          "value": "",
+          "valueType": "entityState"
+        },
+        {
+          "property": "data",
+          "propertyType": "msg",
+          "value": "",
+          "valueType": "entity"
+        }
+      ],
+      "for": "0",
+      "forType": "num",
+      "forUnits": "minutes",
+      "override_topic": false,
+      "state_location": "payload",
+      "override_payload": "msg",
+      "entity_location": "data",
+      "override_data": "msg",
+      "x": 410,
+      "y": 220,
+      "wires": [
+        [
+          "km-build-progress"
+        ]
+      ]
+    },
+    {
+      "id": "km-build-progress",
+      "type": "function",
+      "z": "93be44293fd20e20",
+      "name": "Build Kodi Progress Event",
+      "func": "function readConfig(name) {\n    return env.get(name) || global.get(name) || null;\n}\n\nfunction toInt(value) {\n    if (value === null || value === undefined || value === '') return null;\n    const parsed = Number(value);\n    if (!Number.isFinite(parsed)) return null;\n    return Math.max(0, Math.round(parsed));\n}\n\nfunction toYear(value) {\n    const parsed = toInt(value);\n    if (parsed === null || parsed < 1800 || parsed > 3000) return null;\n    return parsed;\n}\n\nfunction normalizeMediaContentId(value) {\n    if (!value) return null;\n    if (typeof value === 'string' || typeof value === 'number') return String(value);\n    if (typeof value === 'object') return JSON.stringify(value);\n    return null;\n}\n\nfunction extractExternalIds(attrs) {\n    const mediaContentId = attrs.media_content_id;\n    const ids = typeof mediaContentId === 'object' && mediaContentId !== null ? mediaContentId : {};\n    return {\n        tmdbId: toInt(attrs.tmdb_id ?? ids.tmdb),\n        tvdbId: toInt(attrs.tvdb_id ?? ids.tvdb),\n        imdbId: typeof (attrs.imdb_id ?? ids.imdb) === 'string' ? (attrs.imdb_id ?? ids.imdb).trim() || null : null,\n        normalizedMediaContentId: normalizeMediaContentId(mediaContentId)\n    };\n}\n\nconst configuredUserId = readConfig('KLUG_USER_ID');\nif (!configuredUserId) node.warn('KLUG_USER_ID is not configured');\n\nconst entity = msg.data;\nif (!entity || entity.state !== 'playing') return null;\n\nconst attrs = entity.attributes ?? {};\nconst season = toInt(attrs.media_season);\nconst episode = toInt(attrs.media_episode);\nconst contentType = String(attrs.media_content_type ?? '').toLowerCase();\nconst mediaType = (season !== null && episode !== null) || contentType === 'episode' || contentType === 'tvshow' ? 'episode' : 'movie';\nconst title = mediaType === 'episode' ? (attrs.media_series_title || attrs.tvshowtitle || attrs.media_title || attrs.friendly_name) : (attrs.media_title || attrs.friendly_name);\nif (!title) return null;\n\nconst totalSeconds = toInt(attrs.media_duration);\nconst watchedSeconds = toInt(attrs.media_position);\nif (watchedSeconds === null) return null;\n\nconst lastProgressSeconds = flow.get('kodi_last_progress_seconds');\nif (lastProgressSeconds !== null && lastProgressSeconds !== undefined && watchedSeconds <= lastProgressSeconds) return null;\nflow.set('kodi_last_progress_seconds', watchedSeconds);\n\nlet sessionKey = flow.get('kodi_session_key');\nif (!sessionKey) {\n    sessionKey = `kodi:${Date.now()}:progress`;\n    flow.set('kodi_session_key', sessionKey);\n}\n\nconst progressPercent = totalSeconds && watchedSeconds !== null ? Number(((Math.min(watchedSeconds, totalSeconds) / totalSeconds) * 100).toFixed(2)) : null;\nconst sourceStamp = entity.context?.id || entity.last_updated || entity.last_changed || Date.now();\nconst externalIds = extractExternalIds(attrs);\n\nmsg.payload = {\n    user_id: configuredUserId,\n    event_type: 'progress',\n    occurred_at: entity.last_updated || entity.last_changed || new Date().toISOString(),\n    source_event_id: `kodi:progress:${sourceStamp}`,\n    session_key: sessionKey,\n    media_type: mediaType,\n    title,\n    year: toYear(attrs.year),\n    season,\n    episode,\n    tmdb_id: externalIds.tmdbId,\n    imdb_id: externalIds.imdbId,\n    tvdb_id: externalIds.tvdbId,\n    total_seconds: totalSeconds,\n    watched_seconds: watchedSeconds,\n    progress_percent: progressPercent,\n    playback_source: 'kodi',\n    payload: {\n        entity_id: entity.entity_id ?? 'media_player.kodi',\n        polled: true,\n        state: entity.state,\n        media_title: attrs.media_title ?? null,\n        media_series_title: attrs.media_series_title ?? null,\n        media_content_id: externalIds.normalizedMediaContentId,\n        media_content_type: attrs.media_content_type ?? null,\n        app_name: attrs.app_name ?? null\n    }\n};\n\nreturn msg;",
+      "outputs": 1,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 670,
+      "y": 220,
+      "wires": [
+        [
+          "km-prepare-request"
+        ]
+      ]
+    },
+    {
+      "id": "km-debug-success",
+      "type": "debug",
+      "z": "93be44293fd20e20",
+      "name": "Klug API Success",
+      "active": true,
+      "tosidebar": true,
+      "console": false,
+      "tostatus": true,
+      "complete": "true",
+      "targetType": "full",
+      "statusVal": "statusCode",
+      "statusType": "msg",
+      "x": 1640,
+      "y": 120,
+      "wires": []
+    },
+    {
+      "id": "km-debug-error",
+      "type": "debug",
+      "z": "93be44293fd20e20",
+      "name": "Klug API Error",
+      "active": true,
+      "tosidebar": true,
+      "console": false,
+      "tostatus": true,
+      "complete": "true",
+      "targetType": "full",
+      "statusVal": "statusCode",
+      "statusType": "msg",
+      "x": 1640,
+      "y": 220,
+      "wires": []
+    },
+    {
+      "id": "km-prepare-request",
+      "type": "function",
+      "z": "93be44293fd20e20",
+      "name": "Prepare Klug Request",
+      "func": "function readConfig(name) {\n    return env.get(name) || global.get(name) || null;\n}\n\nconst baseUrl = readConfig('KLUG_API_BASE_URL');\nconst apiKey = readConfig('KLUG_API_KEY');\nconst userId = readConfig('KLUG_USER_ID');\n\nif (!baseUrl) {\n    msg.payload = { error: 'KLUG_API_BASE_URL is not set', request: msg.payload };\n    return [null, msg];\n}\n\nif (!userId) {\n    msg.payload = { error: 'KLUG_USER_ID is not set', request: msg.payload };\n    return [null, msg];\n}\n\nconst requestPayload = { ...msg.payload, user_id: userId };\nmsg.url = new URL('/api/v1/webhooks/kodi/events', baseUrl).toString();\nmsg.method = 'POST';\nmsg.headers = {\n    'Content-Type': 'application/json'\n};\nif (apiKey) {\n    msg.headers['X-API-Key'] = apiKey;\n}\nmsg.request_payload = requestPayload;\nmsg.payload = requestPayload;\nreturn [msg, null];",
+      "outputs": 2,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 930,
+      "y": 160,
+      "wires": [
+        [
+          "km-http-request",
+          "57ae2b23e7646a71"
+        ],
+        [
+          "km-debug-error"
+        ]
+      ]
+    },
+    {
+      "id": "km-http-request",
+      "type": "http request",
+      "z": "93be44293fd20e20",
+      "name": "POST To Klug API",
+      "method": "use",
+      "ret": "obj",
+      "paytoqs": "ignore",
+      "url": "",
+      "tls": "",
+      "persist": false,
+      "proxy": "",
+      "insecureHTTPParser": false,
+      "authType": "",
+      "senderr": false,
+      "headers": [],
+      "x": 1170,
+      "y": 140,
+      "wires": [
+        [
+          "km-route-response"
+        ]
+      ]
+    },
+    {
+      "id": "km-route-response",
+      "type": "function",
+      "z": "93be44293fd20e20",
+      "name": "Route Klug Response",
+      "func": "const statusCode = Number(msg.statusCode || 0);\nif (statusCode >= 200 && statusCode < 300) return [msg, null];\nreturn [null, msg];",
+      "outputs": 2,
+      "timeout": 0,
+      "noerr": 0,
+      "initialize": "",
+      "finalize": "",
+      "libs": [],
+      "x": 1410,
+      "y": 140,
+      "wires": [
+        [
+          "km-debug-success"
+        ],
+        [
+          "km-debug-error"
+        ]
+      ]
+    },
+    {
+      "id": "57ae2b23e7646a71",
+      "type": "debug",
+      "z": "93be44293fd20e20",
+      "name": "kodi checker",
+      "active": true,
+      "tosidebar": true,
+      "console": false,
+      "tostatus": false,
+      "complete": "true",
+      "targetType": "full",
+      "statusVal": "",
+      "statusType": "auto",
+      "x": 1130,
+      "y": 80,
+      "wires": []
+    }
+  ]
+}

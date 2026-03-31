@@ -41,7 +41,9 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - `GET /api/v1/playback-events`
   - raw-ish playback events are now persisted before watch-event decisions are made
   - current decision engine creates watch events for explicit `scrobble` events and high-progress `stop` events
+  - stop-event thresholds are configurable with `KLUG_SCROBBLE_MIN_PROGRESS_PERCENT` and `KLUG_SCROBBLE_MIN_COMPLETION_RATIO`
   - playback-event visibility is available through a filtered read API for debugging collector input and scrobble decisions
+  - a first Node-RED collector flow now exists in the live `Kodi Scrobbler` tab and is exported in `docs/node_red/kodi_scrobbler_flow.json`
 - Legacy export import script:
   - `python -m app.scripts.import_watch_events`
   - supports dry run + incremental resume
@@ -101,6 +103,19 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Development environment is Windows-native using the Codex desktop app and `uv`.
 - Prefer guidance that remains valid across sessions; update temporary goal notes when they materially change.
 - If adding temporary session notes here, keep them short and remove or refresh them once they become stale.
+- Local network topology for current dev setup:
+  - Klug API runs on the Windows host at `172.20.1.10`
+  - PostgreSQL, Home Assistant, and Node-RED run on `172.20.1.20`
+  - Preferred dev bind/port for Klug is `0.0.0.0:8010` so container-hosted services can reach it without colliding with an existing service on port `8000`
+- Node-RED collector notes:
+  - Flow tab: `Kodi Scrobbler`
+  - The current flow reads flow env vars first, then falls back to Node-RED global values for:
+    - `KLUG_API_BASE_URL` (for current dev setup, use `http://172.20.1.10:8010`)
+    - `KLUG_API_KEY`
+    - `KLUG_USER_ID`
+  - The current collector listens to `media_player.kodi` state changes and also polls lightweight progress every 5 minutes while Kodi is playing.
+  - Live verification now succeeds end to end: Kodi play/stop events persist to `playback_event`, high-progress stop events create `watch_event`, and external IDs such as `tvdb_id` are promoted from Kodi payloads for later enrichment.
+  - The deployed flow uses a native Node-RED `http request` node for delivery to Klug rather than `fetch` inside a function node.
 
 ## 🛠 Status Dashboard
 - [x] Backend Core (FastAPI)
@@ -110,7 +125,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - [ ] External Metadata Sync (Planned)
 
 ## Canonical Dev Commands
-- Run API: `uv run uvicorn app.main:app --reload`
+- Run API: `uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8010`
 - Run tests: `uv run pytest -q`
 - Run lint: `uv run ruff check app tests`
 - Run integration tests (PowerShell): `$env:KLUG_TEST_DATABASE_URL="..."; uv run pytest -q tests/integration`
@@ -125,3 +140,4 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - auth behavior changes
   - scripts/import behavior changes
   - workflow agreements with user change
+

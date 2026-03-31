@@ -47,11 +47,21 @@ def find_media_item_by_external_ids(
     media_type: str,
     tmdb_id: int | None,
     imdb_id: str | None,
+    tvdb_id: int | None = None,
 ) -> MediaItem | None:
     if tmdb_id is not None:
         statement = select(MediaItem).where(
             MediaItem.type == media_type,
             MediaItem.tmdb_id == tmdb_id,
+        )
+        found = session.scalar(statement)
+        if found is not None:
+            return found
+
+    if tvdb_id is not None:
+        statement = select(MediaItem).where(
+            MediaItem.type == media_type,
+            MediaItem.tvdb_id == tvdb_id,
         )
         found = session.scalar(statement)
         if found is not None:

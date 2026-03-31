@@ -103,8 +103,11 @@ Scrobbler threshold options:
 
 4. Run API:
 ```bash
-uv run uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8010
 ```
+
+For this environment, Klug runs on the Windows host at `172.20.1.10:8010`.
+That allows Docker-hosted services on `172.20.1.20` such as Node-RED and Home Assistant to reach the API over the LAN.
 
 5. Run tests:
 ```bash
@@ -144,29 +147,29 @@ uv run python -m app.scripts.backfill_episode_shows
 
 ## API Smoke Checks
 
-With server running on `http://127.0.0.1:8000`:
+With server running on `http://172.20.1.10:8010`:
 
 ```bash
-curl http://127.0.0.1:8000/api/v1/health
-curl -X POST http://127.0.0.1:8000/api/v1/session/login -H "Content-Type: application/json" -d '{"password":"<session-password>"}'
-curl http://127.0.0.1:8000/api/v1/shows
-curl http://127.0.0.1:8000/api/v1/shows/progress
-curl "http://127.0.0.1:8000/api/v1/shows/progress?user_id=<your-user-uuid>"
-curl http://127.0.0.1:8000/api/v1/shows/<show-uuid>
-curl "http://127.0.0.1:8000/api/v1/shows/<show-uuid>?user_id=<your-user-uuid>"
-curl -X POST http://127.0.0.1:8000/api/v1/users -H "Content-Type: application/json" -H "X-API-Key: <your-api-key>" -d '{"username":"alice"}'
+curl http://172.20.1.10:8010/api/v1/health
+curl -X POST http://172.20.1.10:8010/api/v1/session/login -H "Content-Type: application/json" -d '{"password":"<session-password>"}'
+curl http://172.20.1.10:8010/api/v1/shows
+curl http://172.20.1.10:8010/api/v1/shows/progress
+curl "http://172.20.1.10:8010/api/v1/shows/progress?user_id=<your-user-uuid>"
+curl http://172.20.1.10:8010/api/v1/shows/<show-uuid>
+curl "http://172.20.1.10:8010/api/v1/shows/<show-uuid>?user_id=<your-user-uuid>"
+curl -X POST http://172.20.1.10:8010/api/v1/users -H "Content-Type: application/json" -H "X-API-Key: <your-api-key>" -d '{"username":"alice"}'
 ```
 
 Interactive docs:
 
 ```text
-http://127.0.0.1:8000/docs
+http://172.20.1.10:8010/docs
 ```
 
 Minimal frontend page:
 
 ```text
-http://127.0.0.1:8000/
+http://172.20.1.10:8010/
 ```
 
 The page uses:
