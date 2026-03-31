@@ -24,6 +24,9 @@ class MetadataEnrichmentItemRead(KlugORMModel):
     base_runtime_seconds: int | None
     enrichment_status: str
     enrichment_error: str | None
+    failure_code: str | None = None
+    next_action: str | None = None
+    last_lookup_kind: str | None = None
     enrichment_attempted_at: datetime | None
     created_at: datetime
 

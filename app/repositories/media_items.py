@@ -231,3 +231,20 @@ def mark_media_item_enrichment(
     session.flush()
     session.refresh(media_item)
     return media_item
+
+
+def record_media_item_enrichment_attempt(
+    session: Session,
+    *,
+    media_item: MediaItem,
+    enrichment_status: str,
+    enrichment_error: str | None,
+    enrichment_attempted_at: datetime,
+) -> MediaItem:
+    media_item.enrichment_status = enrichment_status
+    media_item.enrichment_error = enrichment_error
+    media_item.enrichment_attempted_at = enrichment_attempted_at
+    session.add(media_item)
+    session.flush()
+    session.refresh(media_item)
+    return media_item

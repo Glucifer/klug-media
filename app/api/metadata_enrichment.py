@@ -33,7 +33,7 @@ def list_metadata_enrichment_items(
         limit=limit,
         offset=offset,
     )
-    return [MetadataEnrichmentItemRead.model_validate(row) for row in rows]
+    return [MediaEnrichmentService.build_queue_item(row) for row in rows]
 
 
 @router.post(
@@ -46,7 +46,7 @@ def process_pending_metadata_items(
     session: Session = Depends(get_db_session),
 ) -> MetadataEnrichmentBatchResult:
     results = MediaEnrichmentService.process_pending_items(session, limit=limit)
-    items = [MetadataEnrichmentItemRead.model_validate(result.media_item) for result in results]
+    items = [MediaEnrichmentService.build_queue_item(result.media_item) for result in results]
     return MetadataEnrichmentBatchResult(processed_count=len(items), items=items)
 
 
@@ -69,4 +69,4 @@ def retry_metadata_enrichment(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
-    return MetadataEnrichmentItemRead.model_validate(result.media_item)
+    return MediaEnrichmentService.build_queue_item(result.media_item)

@@ -8,9 +8,15 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.db.models.entities import MediaItem
+from app.schemas.metadata_enrichment import MetadataEnrichmentItemRead
 from app.services.media_items import MediaItemService
 from app.services.shows import ShowService
-from app.services.tmdb import TmdbLookupError, TmdbService
+from app.services.tmdb import (
+    TmdbConfigurationError,
+    TmdbHttpError,
+    TmdbLookupError,
+    TmdbService,
+)
 
 
 @dataclass(frozen=True)
@@ -18,6 +24,8 @@ class MediaEnrichmentResult:
     media_item: MediaItem
     action: Literal["enriched", "failed", "skipped"]
     reason: str | None = None
+    failure_code: str | None = None
+    last_lookup_kind: str | None = None
 
 
 class MediaEnrichmentService:
@@ -81,90 +89,40 @@ class MediaEnrichmentService:
             raise ValueError(f"Media item '{media_item_id}' not found")
 
         if not TmdbService.is_enabled():
-            updated = MediaItemService.update_media_item_metadata(
+            return MediaEnrichmentService._finalize_attempt(
                 session,
                 media_item=media_item,
-                title=media_item.title,
-                year=media_item.year,
-                summary=media_item.summary,
-                poster_url=media_item.poster_url,
-                release_date=media_item.release_date,
-                tmdb_id=media_item.tmdb_id,
-                imdb_id=media_item.imdb_id,
-                tvdb_id=media_item.tvdb_id,
-                show_tmdb_id=media_item.show_tmdb_id,
-                show_id=media_item.show_id,
-                base_runtime_seconds=media_item.base_runtime_seconds,
-                metadata_source=media_item.metadata_source,
-                enrichment_status="skipped",
-                enrichment_error="enrichment_disabled_or_unconfigured",
-            )
-            session.commit()
-            return MediaEnrichmentResult(
-                media_item=updated,
                 action="skipped",
-                reason="enrichment_disabled_or_unconfigured",
+                failure_code="enrichment_disabled_or_unconfigured",
             )
 
         try:
             updated = MediaEnrichmentService._enrich_with_tmdb(session, media_item=media_item)
             session.commit()
-            return MediaEnrichmentResult(media_item=updated, action="enriched")
-        except TmdbLookupError as exc:
+            return MediaEnrichmentResult(
+                media_item=updated,
+                action="enriched",
+                last_lookup_kind=MediaEnrichmentService.derive_lookup_kind(updated),
+            )
+        except (TmdbLookupError, TmdbHttpError, TmdbConfigurationError) as exc:
             session.rollback()
             media_item = MediaItemService.get_media_item(session, media_item_id=media_item_id)
             assert media_item is not None
-            updated = MediaItemService.update_media_item_metadata(
+            return MediaEnrichmentService._finalize_attempt(
                 session,
                 media_item=media_item,
-                title=media_item.title,
-                year=media_item.year,
-                summary=media_item.summary,
-                poster_url=media_item.poster_url,
-                release_date=media_item.release_date,
-                tmdb_id=media_item.tmdb_id,
-                imdb_id=media_item.imdb_id,
-                tvdb_id=media_item.tvdb_id,
-                show_tmdb_id=media_item.show_tmdb_id,
-                show_id=media_item.show_id,
-                base_runtime_seconds=media_item.base_runtime_seconds,
-                metadata_source=media_item.metadata_source,
-                enrichment_status="failed",
-                enrichment_error=str(exc),
-            )
-            session.commit()
-            return MediaEnrichmentResult(
-                media_item=updated,
                 action="failed",
-                reason=str(exc),
+                failure_code=MediaEnrichmentService._classify_exception(exc),
             )
-        except Exception as exc:
+        except Exception:
             session.rollback()
             media_item = MediaItemService.get_media_item(session, media_item_id=media_item_id)
             assert media_item is not None
-            updated = MediaItemService.update_media_item_metadata(
+            return MediaEnrichmentService._finalize_attempt(
                 session,
                 media_item=media_item,
-                title=media_item.title,
-                year=media_item.year,
-                summary=media_item.summary,
-                poster_url=media_item.poster_url,
-                release_date=media_item.release_date,
-                tmdb_id=media_item.tmdb_id,
-                imdb_id=media_item.imdb_id,
-                tvdb_id=media_item.tvdb_id,
-                show_tmdb_id=media_item.show_tmdb_id,
-                show_id=media_item.show_id,
-                base_runtime_seconds=media_item.base_runtime_seconds,
-                metadata_source=media_item.metadata_source,
-                enrichment_status="failed",
-                enrichment_error=str(exc),
-            )
-            session.commit()
-            return MediaEnrichmentResult(
-                media_item=updated,
                 action="failed",
-                reason=str(exc),
+                failure_code="tmdb_lookup_failed",
             )
 
     @staticmethod
@@ -175,7 +133,7 @@ class MediaEnrichmentService:
             return MediaEnrichmentService._enrich_show(session, media_item=media_item)
         if media_item.type == "episode":
             return MediaEnrichmentService._enrich_episode(session, media_item=media_item)
-        raise TmdbLookupError(f"Unsupported media type '{media_item.type}'")
+        raise TmdbLookupError("unsupported_media_type", f"Unsupported media type '{media_item.type}'")
 
     @staticmethod
     def _enrich_movie(session: Session, *, media_item: MediaItem) -> MediaItem:
@@ -311,6 +269,114 @@ class MediaEnrichmentService:
             metadata_source="tmdb",
             enrichment_status="enriched",
             enrichment_error=None,
+        )
+
+    @staticmethod
+    def _finalize_attempt(
+        session: Session,
+        *,
+        media_item: MediaItem,
+        action: Literal["failed", "skipped"],
+        failure_code: str,
+    ) -> MediaEnrichmentResult:
+        updated = MediaItemService.record_enrichment_attempt(
+            session,
+            media_item=media_item,
+            enrichment_status=action,
+            enrichment_error=failure_code,
+        )
+        session.commit()
+        return MediaEnrichmentResult(
+            media_item=updated,
+            action=action,
+            reason=failure_code,
+            failure_code=failure_code,
+            last_lookup_kind=MediaEnrichmentService.derive_lookup_kind(updated),
+        )
+
+    @staticmethod
+    def _classify_exception(exc: Exception) -> str:
+        if isinstance(exc, TmdbLookupError):
+            return exc.code
+        if isinstance(exc, TmdbHttpError):
+            return exc.code
+        if isinstance(exc, TmdbConfigurationError):
+            return "enrichment_disabled_or_unconfigured"
+        return "tmdb_lookup_failed"
+
+    @staticmethod
+    def derive_lookup_kind(media_item: MediaItem) -> str | None:
+        if media_item.type == "movie":
+            if media_item.tmdb_id is not None:
+                return "movie_details"
+            if media_item.imdb_id:
+                return "movie_imdb_find"
+            return None
+
+        if media_item.type == "show":
+            if media_item.tmdb_id is not None:
+                return "tv_details"
+            if media_item.tvdb_id is not None:
+                return "show_tvdb_find"
+            if media_item.imdb_id:
+                return "show_imdb_find"
+            return None
+
+        if media_item.type == "episode":
+            if media_item.show_tmdb_id is not None:
+                return "episode_details"
+            if media_item.tvdb_id is not None:
+                return "episode_tvdb_find"
+            if media_item.tmdb_id is not None:
+                return "episode_details"
+            return None
+
+        return None
+
+    @staticmethod
+    def derive_next_action(failure_code: str | None) -> str | None:
+        if failure_code is None:
+            return None
+        guidance = {
+            "missing_supported_external_id": "Wait for better source IDs or correct upstream library metadata",
+            "missing_season_or_episode_number": "Review episode numbering and retry manually",
+            "tmdb_no_match": "Review source IDs and retry manually",
+            "tmdb_lookup_failed": "Review the item details and retry manually",
+            "tmdb_http_error": "Retry later",
+            "enrichment_disabled_or_unconfigured": "Set TMDB env vars and retry",
+            "unsupported_media_type": "This item type is not supported for enrichment",
+        }
+        return guidance.get(failure_code, "Retry manually after reviewing the item")
+
+    @staticmethod
+    def build_queue_item(row: MediaItem) -> MetadataEnrichmentItemRead:
+        failure_code = row.enrichment_error
+        return MetadataEnrichmentItemRead.model_validate(
+            {
+                "media_item_id": row.media_item_id,
+                "type": row.type,
+                "title": row.title,
+                "year": row.year,
+                "summary": row.summary,
+                "poster_url": row.poster_url,
+                "release_date": row.release_date,
+                "tmdb_id": row.tmdb_id,
+                "imdb_id": row.imdb_id,
+                "tvdb_id": row.tvdb_id,
+                "show_tmdb_id": row.show_tmdb_id,
+                "season_number": row.season_number,
+                "episode_number": row.episode_number,
+                "metadata_source": row.metadata_source,
+                "metadata_updated_at": row.metadata_updated_at,
+                "base_runtime_seconds": row.base_runtime_seconds,
+                "enrichment_status": row.enrichment_status,
+                "enrichment_error": row.enrichment_error,
+                "enrichment_attempted_at": row.enrichment_attempted_at,
+                "created_at": row.created_at,
+                "failure_code": failure_code,
+                "next_action": MediaEnrichmentService.derive_next_action(failure_code),
+                "last_lookup_kind": MediaEnrichmentService.derive_lookup_kind(row),
+            }
         )
 
     @staticmethod

@@ -49,6 +49,9 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - operator endpoints exist under `/api/v1/metadata-enrichment/*`
   - enrichment is ID-first and uses TMDB `/find` for Kodi-style `imdb_id` and `tvdb_id` resolution
   - raw provider payloads are cached in `app.tmdb_metadata_cache`
+  - queue behavior is now operator-focused: `Process Pending` only handles `pending` rows, failed/skipped rows require explicit retry
+  - `metadata_updated_at` now represents successful metadata writes only, while `enrichment_attempted_at` tracks all attempts
+  - operator responses now include normalized failure codes and suggested next actions
 - Legacy export import script:
   - `python -m app.scripts.import_watch_events`
   - supports dry run + incremental resume

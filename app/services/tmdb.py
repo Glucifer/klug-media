@@ -19,6 +19,20 @@ class TmdbConfigurationError(Exception):
 class TmdbLookupError(Exception):
     """Raised when TMDB cannot resolve a requested identifier."""
 
+    def __init__(self, code: str, detail: str | None = None) -> None:
+        self.code = code
+        self.detail = detail
+        super().__init__(detail or code)
+
+
+class TmdbHttpError(Exception):
+    """Raised when TMDB cannot be reached or returns a non-success response."""
+
+    def __init__(self, code: str, detail: str | None = None) -> None:
+        self.code = code
+        self.detail = detail
+        super().__init__(detail or code)
+
 
 @dataclass(frozen=True)
 class TmdbFindResult:
@@ -58,12 +72,16 @@ class TmdbService:
             results = payload.get("movie_results")
             if not isinstance(results, list) or not results:
                 raise TmdbLookupError(
-                    f"TMDB /find returned no {media_type} result for {external_source}"
+                    "tmdb_no_match",
+                    f"TMDB /find returned no {media_type} result for {external_source}",
                 )
             first = results[0]
             tmdb_id = first.get("id")
             if not isinstance(tmdb_id, int):
-                raise TmdbLookupError("TMDB /find result did not include an integer id")
+                raise TmdbLookupError(
+                    "tmdb_lookup_failed",
+                    "TMDB /find result did not include an integer id",
+                )
             return TmdbFindResult(
                 tmdb_id=tmdb_id,
                 media_type=media_type,
@@ -75,7 +93,10 @@ class TmdbService:
             first = tv_results[0]
             tmdb_id = first.get("id")
             if not isinstance(tmdb_id, int):
-                raise TmdbLookupError("TMDB /find tv result did not include an integer id")
+                raise TmdbLookupError(
+                    "tmdb_lookup_failed",
+                    "TMDB /find tv result did not include an integer id",
+                )
             return TmdbFindResult(
                 tmdb_id=tmdb_id,
                 media_type="tv",
@@ -90,7 +111,8 @@ class TmdbService:
             show_tmdb_id = first.get("show_id")
             if not isinstance(episode_tmdb_id, int) or not isinstance(show_tmdb_id, int):
                 raise TmdbLookupError(
-                    "TMDB /find tv episode result did not include integer episode/show ids"
+                    "tmdb_lookup_failed",
+                    "TMDB /find tv episode result did not include integer episode/show ids",
                 )
             return TmdbFindResult(
                 tmdb_id=episode_tmdb_id,
@@ -100,7 +122,8 @@ class TmdbService:
             )
 
         raise TmdbLookupError(
-            f"TMDB /find returned no {media_type} result for {external_source}"
+            "tmdb_no_match",
+            f"TMDB /find returned no {media_type} result for {external_source}",
         )
 
     @staticmethod
@@ -174,9 +197,27 @@ class TmdbService:
 
         request_params = {"api_key": settings.klug_tmdb_api_key, **(params or {})}
         with httpx.Client(timeout=15.0) as client:
-            response = client.get(f"{TmdbService.BASE_URL}{url_path}", params=request_params)
-            response.raise_for_status()
-            payload = response.json()
+            try:
+                response = client.get(
+                    f"{TmdbService.BASE_URL}{url_path}", params=request_params
+                )
+                response.raise_for_status()
+                payload = response.json()
+            except httpx.HTTPStatusError as exc:
+                raise TmdbHttpError(
+                    "tmdb_http_error",
+                    f"TMDB request failed with status {exc.response.status_code}",
+                ) from exc
+            except httpx.RequestError as exc:
+                raise TmdbHttpError(
+                    "tmdb_http_error",
+                    f"TMDB request failed: {exc.__class__.__name__}",
+                ) from exc
+            except ValueError as exc:
+                raise TmdbLookupError(
+                    "tmdb_lookup_failed",
+                    "TMDB response payload was not valid JSON",
+                ) from exc
 
         expires_at = now + timedelta(hours=max(1, settings.klug_metadata_cache_ttl_hours))
         tmdb_cache_repository.upsert_cache_entry(

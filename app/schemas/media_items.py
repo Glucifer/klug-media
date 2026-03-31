@@ -42,5 +42,8 @@ class MediaItemRead(KlugORMModel):
     base_runtime_seconds: int | None = None
     enrichment_status: str
     enrichment_error: str | None = None
+    failure_code: str | None = None
+    next_action: str | None = None
+    last_lookup_kind: str | None = None
     enrichment_attempted_at: datetime | None = None
     created_at: datetime

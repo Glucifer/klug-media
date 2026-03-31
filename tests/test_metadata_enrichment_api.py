@@ -59,6 +59,7 @@ def test_list_metadata_enrichment_items_returns_rows(monkeypatch) -> None:
     assert called["enrichment_status"] == "pending"
     assert called["limit"] == 10
     assert response.json()[0]["title"] == "Alien"
+    assert response.json()[0]["last_lookup_kind"] == "movie_details"
 
 
 def test_process_pending_metadata_items_returns_batch(monkeypatch) -> None:
@@ -82,6 +83,7 @@ def test_process_pending_metadata_items_returns_batch(monkeypatch) -> None:
     payload = response.json()
     assert payload["processed_count"] == 1
     assert payload["items"][0]["tmdb_id"] == 348
+    assert payload["items"][0]["next_action"] is None
 
 
 def test_retry_metadata_enrichment_returns_not_found(monkeypatch) -> None:
@@ -95,3 +97,21 @@ def test_retry_metadata_enrichment_returns_not_found(monkeypatch) -> None:
     response = client.post(f"/api/v1/metadata-enrichment/items/{uuid4()}/retry")
 
     assert response.status_code == 404
+
+
+def test_list_metadata_enrichment_items_include_failure_guidance(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    item = DummyEnrichmentItem()
+    item.enrichment_status = "failed"
+    item.enrichment_error = "tmdb_no_match"
+    item.tmdb_id = None
+
+    monkeypatch.setattr(MediaEnrichmentService, "list_queue", lambda *_args, **_kwargs: [item])
+
+    client = TestClient(app)
+    response = client.get("/api/v1/metadata-enrichment/items?enrichment_status=failed")
+
+    assert response.status_code == 200
+    payload = response.json()[0]
+    assert payload["failure_code"] == "tmdb_no_match"
+    assert payload["next_action"] == "Review source IDs and retry manually"

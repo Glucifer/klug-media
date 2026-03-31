@@ -785,8 +785,24 @@ function formatEnrichmentIds(row) {
   return [`tmdb:${row.tmdb_id || "-"}`, `tvdb:${row.tvdb_id || "-"}`, `imdb:${row.imdb_id || "-"}`].join(" ");
 }
 
+function formatEnrichmentStatus(row) {
+  if (row.enrichment_status === "failed" && row.failure_code) {
+    return `failed (${row.failure_code})`;
+  }
+  if (row.enrichment_status === "skipped" && row.failure_code) {
+    return `skipped (${row.failure_code})`;
+  }
+  return row.enrichment_status;
+}
+
 function formatEnrichmentMetadata(row) {
-  return row.metadata_updated_at ? new Date(row.metadata_updated_at).toLocaleString() : "not enriched";
+  const attemptedAt = row.enrichment_attempted_at
+    ? new Date(row.enrichment_attempted_at).toLocaleString()
+    : "not attempted";
+  const updatedAt = row.metadata_updated_at
+    ? new Date(row.metadata_updated_at).toLocaleString()
+    : "not enriched";
+  return `attempted: ${attemptedAt}\nupdated: ${updatedAt}`;
 }
 
 function formatEnrichmentDetail(row) {
@@ -803,7 +819,11 @@ function formatEnrichmentDetail(row) {
     `episode_number: ${row.episode_number ?? "n/a"}`,
     `enrichment_status: ${row.enrichment_status}`,
     `enrichment_error: ${row.enrichment_error || "n/a"}`,
+    `failure_code: ${row.failure_code || "n/a"}`,
+    `next_action: ${row.next_action || "n/a"}`,
+    `last_lookup_kind: ${row.last_lookup_kind || "n/a"}`,
     `metadata_source: ${row.metadata_source || "n/a"}`,
+    `enrichment_attempted_at: ${row.enrichment_attempted_at || "n/a"}`,
     `metadata_updated_at: ${row.metadata_updated_at || "n/a"}`,
     `base_runtime_seconds: ${row.base_runtime_seconds ?? "n/a"}`,
     "",
@@ -837,8 +857,8 @@ async function loadMetadataEnrichment() {
         <td>${row.title}</td>
         <td>${row.type}</td>
         <td>${formatEnrichmentIds(row)}</td>
-        <td>${row.enrichment_status}</td>
-        <td>${formatEnrichmentMetadata(row)}</td>
+        <td>${formatEnrichmentStatus(row)}</td>
+        <td>${formatEnrichmentMetadata(row).replace("\n", "<br />")}</td>
         <td><button class="secondary" data-media-item-id="${row.media_item_id}" data-action="retry-enrichment">Retry</button></td>
       `;
       enrichmentBody.appendChild(tr);

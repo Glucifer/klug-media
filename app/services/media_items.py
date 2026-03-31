@@ -151,7 +151,8 @@ class MediaItemService:
         metadata_source: str | None,
         enrichment_status: str,
         enrichment_error: str | None,
-    ) -> MediaItem:
+        ) -> MediaItem:
+        now = datetime.now(UTC)
         return media_item_repository.update_media_item(
             session,
             media_item=media_item,
@@ -167,7 +168,23 @@ class MediaItemService:
             show_id=show_id,
             base_runtime_seconds=base_runtime_seconds,
             metadata_source=metadata_source,
-            metadata_updated_at=datetime.now(UTC),
+            metadata_updated_at=now,
+            enrichment_status=enrichment_status,
+            enrichment_error=enrichment_error,
+            enrichment_attempted_at=now,
+        )
+
+    @staticmethod
+    def record_enrichment_attempt(
+        session: Session,
+        *,
+        media_item: MediaItem,
+        enrichment_status: str,
+        enrichment_error: str | None,
+    ) -> MediaItem:
+        return media_item_repository.record_media_item_enrichment_attempt(
+            session,
+            media_item=media_item,
             enrichment_status=enrichment_status,
             enrichment_error=enrichment_error,
             enrichment_attempted_at=datetime.now(UTC),
