@@ -7,6 +7,7 @@ from app.api.imports import router as imports_router
 from app.api.import_batches import router as import_batches_router
 from app.api.media_items import router as media_items_router
 from app.api.playback_events import router as playback_events_router
+from app.api.scrobble_activity import router as scrobble_activity_router
 from app.api.session import router as session_router
 from app.api.shows import router as shows_router
 from app.api.users import router as users_router
@@ -33,6 +34,7 @@ def create_app() -> FastAPI:
     app.include_router(shows_router, prefix=settings.api_v1_prefix)
     app.include_router(media_items_router, prefix=settings.api_v1_prefix)
     app.include_router(playback_events_router, prefix=settings.api_v1_prefix)
+    app.include_router(scrobble_activity_router, prefix=settings.api_v1_prefix)
     app.include_router(watch_events_router, prefix=settings.api_v1_prefix)
     app.include_router(webhooks_router, prefix=settings.api_v1_prefix)
     return app

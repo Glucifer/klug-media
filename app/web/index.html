@@ -161,6 +161,59 @@
           <button id="history-next" class="secondary">Next</button>
           <span id="history-page" class="muted">Page 1</span>
         </div>
+
+        <h2 style="margin-top: 18px">Scrobble Activity</h2>
+        <div class="row">
+          <label for="activity-source">Source</label>
+          <select id="activity-source">
+            <option value="">All</option>
+            <option value="kodi">Kodi</option>
+          </select>
+          <label for="activity-status">Result</label>
+          <select id="activity-status">
+            <option value="">All</option>
+            <option value="watch_event_created">Created</option>
+            <option value="recorded_only">Ignored</option>
+            <option value="duplicate_watch_event_skipped">Duplicate</option>
+          </select>
+          <label class="checkbox">
+            <input id="activity-only-unmatched" type="checkbox" />
+            Unmatched Only
+          </label>
+          <label class="checkbox">
+            <input id="activity-only-with-watch" type="checkbox" />
+            With Watch Only
+          </label>
+          <label for="activity-limit">Rows</label>
+          <select id="activity-limit">
+            <option value="10">10</option>
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+          </select>
+          <button id="activity-apply" class="secondary">Apply</button>
+        </div>
+        <p id="activity-status-text" class="muted">Loading scrobble activity...</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>User</th>
+              <th>Title</th>
+              <th>Source</th>
+              <th>Action</th>
+              <th>Matched Item</th>
+              <th>Result</th>
+            </tr>
+          </thead>
+          <tbody id="activity-body"></tbody>
+        </table>
+        <div class="row">
+          <button id="activity-prev" class="secondary">Previous</button>
+          <button id="activity-next" class="secondary">Next</button>
+          <span id="activity-page" class="muted">Page 1</span>
+        </div>
+        <p id="activity-detail-status" class="muted">Select an activity row to inspect the raw payload.</p>
+        <pre id="activity-detail" class="code-block"></pre>
       </div>
 
       <div id="detail-card" class="card hidden">

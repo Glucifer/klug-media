@@ -42,6 +42,19 @@ const historyBody = document.getElementById("history-body");
 const historyPrev = document.getElementById("history-prev");
 const historyNext = document.getElementById("history-next");
 const historyPage = document.getElementById("history-page");
+const activitySource = document.getElementById("activity-source");
+const activityStatus = document.getElementById("activity-status");
+const activityOnlyUnmatched = document.getElementById("activity-only-unmatched");
+const activityOnlyWithWatch = document.getElementById("activity-only-with-watch");
+const activityLimitSelect = document.getElementById("activity-limit");
+const activityApply = document.getElementById("activity-apply");
+const activityStatusText = document.getElementById("activity-status-text");
+const activityBody = document.getElementById("activity-body");
+const activityPrev = document.getElementById("activity-prev");
+const activityNext = document.getElementById("activity-next");
+const activityPage = document.getElementById("activity-page");
+const activityDetailStatus = document.getElementById("activity-detail-status");
+const activityDetail = document.getElementById("activity-detail");
 const refreshData = document.getElementById("refresh-data");
 const logoutBtn = document.getElementById("logout-btn");
 const detailTitle = document.getElementById("detail-title");
@@ -62,6 +75,9 @@ const IMPORT_UPLOAD_MAX_BYTES = IMPORT_UPLOAD_MAX_MB * 1024 * 1024;
 
 let historyOffset = 0;
 let historyLimit = Number.parseInt(historyLimitSelect.value, 10);
+let activityOffset = 0;
+let activityLimit = Number.parseInt(activityLimitSelect.value, 10);
+let selectedActivityId = null;
 const importHistoryById = new Map();
 let importHistoryRows = [];
 let selectedImportBatchId = null;
@@ -129,7 +145,13 @@ async function checkSession() {
 }
 
 async function loadDashboardData() {
-  await Promise.all([loadShows(), loadProgress(), loadHistory(), loadImportHistory()]);
+  await Promise.all([
+    loadShows(),
+    loadProgress(),
+    loadHistory(),
+    loadImportHistory(),
+    loadScrobbleActivity(),
+  ]);
   setLastRefreshNow();
 }
 
@@ -659,6 +681,138 @@ async function loadHistory() {
   }
 }
 
+function setActivityPagination(rowsLoaded) {
+  const page = Math.floor(activityOffset / activityLimit) + 1;
+  activityPage.textContent = `Page ${page}`;
+  activityPrev.disabled = activityOffset === 0;
+  activityNext.disabled = rowsLoaded < activityLimit;
+}
+
+function buildActivityQuery() {
+  const params = new URLSearchParams();
+  params.set("limit", String(activityLimit));
+  params.set("offset", String(activityOffset));
+  if (activitySource.value) {
+    params.set("playback_source", activitySource.value);
+  }
+  if (activityStatus.value) {
+    params.set("decision_status", activityStatus.value);
+  }
+  if (activityOnlyUnmatched.checked) {
+    params.set("only_unmatched", "true");
+  }
+  if (activityOnlyWithWatch.checked) {
+    params.set("only_with_watch", "true");
+  }
+  return params.toString();
+}
+
+function syncSelectedActivityRow() {
+  const rows = activityBody.querySelectorAll("tr[data-playback-event-id]");
+  for (const row of rows) {
+    const playbackEventId = row.getAttribute("data-playback-event-id");
+    row.classList.toggle("selected", playbackEventId === selectedActivityId);
+  }
+}
+
+function formatActivityResult(row) {
+  if (row.result_label) {
+    return row.result_label;
+  }
+  return row.decision_status || "unknown";
+}
+
+function formatActivityTitle(row) {
+  if (row.media_type === "episode" && row.season_number !== null && row.episode_number !== null) {
+    return `${row.guessed_title} S${String(row.season_number).padStart(2, "0")}E${String(row.episode_number).padStart(2, "0")}`;
+  }
+  return row.guessed_title;
+}
+
+function formatActivityDetail(event) {
+  return [
+    `playback_event_id: ${event.playback_event_id}`,
+    `occurred_at: ${event.occurred_at}`,
+    `collector: ${event.collector}`,
+    `playback_source: ${event.playback_source}`,
+    `event_type: ${event.event_type}`,
+    `title: ${event.title}`,
+    `media_type: ${event.media_type}`,
+    `tmdb_id: ${event.tmdb_id || "n/a"}`,
+    `imdb_id: ${event.imdb_id || "n/a"}`,
+    `tvdb_id: ${event.tvdb_id || "n/a"}`,
+    `decision_status: ${event.decision_status || "n/a"}`,
+    `decision_reason: ${event.decision_reason || "n/a"}`,
+    `watch_id: ${event.watch_id || "n/a"}`,
+    "",
+    JSON.stringify(event.payload || {}, null, 2),
+  ].join("\n");
+}
+
+async function loadScrobbleActivityDetail(playbackEventId) {
+  activityDetailStatus.textContent = `Loading detail for ${playbackEventId}...`;
+  try {
+    const response = await api(`/api/v1/playback-events/${playbackEventId}`);
+    if (!response.ok) {
+      activityDetailStatus.textContent = `Failed to load detail for ${playbackEventId}.`;
+      activityDetail.textContent = "";
+      return;
+    }
+    const payload = await response.json();
+    selectedActivityId = playbackEventId;
+    syncSelectedActivityRow();
+    activityDetailStatus.textContent = `Showing raw payload for ${playbackEventId}`;
+    activityDetail.textContent = formatActivityDetail(payload);
+  } catch (_error) {
+    activityDetailStatus.textContent = `Failed to load detail for ${playbackEventId}.`;
+    activityDetail.textContent = "";
+  }
+}
+
+async function loadScrobbleActivity() {
+  activityStatusText.textContent = "Loading scrobble activity...";
+  activityBody.innerHTML = "";
+  selectedActivityId = null;
+  try {
+    const response = await api(`/api/v1/scrobble-activity?${buildActivityQuery()}`);
+    if (!response.ok) {
+      activityStatusText.textContent = "Failed to load scrobble activity";
+      setActivityPagination(0);
+      return;
+    }
+    const rows = await response.json();
+    if (rows.length === 0) {
+      activityStatusText.textContent = "No scrobble activity for current filter/page";
+      setActivityPagination(0);
+      activityDetailStatus.textContent = "Select an activity row to inspect the raw payload.";
+      activityDetail.textContent = "";
+      return;
+    }
+    for (const row of rows) {
+      const tr = document.createElement("tr");
+      const occurredAt = new Date(row.occurred_at).toLocaleString();
+      const matchedItem = row.matched_title || row.media_item_id || "-";
+      tr.dataset.playbackEventId = row.playback_event_id;
+      tr.innerHTML = `
+        <td>${occurredAt}</td>
+        <td>${row.username || row.user_id}</td>
+        <td>${formatActivityTitle(row)}</td>
+        <td>${row.playback_source}/${row.collector}</td>
+        <td>${row.event_type}</td>
+        <td>${matchedItem}</td>
+        <td>${formatActivityResult(row)}</td>
+      `;
+      activityBody.appendChild(tr);
+    }
+    activityStatusText.textContent = `Loaded ${rows.length} activity row(s)`;
+    setActivityPagination(rows.length);
+    await loadScrobbleActivityDetail(rows[0].playback_event_id);
+  } catch (_error) {
+    activityStatusText.textContent = "Failed to load scrobble activity";
+    setActivityPagination(0);
+  }
+}
+
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   loginError.textContent = "";
@@ -697,6 +851,64 @@ historyPrev.addEventListener("click", async () => {
 historyNext.addEventListener("click", async () => {
   historyOffset += historyLimit;
   await loadHistory();
+});
+
+activityApply.addEventListener("click", async () => {
+  activityLimit = Number.parseInt(activityLimitSelect.value, 10);
+  activityOffset = 0;
+  await loadScrobbleActivity();
+});
+
+activitySource.addEventListener("change", async () => {
+  activityOffset = 0;
+  await loadScrobbleActivity();
+});
+
+activityStatus.addEventListener("change", async () => {
+  activityOffset = 0;
+  await loadScrobbleActivity();
+});
+
+activityOnlyUnmatched.addEventListener("change", async () => {
+  activityOffset = 0;
+  if (activityOnlyUnmatched.checked) {
+    activityOnlyWithWatch.checked = false;
+  }
+  await loadScrobbleActivity();
+});
+
+activityOnlyWithWatch.addEventListener("change", async () => {
+  activityOffset = 0;
+  if (activityOnlyWithWatch.checked) {
+    activityOnlyUnmatched.checked = false;
+  }
+  await loadScrobbleActivity();
+});
+
+activityPrev.addEventListener("click", async () => {
+  activityOffset = Math.max(0, activityOffset - activityLimit);
+  await loadScrobbleActivity();
+});
+
+activityNext.addEventListener("click", async () => {
+  activityOffset += activityLimit;
+  await loadScrobbleActivity();
+});
+
+activityBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const row = target.closest("tr[data-playback-event-id]");
+  if (!(row instanceof HTMLTableRowElement)) {
+    return;
+  }
+  const playbackEventId = row.dataset.playbackEventId;
+  if (!playbackEventId) {
+    return;
+  }
+  await loadScrobbleActivityDetail(playbackEventId);
 });
 
 importForm.addEventListener("submit", runImport);

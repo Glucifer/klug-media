@@ -95,7 +95,15 @@ ul {
   cursor: pointer;
 }
 
+#activity-body tr {
+  cursor: pointer;
+}
+
 #import-history-body tr.selected {
+  background: #eef4ff;
+}
+
+#activity-body tr.selected {
   background: #eef4ff;
 }
 
