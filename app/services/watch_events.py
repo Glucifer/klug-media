@@ -75,6 +75,12 @@ class WatchEventService:
         ).astimezone(UTC)
 
         normalized_rating_scale = rating_scale.strip() if rating_scale else None
+        is_rewatch = watch_event_repository.prior_watch_event_exists(
+            session,
+            user_id=user_id,
+            media_item_id=media_item_id,
+            watched_at=normalized_watched_at,
+        )
 
         try:
             watch_event = watch_event_repository.create_watch_event(
@@ -91,6 +97,7 @@ class WatchEventService:
                 rating_scale=normalized_rating_scale,
                 media_version_id=media_version_id,
                 source_event_id=source_event_id,
+                rewatch=is_rewatch,
             )
             session.commit()
             return watch_event

@@ -168,6 +168,7 @@ def create_watch_event(
     rating_scale: str | None,
     media_version_id: UUID | None,
     source_event_id: str | None,
+    rewatch: bool,
 ) -> WatchEvent:
     watch_event = WatchEvent(
         user_id=user_id,
@@ -182,6 +183,7 @@ def create_watch_event(
         rating_scale=rating_scale,
         media_version_id=media_version_id,
         source_event_id=source_event_id,
+        rewatch=rewatch,
     )
     session.add(watch_event)
     session.flush()
@@ -198,5 +200,20 @@ def source_event_exists(
     statement = select(WatchEvent.watch_id).where(
         WatchEvent.playback_source == playback_source,
         WatchEvent.source_event_id == source_event_id,
+    )
+    return session.scalar(statement) is not None
+
+
+def prior_watch_event_exists(
+    session: Session,
+    *,
+    user_id: UUID,
+    media_item_id: UUID,
+    watched_at: datetime,
+) -> bool:
+    statement = select(WatchEvent.watch_id).where(
+        WatchEvent.user_id == user_id,
+        WatchEvent.media_item_id == media_item_id,
+        WatchEvent.watched_at < watched_at,
     )
     return session.scalar(statement) is not None
