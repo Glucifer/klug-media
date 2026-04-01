@@ -115,11 +115,15 @@ def _load_json_rows(file_path: Path) -> list[dict[str, Any]]:
 
 
 def _load_csv_rows(file_path: Path) -> list[dict[str, Any]]:
-    with file_path.open("r", encoding="utf-8", newline="") as file:
+    with file_path.open("r", encoding="utf-8-sig", newline="") as file:
         reader = csv.DictReader(file)
         rows: list[dict[str, Any]] = []
         for row in reader:
-            cleaned = {key: value for key, value in row.items() if key is not None}
+            cleaned = {
+                (key.lstrip("\ufeff") if isinstance(key, str) else key): value
+                for key, value in row.items()
+                if key is not None
+            }
             rows.append(cleaned)
         return rows
 
