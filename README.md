@@ -36,6 +36,7 @@ The repository currently includes:
 - Import endpoints (`/api/v1/imports/*`)
 - Users, media items, watch events, and shows endpoints
 - Horrorfest year/entry endpoints for annual challenge tracking
+- Stats endpoints for dashboard summaries and monthly/Horrorfest rollups
 - Config wiring via `pydantic-settings`
 - SQLAlchemy engine/session module
 - Alembic migrations through `0012_add_horrorfest_overlay`
@@ -194,3 +195,6 @@ The page uses:
 - `GET /api/v1/shows/{show_id}`
 - `GET /api/v1/horrorfest/years`
 - `GET /api/v1/horrorfest/years/{year}/entries`
+- `GET /api/v1/stats/summary`
+- `GET /api/v1/stats/monthly`
+- `GET /api/v1/stats/horrorfest`

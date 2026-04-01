@@ -65,6 +65,12 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - operator endpoints now exist under `/api/v1/horrorfest/*` for year config, listing, include/remove/restore, and manual reordering
   - watch-event list responses now expose `horrorfest_year`, `horrorfest_watch_order`, and `is_horrorfest_watch`
   - legacy import rows can now carry optional `horrorfest_year` and `horrorfest_watch_order` values so historical annual order can be preserved during import
+- Dashboard stats:
+  - query-backed stats endpoints now exist under `/api/v1/stats/*`
+  - first endpoints are `summary`, `monthly`, and `horrorfest`
+  - summary stats now cover active/completed watches, rewatches, movies vs episodes, total watch time, average rating, and unrated backlog
+  - monthly stats are grouped by each watch's user-local year/month rather than UTC
+  - Horrorfest annual stats summarize active `horrorfest_entry` rows without creating a separate analytics store
 - Legacy export import script:
   - `python -m app.scripts.import_watch_events`
   - supports dry run + incremental resume
@@ -82,6 +88,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - watch history version/runtime override controls for per-watch movie cuts
   - recently watched, unrated queue with 1-10 rating actions
   - Horrorfest year configuration and ordered entry operator panel
+  - compact stats section with summary cards, monthly rollups, and Horrorfest annual summaries
   - import runner (file upload + mode/dry-run/resume options)
   - cursor visibility (`cursor_before`, `cursor_after`, local last cursor)
   - import batch history with status filter (persisted)

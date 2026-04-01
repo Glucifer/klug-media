@@ -39,6 +39,8 @@ def clean_tables(integration_engine) -> None:
         connection.execute(
             text(
                 "TRUNCATE TABLE "
+                "app.horrorfest_entry, "
+                "app.horrorfest_year, "
                 "app.watch_event_tag, "
                 "app.watch_event, "
                 "app.media_version, "

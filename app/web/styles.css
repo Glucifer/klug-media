@@ -151,6 +151,33 @@ td {
   font-size: 13px;
 }
 
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.stats-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #f8fbff;
+  padding: 12px;
+}
+
+.stats-card-label {
+  color: #4f607e;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stats-card-value {
+  font-size: 24px;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
 @media (max-width: 680px) {
   input {
     min-width: 100%;

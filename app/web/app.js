@@ -12,6 +12,10 @@ const showList = document.getElementById("show-list");
 const showsStatus = document.getElementById("shows-status");
 const progressStatus = document.getElementById("progress-status");
 const progressBody = document.getElementById("progress-body");
+const statsStatus = document.getElementById("stats-status");
+const statsSummaryCards = document.getElementById("stats-summary-cards");
+const statsMonthlyBody = document.getElementById("stats-monthly-body");
+const statsHorrorfestBody = document.getElementById("stats-horrorfest-body");
 const importForm = document.getElementById("import-form");
 const importFile = document.getElementById("import-file");
 const importUserId = document.getElementById("import-user-id");
@@ -215,6 +219,7 @@ async function loadDashboardData() {
   await Promise.all([
     loadShows(),
     loadProgress(),
+    loadStats(),
     loadHistory(),
     loadUnratedWatches(),
     loadHorrorfest(),
@@ -223,6 +228,111 @@ async function loadDashboardData() {
     loadMetadataEnrichment(),
   ]);
   setLastRefreshNow();
+}
+
+function formatDecimalValue(value, digits = 2) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) {
+    return String(value);
+  }
+  return numeric.toFixed(digits);
+}
+
+function renderStatsSummaryCards(summary) {
+  const cards = [
+    ["Active Watches", summary.total_active_watches],
+    ["Completed", summary.total_completed_watches],
+    ["Rewatches", summary.total_rewatches],
+    ["Watch Time", `${formatDecimalValue(summary.total_watch_time_hours)}h`],
+    ["Movies", summary.movie_watch_count],
+    ["Episodes", summary.episode_watch_count],
+    ["Avg Rating", summary.average_rating_value ? formatDecimalValue(summary.average_rating_value) : "-"],
+    ["Unrated Backlog", summary.unrated_completed_watch_count],
+  ];
+  statsSummaryCards.innerHTML = "";
+  for (const [label, value] of cards) {
+    const card = document.createElement("div");
+    card.className = "stats-card";
+    card.innerHTML = `
+      <div class="stats-card-label">${label}</div>
+      <div class="stats-card-value">${value}</div>
+    `;
+    statsSummaryCards.appendChild(card);
+  }
+}
+
+async function loadStats() {
+  statsStatus.textContent = "Loading stats...";
+  statsSummaryCards.innerHTML = "";
+  statsMonthlyBody.innerHTML = "";
+  statsHorrorfestBody.innerHTML = "";
+  try {
+    const [summaryResponse, monthlyResponse, horrorfestResponse] = await Promise.all([
+      api("/api/v1/stats/summary"),
+      api("/api/v1/stats/monthly"),
+      api("/api/v1/stats/horrorfest"),
+    ]);
+    if (!summaryResponse.ok || !monthlyResponse.ok || !horrorfestResponse.ok) {
+      statsStatus.textContent = "Failed to load stats";
+      return;
+    }
+    const [summary, monthlyRows, horrorfestRows] = await Promise.all([
+      summaryResponse.json(),
+      monthlyResponse.json(),
+      horrorfestResponse.json(),
+    ]);
+
+    renderStatsSummaryCards(summary);
+
+    if (!monthlyRows.length) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = '<td colspan="8">No monthly watch stats yet</td>';
+      statsMonthlyBody.appendChild(tr);
+    } else {
+      for (const row of monthlyRows) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.year}-${String(row.month).padStart(2, "0")}</td>
+          <td>${row.watch_count}</td>
+          <td>${row.movie_count}</td>
+          <td>${row.episode_count}</td>
+          <td>${row.rewatch_count}</td>
+          <td>${row.rated_watch_count}</td>
+          <td>${formatDecimalValue(Number(row.total_runtime_seconds || 0) / 3600)}</td>
+          <td>${row.average_rating_value ? formatDecimalValue(row.average_rating_value) : "-"}</td>
+        `;
+        statsMonthlyBody.appendChild(tr);
+      }
+    }
+
+    if (!horrorfestRows.length) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = '<td colspan="8">No Horrorfest stats yet</td>';
+      statsHorrorfestBody.appendChild(tr);
+    } else {
+      for (const row of horrorfestRows) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.horrorfest_year}</td>
+          <td>${row.entry_count}</td>
+          <td>${formatDecimalValue(row.total_runtime_hours)}</td>
+          <td>${row.average_rating_value ? formatDecimalValue(row.average_rating_value) : "-"}</td>
+          <td>${row.rated_entry_count}</td>
+          <td>${row.rewatch_count}</td>
+          <td>${row.first_watch_at ? new Date(row.first_watch_at).toLocaleString() : "-"}</td>
+          <td>${row.latest_watch_at ? new Date(row.latest_watch_at).toLocaleString() : "-"}</td>
+        `;
+        statsHorrorfestBody.appendChild(tr);
+      }
+    }
+
+    statsStatus.textContent = "Loaded stats";
+  } catch (_error) {
+    statsStatus.textContent = "Failed to load stats";
+  }
 }
 
 async function loadShows() {
