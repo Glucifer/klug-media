@@ -60,6 +60,9 @@ def test_kodi_movie_scrobble(monkeypatch) -> None:
     mock_watch_event.total_seconds = None
     mock_watch_event.watched_seconds = None
     mock_watch_event.progress_percent = 100.0
+    mock_watch_event.watch_version_name = None
+    mock_watch_event.watch_runtime_seconds = None
+    mock_watch_event.effective_runtime_seconds = None
     mock_watch_event.completed = True
     mock_watch_event.rating_value = None
     mock_watch_event.rating_scale = None

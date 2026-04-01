@@ -533,3 +533,71 @@ def test_rate_watch_event_rejects_deleted_watch(monkeypatch) -> None:
             update_reason=None,
             rating_value=7,
         )
+
+
+def test_set_watch_event_version_override_updates_watch_fields(monkeypatch) -> None:
+    session = Mock()
+    event = Mock(
+        watch_id=uuid4(),
+        is_deleted=False,
+        watch_version_name=None,
+        watch_runtime_seconds=None,
+        dedupe_hash="abc",
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.get_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.update_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+
+    result = WatchEventService.set_watch_event_version_override(
+        session,
+        watch_id=event.watch_id,
+        updated_by="operator",
+        update_reason="watched extended cut",
+        version_name="Director's Cut",
+        runtime_minutes=132,
+        clear_override=False,
+    )
+
+    assert result.watch_version_name == "Director's Cut"
+    assert result.watch_runtime_seconds == 132 * 60
+    assert result.updated_by == "operator"
+    assert result.dedupe_hash is None
+    session.commit.assert_called_once()
+
+
+def test_clear_watch_event_version_override(monkeypatch) -> None:
+    session = Mock()
+    event = Mock(
+        watch_id=uuid4(),
+        is_deleted=False,
+        watch_version_name="Uncut",
+        watch_runtime_seconds=8100,
+        dedupe_hash="abc",
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.get_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.update_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+
+    result = WatchEventService.set_watch_event_version_override(
+        session,
+        watch_id=event.watch_id,
+        updated_by="operator",
+        update_reason="clear custom version",
+        version_name=None,
+        runtime_minutes=None,
+        clear_override=True,
+    )
+
+    assert result.watch_version_name is None
+    assert result.watch_runtime_seconds is None
+    session.commit.assert_called_once()

@@ -280,6 +280,47 @@ class WatchEventService:
             raise WatchEventConstraintError("Watch event failed database constraints") from exc
 
     @staticmethod
+    def set_watch_event_version_override(
+        session: Session,
+        *,
+        watch_id: UUID,
+        updated_by: str,
+        update_reason: str | None,
+        version_name: str | None,
+        runtime_minutes: int | None,
+        clear_override: bool,
+    ) -> WatchEvent:
+        watch_event = WatchEventService._get_watch_event_or_raise(session, watch_id=watch_id)
+        normalized_updated_by = WatchEventService._normalize_updated_by(updated_by)
+        normalized_reason = WatchEventService._normalize_update_reason(update_reason)
+        if watch_event.is_deleted:
+            raise ValueError("Cannot edit version for a deleted watch event")
+
+        if clear_override:
+            watch_event.watch_version_name = None
+            watch_event.watch_runtime_seconds = None
+        else:
+            normalized_version_name = version_name.strip() if version_name else ""
+            if not normalized_version_name:
+                raise ValueError("version_name must not be empty unless clearing override")
+            watch_event.watch_version_name = normalized_version_name
+            watch_event.watch_runtime_seconds = (
+                runtime_minutes * 60 if runtime_minutes is not None else None
+            )
+
+        watch_event.updated_at = datetime.now(UTC)
+        watch_event.updated_by = normalized_updated_by
+        watch_event.update_reason = normalized_reason
+        watch_event.dedupe_hash = None
+        try:
+            updated = watch_event_repository.update_watch_event(session, watch_event=watch_event)
+            session.commit()
+            return updated
+        except IntegrityError as exc:
+            session.rollback()
+            raise WatchEventConstraintError("Watch event failed database constraints") from exc
+
+    @staticmethod
     def create_watch_event(
         session: Session,
         *,

@@ -53,6 +53,7 @@ def list_watch_events(
             int | None,
             int | None,
             int | None,
+            int | None,
             str | None,
             str,
         ]
@@ -64,6 +65,7 @@ def list_watch_events(
             MediaItem.season_number,
             MediaItem.episode_number,
             MediaItem.year,
+            MediaItem.base_runtime_seconds,
             Show.title,
             User.timezone,
         )
@@ -110,6 +112,7 @@ def list_watch_events(
         season_number,
         episode_number,
         item_year,
+        base_runtime_seconds,
         show_title,
         user_timezone,
     ) in rows:
@@ -130,6 +133,13 @@ def list_watch_events(
                 "total_seconds": watch_event.total_seconds,
                 "watched_seconds": watch_event.watched_seconds,
                 "progress_percent": watch_event.progress_percent,
+                "watch_version_name": watch_event.watch_version_name,
+                "watch_runtime_seconds": watch_event.watch_runtime_seconds,
+                "effective_runtime_seconds": (
+                    watch_event.watch_runtime_seconds
+                    or watch_event.total_seconds
+                    or base_runtime_seconds
+                ),
                 "completed": watch_event.completed,
                 "rating_value": watch_event.rating_value,
                 "rating_scale": watch_event.rating_scale,
@@ -345,6 +355,7 @@ def list_unrated_watch_events(
             MediaItem.season_number,
             MediaItem.episode_number,
             MediaItem.year,
+            MediaItem.base_runtime_seconds,
             Show.title,
             User.timezone,
         )
@@ -369,6 +380,7 @@ def list_unrated_watch_events(
         season_number,
         episode_number,
         item_year,
+        base_runtime_seconds,
         show_title,
         user_timezone,
     ) in rows:
@@ -387,6 +399,13 @@ def list_unrated_watch_events(
                 "total_seconds": watch_event.total_seconds,
                 "watched_seconds": watch_event.watched_seconds,
                 "progress_percent": watch_event.progress_percent,
+                "watch_version_name": watch_event.watch_version_name,
+                "watch_runtime_seconds": watch_event.watch_runtime_seconds,
+                "effective_runtime_seconds": (
+                    watch_event.watch_runtime_seconds
+                    or watch_event.total_seconds
+                    or base_runtime_seconds
+                ),
                 "completed": watch_event.completed,
                 "rating_value": watch_event.rating_value,
                 "rating_scale": watch_event.rating_scale,

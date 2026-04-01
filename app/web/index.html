@@ -179,6 +179,12 @@
           <input id="history-editor-media-item-id" type="text" placeholder="media item uuid" />
         </div>
         <div class="row">
+          <label for="history-editor-version-name">Version Name</label>
+          <input id="history-editor-version-name" type="text" placeholder="Default/Theatrical, Director's Cut, Uncut" />
+          <label for="history-editor-runtime-minutes">Runtime Minutes</label>
+          <input id="history-editor-runtime-minutes" type="number" min="1" max="1000" />
+        </div>
+        <div class="row">
           <label class="checkbox">
             <input id="history-editor-completed" type="checkbox" />
             Completed
@@ -188,6 +194,8 @@
             Rewatch
           </label>
           <button id="history-save" class="secondary" type="button">Save Correction</button>
+          <button id="history-save-version" class="secondary" type="button">Save Version</button>
+          <button id="history-clear-version" class="secondary" type="button">Clear Version</button>
           <button id="history-delete" class="secondary" type="button">Soft Delete</button>
           <button id="history-restore" class="secondary" type="button">Restore</button>
         </div>

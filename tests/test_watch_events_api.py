@@ -21,6 +21,9 @@ class DummyWatchEvent:
         self.total_seconds = 7200
         self.watched_seconds = 7200
         self.progress_percent = Decimal("100.00")
+        self.watch_version_name = None
+        self.watch_runtime_seconds = None
+        self.effective_runtime_seconds = 7200
         self.completed = True
         self.rating_value = Decimal("4.50")
         self.rating_scale = "5-star"
@@ -391,3 +394,36 @@ def test_rate_watch_event_returns_updated_row(monkeypatch) -> None:
     payload = response.json()
     assert payload["rating_value"] == "8"
     assert payload["rating_scale"] == "10-star"
+
+
+def test_set_watch_event_version_override_returns_updated_row(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    event = DummyWatchEvent()
+    event.watch_version_name = "Director's Cut"
+    event.watch_runtime_seconds = 7920
+    event.effective_runtime_seconds = 7920
+    event.updated_by = "operator"
+    event.update_reason = "manual cut selection"
+
+    monkeypatch.setattr(
+        WatchEventService,
+        "set_watch_event_version_override",
+        lambda *_args, **_kwargs: event,
+    )
+
+    client = TestClient(app)
+    response = client.post(
+        f"/api/v1/watch-events/{event.watch_id}/version",
+        json={
+            "updated_by": "operator",
+            "update_reason": "manual cut selection",
+            "version_name": "Director's Cut",
+            "runtime_minutes": 132,
+            "clear_override": False,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["watch_version_name"] == "Director's Cut"
+    assert payload["watch_runtime_seconds"] == 7920

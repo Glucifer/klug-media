@@ -32,6 +32,9 @@ class WatchEventRead(KlugORMModel):
     total_seconds: int | None
     watched_seconds: int | None
     progress_percent: Decimal | None
+    watch_version_name: str | None = None
+    watch_runtime_seconds: int | None = None
+    effective_runtime_seconds: int | None = None
     completed: bool
     rating_value: Decimal | None
     rating_scale: str | None
@@ -86,3 +89,11 @@ class WatchEventRate(KlugBaseModel):
     updated_by: str = Field(min_length=1, max_length=100)
     update_reason: str | None = Field(default=None, max_length=500)
     rating_value: int = Field(ge=1, le=10)
+
+
+class WatchEventVersionOverride(KlugBaseModel):
+    updated_by: str = Field(min_length=1, max_length=100)
+    update_reason: str | None = Field(default=None, max_length=500)
+    version_name: str | None = Field(default=None, max_length=100)
+    runtime_minutes: int | None = Field(default=None, ge=1, le=1000)
+    clear_override: bool = False

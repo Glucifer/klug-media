@@ -49,9 +49,13 @@ const historyEditorUpdatedBy = document.getElementById("history-editor-updated-b
 const historyEditorReason = document.getElementById("history-editor-reason");
 const historyEditorWatchedAt = document.getElementById("history-editor-watched-at");
 const historyEditorMediaItemId = document.getElementById("history-editor-media-item-id");
+const historyEditorVersionName = document.getElementById("history-editor-version-name");
+const historyEditorRuntimeMinutes = document.getElementById("history-editor-runtime-minutes");
 const historyEditorCompleted = document.getElementById("history-editor-completed");
 const historyEditorRewatch = document.getElementById("history-editor-rewatch");
 const historySave = document.getElementById("history-save");
+const historySaveVersion = document.getElementById("history-save-version");
+const historyClearVersion = document.getElementById("history-clear-version");
 const historyDelete = document.getElementById("history-delete");
 const historyRestore = document.getElementById("history-restore");
 const ratingsLimitSelect = document.getElementById("ratings-limit");
@@ -805,6 +809,9 @@ function formatHistoryDetail(row) {
     `media_item_id: ${row.media_item_id}`,
     `media_item_type: ${row.media_item_type || "n/a"}`,
     `playback_source: ${row.playback_source}`,
+    `watch_version_name: ${row.watch_version_name || "n/a"}`,
+    `watch_runtime_seconds: ${row.watch_runtime_seconds ?? "n/a"}`,
+    `effective_runtime_seconds: ${row.effective_runtime_seconds ?? "n/a"}`,
     `completed: ${row.completed}`,
     `rewatch: ${row.rewatch}`,
     `is_deleted: ${row.is_deleted}`,
@@ -824,6 +831,9 @@ function populateHistoryEditor(row) {
   historyDetail.textContent = formatHistoryDetail(row);
   historyEditorWatchedAt.value = toDateTimeLocalValue(row.watched_at);
   historyEditorMediaItemId.value = row.media_item_id || "";
+  historyEditorVersionName.value = row.watch_version_name || "";
+  historyEditorRuntimeMinutes.value =
+    row.watch_runtime_seconds ? String(Math.round(row.watch_runtime_seconds / 60)) : "";
   historyEditorCompleted.checked = Boolean(row.completed);
   historyEditorRewatch.checked = Boolean(row.rewatch);
   historyDelete.disabled = row.is_deleted;
@@ -933,6 +943,42 @@ async function setHistoryDeletedState(action) {
     return;
   }
   await loadHistory();
+}
+
+async function saveHistoryVersion(clearOverride) {
+  if (!selectedHistoryId) {
+    historyDetailStatus.textContent = "Select a watch event first.";
+    return;
+  }
+  const payload = {
+    updated_by: historyEditorUpdatedBy.value.trim(),
+    update_reason: historyEditorReason.value.trim() || null,
+    version_name: clearOverride ? null : historyEditorVersionName.value.trim() || null,
+    runtime_minutes:
+      clearOverride || !historyEditorRuntimeMinutes.value
+        ? null
+        : Number.parseInt(historyEditorRuntimeMinutes.value, 10),
+    clear_override: clearOverride,
+  };
+  const response = await api(`/api/v1/watch-events/${selectedHistoryId}/version`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => null);
+    historyDetailStatus.textContent =
+      errorPayload?.detail || "Failed to save version override.";
+    return;
+  }
+  const updated = await response.json();
+  historyDetailStatus.textContent = clearOverride
+    ? `Cleared version override for ${updated.media_item_id}`
+    : `Saved version override for ${updated.media_item_id}`;
+  await loadHistory();
+  const selectedRow = historyRows.find((item) => item.watch_id === updated.watch_id);
+  if (selectedRow) {
+    populateHistoryEditor(selectedRow);
+  }
 }
 
 function setActivityPagination(rowsLoaded) {
@@ -1298,6 +1344,14 @@ ratingsSave.addEventListener("click", async () => {
 
 historySave.addEventListener("click", async () => {
   await correctHistoryWatch();
+});
+
+historySaveVersion.addEventListener("click", async () => {
+  await saveHistoryVersion(false);
+});
+
+historyClearVersion.addEventListener("click", async () => {
+  await saveHistoryVersion(true);
 });
 
 historyDelete.addEventListener("click", async () => {

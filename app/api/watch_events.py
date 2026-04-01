@@ -16,6 +16,7 @@ from app.schemas.watch_events import (
     WatchEventRate,
     WatchEventRead,
     WatchEventRestore,
+    WatchEventVersionOverride,
 )
 from app.services.watch_events import WatchEventConstraintError, WatchEventService
 
@@ -202,6 +203,34 @@ def rate_watch_event(
             updated_by=payload.updated_by,
             update_reason=payload.update_reason,
             rating_value=payload.rating_value,
+        )
+    except ValueError as exc:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if "not found" in str(exc)
+            else status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+    except WatchEventConstraintError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return WatchEventRead.model_validate(watch_event)
+
+
+@router.post("/{watch_id}/version", response_model=WatchEventRead)
+def set_watch_event_version_override(
+    watch_id: UUID,
+    payload: WatchEventVersionOverride,
+    session: Session = Depends(get_db_session),
+) -> WatchEventRead:
+    try:
+        watch_event = WatchEventService.set_watch_event_version_override(
+            session,
+            watch_id=watch_id,
+            updated_by=payload.updated_by,
+            update_reason=payload.update_reason,
+            version_name=payload.version_name,
+            runtime_minutes=payload.runtime_minutes,
+            clear_override=payload.clear_override,
         )
     except ValueError as exc:
         status_code = (

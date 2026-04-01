@@ -412,6 +412,8 @@ class WatchEvent(Base):
     total_seconds: Mapped[int | None] = mapped_column(Integer)
     watched_seconds: Mapped[int | None] = mapped_column(Integer)
     progress_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    watch_version_name: Mapped[str | None] = mapped_column(String)
+    watch_runtime_seconds: Mapped[int | None] = mapped_column(Integer)
     completed: Mapped[bool] = mapped_column(
         Boolean, server_default=text("true"), nullable=False
     )
