@@ -151,7 +151,17 @@ Incremental resume example:
 uv run python -m app.scripts.import_watch_events --input ./path/to/export.csv --input-schema legacy_backup --user-id <your-user-uuid> --mode incremental --resume-from-latest --error-report ./import_errors.json
 ```
 
-9. Backfill episode `show_id` links for older data:
+9. Import preserved Horrorfest overlay data after canonical watch history is already imported:
+```bash
+uv run python -m app.scripts.import_horrorfest --input ./v_horrorfest_trakt_preserve_export.csv --user-id <your-user-uuid>
+```
+
+Dry run example:
+```bash
+uv run python -m app.scripts.import_horrorfest --input ./v_horrorfest_trakt_preserve_export.csv --user-id <your-user-uuid> --dry-run
+```
+
+10. Backfill episode `show_id` links for older data:
 ```bash
 uv run python -m app.scripts.backfill_episode_shows --dry-run
 ```

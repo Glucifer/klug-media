@@ -275,6 +275,24 @@ def get_watch_event(session: Session, *, watch_id: UUID) -> WatchEvent | None:
     return session.scalar(statement)
 
 
+def find_user_watch_event_by_source_event_id(
+    session: Session,
+    *,
+    user_id: UUID,
+    source_event_id: str,
+) -> WatchEvent | None:
+    statement = (
+        select(WatchEvent)
+        .where(
+            WatchEvent.user_id == user_id,
+            WatchEvent.source_event_id == source_event_id,
+        )
+        .order_by(WatchEvent.created_at.desc())
+        .limit(1)
+    )
+    return session.scalar(statement)
+
+
 def prior_watch_event_exists(
     session: Session,
     *,
@@ -354,6 +372,30 @@ def list_user_media_watch_events(
         .where(
             WatchEvent.user_id == user_id,
             WatchEvent.media_item_id == media_item_id,
+        )
+        .order_by(WatchEvent.watched_at.asc(), WatchEvent.created_at.asc())
+    )
+    return list(session.scalars(statement))
+
+
+def list_user_movie_watch_events_by_tmdb_and_local_date(
+    session: Session,
+    *,
+    user_id: UUID,
+    tmdb_id: int,
+    local_date: date,
+) -> list[WatchEvent]:
+    local_watch_date = func.date(func.timezone(User.timezone, WatchEvent.watched_at))
+    statement = (
+        select(WatchEvent)
+        .join(User, WatchEvent.user_id == User.user_id)
+        .join(MediaItem, WatchEvent.media_item_id == MediaItem.media_item_id)
+        .where(
+            WatchEvent.user_id == user_id,
+            WatchEvent.is_deleted.is_(False),
+            MediaItem.type == "movie",
+            MediaItem.tmdb_id == tmdb_id,
+            local_watch_date == local_date,
         )
         .order_by(WatchEvent.watched_at.asc(), WatchEvent.created_at.asc())
     )

@@ -77,6 +77,10 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Legacy export import script:
   - `python -m app.scripts.import_watch_events`
   - supports dry run + incremental resume
+- Preserved Horrorfest overlay import script:
+  - `python -m app.scripts.import_horrorfest`
+  - applies legacy Horrorfest year/order plus preserved rating/version metadata onto already-imported canonical `watch_event` rows
+  - matches imported watches primarily by preserved `trakt_log_id` stored as `watch_event.source_event_id`, with TMDB/local-date fallback only when needed
 - Backfill script:
   - `python -m app.scripts.backfill_episode_shows`
 - Tests:
