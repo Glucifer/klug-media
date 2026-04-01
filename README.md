@@ -35,6 +35,7 @@ The repository currently includes:
 - Health endpoint (`GET /api/v1/health`)
 - Import endpoints (`/api/v1/imports/*`)
 - Users, media items, watch events, and shows endpoints
+- Manual watch entry endpoint for off-Kodi viewing
 - Horrorfest year/entry endpoints for annual challenge tracking
 - Stats endpoints for dashboard summaries and monthly/Horrorfest rollups
 - Config wiring via `pydantic-settings`
@@ -198,3 +199,14 @@ The page uses:
 - `GET /api/v1/stats/summary`
 - `GET /api/v1/stats/monthly`
 - `GET /api/v1/stats/horrorfest`
+- `POST /api/v1/watch-events/manual`
+
+## Manual Watch Entry
+
+V1 manual entry is intentionally rough but usable from the existing dashboard or API:
+
+- movies: supply a TMDB movie id
+- episodes: supply a TMDB show id plus season and episode numbers
+- optional TMDB episode id can be included as a validation check
+
+Episode note: TMDB does not provide episode-detail lookup by episode id alone, so Klug uses the canonical local episode identity of `show_tmdb_id + season + episode`.

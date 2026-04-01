@@ -10,8 +10,10 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.datetime_utils import ensure_timezone_aware
 from app.db.models.entities import WatchEvent
+from app.services.shows import ShowService
 from app.services.media_items import MediaItemService
 from app.services.horrorfest import HorrorfestService
+from app.services.tmdb import TmdbHttpError, TmdbLookupError, TmdbService
 from app.repositories import watch_events as watch_event_repository
 
 
@@ -445,6 +447,51 @@ class WatchEventService:
             ) from exc
 
     @staticmethod
+    def create_manual_watch_event(
+        session: Session,
+        *,
+        user_id: UUID,
+        watched_at: datetime,
+        playback_source: str,
+        media_type: str,
+        tmdb_id: int | None,
+        show_tmdb_id: int | None,
+        tmdb_episode_id: int | None,
+        season_number: int | None,
+        episode_number: int | None,
+        completed: bool,
+        rating_value: int | None,
+        source_event_id: str | None,
+        created_by: str | None,
+    ) -> WatchEventCreateResult:
+        media_item_id = WatchEventService._resolve_manual_media_item_id(
+            session,
+            media_type=media_type,
+            tmdb_id=tmdb_id,
+            show_tmdb_id=show_tmdb_id,
+            tmdb_episode_id=tmdb_episode_id,
+            season_number=season_number,
+            episode_number=episode_number,
+        )
+        return WatchEventService.create_watch_event(
+            session,
+            user_id=user_id,
+            media_item_id=media_item_id,
+            watched_at=watched_at,
+            playback_source=playback_source,
+            total_seconds=None,
+            watched_seconds=None,
+            progress_percent=None,
+            completed=completed,
+            rating_value=(Decimal(rating_value) if rating_value is not None else None),
+            rating_scale="10-star" if rating_value is not None else None,
+            media_version_id=None,
+            source_event_id=source_event_id,
+            created_by=created_by,
+            origin_kind="manual_entry",
+        )
+
+    @staticmethod
     def source_event_exists(
         session: Session,
         *,
@@ -460,6 +507,165 @@ class WatchEventService:
     @staticmethod
     def _watch_collision_window_seconds() -> int:
         return max(0, get_settings().klug_watch_collision_window_seconds)
+
+    @staticmethod
+    def _resolve_manual_media_item_id(
+        session: Session,
+        *,
+        media_type: str,
+        tmdb_id: int | None,
+        show_tmdb_id: int | None,
+        tmdb_episode_id: int | None,
+        season_number: int | None,
+        episode_number: int | None,
+    ) -> UUID:
+        normalized_media_type = media_type.strip().lower()
+        try:
+            if normalized_media_type == "movie":
+                return WatchEventService._resolve_manual_movie_media_item_id(
+                    session,
+                    tmdb_id=tmdb_id,
+                )
+            if normalized_media_type == "episode":
+                return WatchEventService._resolve_manual_episode_media_item_id(
+                    session,
+                    show_tmdb_id=show_tmdb_id,
+                    tmdb_episode_id=tmdb_episode_id,
+                    season_number=season_number,
+                    episode_number=episode_number,
+                )
+        except TmdbLookupError as exc:
+            raise ValueError(exc.detail or exc.code) from exc
+        except TmdbHttpError as exc:
+            raise ValueError(exc.detail or exc.code) from exc
+
+        raise ValueError("media_type must be either 'movie' or 'episode'")
+
+    @staticmethod
+    def _resolve_manual_movie_media_item_id(
+        session: Session,
+        *,
+        tmdb_id: int | None,
+    ) -> UUID:
+        if tmdb_id is None:
+            raise ValueError("Movie manual entry requires tmdb_id")
+
+        existing = MediaItemService.find_media_item_by_external_ids(
+            session,
+            media_type="movie",
+            tmdb_id=tmdb_id,
+            imdb_id=None,
+        )
+        if existing is not None:
+            return existing.media_item_id
+
+        details = TmdbService.get_movie_details(session, tmdb_id=tmdb_id)
+        title = str(details.get("title") or "").strip()
+        if not title:
+            raise ValueError("TMDB movie details did not include a title")
+        release_date = details.get("release_date")
+        year = int(release_date[:4]) if isinstance(release_date, str) and len(release_date) >= 4 else None
+        imdb_id = details.get("imdb_id")
+        media_item = MediaItemService.create_media_item(
+            session,
+            media_type="movie",
+            title=title,
+            year=year,
+            tmdb_id=tmdb_id,
+            imdb_id=imdb_id if isinstance(imdb_id, str) else None,
+            tvdb_id=None,
+            metadata_source="tmdb",
+        )
+        return media_item.media_item_id
+
+    @staticmethod
+    def _resolve_manual_episode_media_item_id(
+        session: Session,
+        *,
+        show_tmdb_id: int | None,
+        tmdb_episode_id: int | None,
+        season_number: int | None,
+        episode_number: int | None,
+    ) -> UUID:
+        if show_tmdb_id is None:
+            raise ValueError(
+                "Episode manual entry requires show_tmdb_id because TMDB cannot resolve episode details from episode id alone"
+            )
+        if season_number is None or episode_number is None:
+            raise ValueError("Episode manual entry requires season_number and episode_number")
+
+        existing = MediaItemService.find_episode_media_item(
+            session,
+            show_tmdb_id=show_tmdb_id,
+            season_number=season_number,
+            episode_number=episode_number,
+        )
+        if existing is not None:
+            return existing.media_item_id
+
+        show_details = TmdbService.get_tv_details(session, tmdb_id=show_tmdb_id)
+        episode_details = TmdbService.get_episode_details(
+            session,
+            show_tmdb_id=show_tmdb_id,
+            season_number=season_number,
+            episode_number=episode_number,
+        )
+        if tmdb_episode_id is not None:
+            resolved_episode_id = episode_details.get("id")
+            if resolved_episode_id != tmdb_episode_id:
+                raise ValueError(
+                    "Provided tmdb_episode_id does not match the TMDB episode at the given show/season/episode"
+                )
+
+        show_name = str(show_details.get("name") or "").strip()
+        if not show_name:
+            raise ValueError("TMDB show details did not include a name")
+        first_air_date = show_details.get("first_air_date")
+        show_year = (
+            int(first_air_date[:4])
+            if isinstance(first_air_date, str) and len(first_air_date) >= 4
+            else None
+        )
+        show = ShowService.get_or_create_show(
+            session,
+            tmdb_id=show_tmdb_id,
+            title=show_name,
+            year=show_year,
+            tvdb_id=(
+                int(show_details["external_ids"]["tvdb_id"])
+                if isinstance(show_details.get("external_ids"), dict)
+                and isinstance(show_details["external_ids"].get("tvdb_id"), int)
+                else None
+            ),
+            imdb_id=(
+                show_details["external_ids"].get("imdb_id")
+                if isinstance(show_details.get("external_ids"), dict)
+                and isinstance(show_details["external_ids"].get("imdb_id"), str)
+                else None
+            ),
+        )
+        episode_title = str(episode_details.get("name") or "").strip()
+        if not episode_title:
+            raise ValueError("TMDB episode details did not include a name")
+        air_date = episode_details.get("air_date")
+        episode_year = (
+            int(air_date[:4]) if isinstance(air_date, str) and len(air_date) >= 4 else None
+        )
+        media_item = MediaItemService.create_media_item(
+            session,
+            media_type="episode",
+            title=episode_title,
+            year=episode_year,
+            tmdb_id=None,
+            imdb_id=None,
+            tvdb_id=None,
+            show_tmdb_id=show_tmdb_id,
+            season_number=season_number,
+            episode_number=episode_number,
+            show_id=show.show_id,
+            metadata_source="tmdb",
+        )
+        return media_item.media_item_id
 
     @staticmethod
     def _get_watch_event_or_raise(session: Session, *, watch_id: UUID) -> WatchEvent:

@@ -270,6 +270,57 @@ def test_create_watch_event_rejects_naive_watched_at() -> None:
     monkeypatch.undo()
 
 
+def test_create_manual_watch_event_returns_201(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    event = DummyWatchEvent()
+
+    def fake_create_manual_watch_event(_session, **kwargs):
+        assert kwargs["media_type"] == "movie"
+        assert kwargs["tmdb_id"] == 1091
+        return WatchEventCreateResult(watch_event=event, created=True)
+
+    monkeypatch.setattr(
+        WatchEventService, "create_manual_watch_event", fake_create_manual_watch_event
+    )
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/watch-events/manual",
+        json={
+            "user_id": str(event.user_id),
+            "watched_at": event.watched_at.isoformat(),
+            "playback_source": "blu_ray",
+            "media_type": "movie",
+            "tmdb_id": 1091,
+            "completed": True,
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["watch_id"] == str(event.watch_id)
+
+
+def test_create_manual_watch_event_rejects_episode_without_show_tmdb_id(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/watch-events/manual",
+        json={
+            "user_id": str(uuid4()),
+            "watched_at": datetime.now(UTC).isoformat(),
+            "playback_source": "streaming",
+            "media_type": "episode",
+            "tmdb_episode_id": 12345,
+            "season_number": 1,
+            "episode_number": 1,
+            "completed": True,
+        },
+    )
+
+    assert response.status_code == 422
+    assert "show_tmdb_id" in response.json()["detail"][0]["msg"]
+
+
 def test_create_watch_event_constraint_error_returns_409(monkeypatch) -> None:
     _set_permissive_auth(monkeypatch)
     event = DummyWatchEvent()

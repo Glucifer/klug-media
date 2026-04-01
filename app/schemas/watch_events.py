@@ -3,6 +3,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from pydantic import AwareDatetime, Field
+from pydantic import model_validator
 
 from app.schemas.base import KlugBaseModel, KlugORMModel
 
@@ -21,6 +22,54 @@ class WatchEventCreate(KlugBaseModel):
     media_version_id: UUID | None = None
     source_event_id: str | None = Field(default=None, max_length=255)
     created_by: str | None = Field(default=None, max_length=100)
+
+
+class ManualWatchEventCreate(KlugBaseModel):
+    user_id: UUID
+    watched_at: AwareDatetime
+    playback_source: str = Field(min_length=1, max_length=100)
+    media_type: str = Field(min_length=1, max_length=20)
+    tmdb_id: int | None = Field(default=None, ge=1)
+    show_tmdb_id: int | None = Field(default=None, ge=1)
+    tmdb_episode_id: int | None = Field(default=None, ge=1)
+    season_number: int | None = Field(default=None, ge=1)
+    episode_number: int | None = Field(default=None, ge=1)
+    completed: bool = True
+    rating_value: int | None = Field(default=None, ge=1, le=10)
+    source_event_id: str | None = Field(default=None, max_length=255)
+    created_by: str | None = Field(default=None, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_media_shape(self) -> "ManualWatchEventCreate":
+        media_type = self.media_type.strip().lower()
+        if media_type not in {"movie", "episode"}:
+            raise ValueError("media_type must be either 'movie' or 'episode'")
+
+        if media_type == "movie":
+            if self.tmdb_id is None:
+                raise ValueError("Movie manual entry requires tmdb_id")
+            if (
+                self.show_tmdb_id is not None
+                or self.tmdb_episode_id is not None
+                or self.season_number is not None
+                or self.episode_number is not None
+            ):
+                raise ValueError(
+                    "Movie manual entry only supports tmdb_id plus shared watch fields"
+                )
+            return self
+
+        if self.show_tmdb_id is None:
+            raise ValueError(
+                "Episode manual entry requires show_tmdb_id because TMDB cannot resolve episode details from episode id alone"
+            )
+        if self.season_number is None or self.episode_number is None:
+            raise ValueError(
+                "Episode manual entry requires season_number and episode_number"
+            )
+        if self.tmdb_id is not None:
+            raise ValueError("Episode manual entry does not accept tmdb_id")
+        return self
 
 
 class WatchEventRead(KlugORMModel):

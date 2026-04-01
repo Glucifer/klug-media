@@ -55,6 +55,9 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Watch-event corrections:
   - `watch_event` now supports lightweight correction metadata (`updated_*`) and soft delete fields (`is_deleted`, `deleted_*`)
   - correction endpoints now exist under `/api/v1/watch-events/{watch_id}/delete|restore|correct`
+  - rough manual watch entry now exists under `POST /api/v1/watch-events/manual`
+  - v1 manual movie entry resolves by TMDB movie id
+  - v1 manual episode entry resolves by TMDB show id + season + episode; an optional TMDB episode id can be supplied as a validation check, but TMDB does not support episode-detail lookup by episode id alone
   - default watch history and show-progress reads now exclude soft-deleted watch events
   - completed, unrated watch events can now be listed and rated through `/api/v1/watch-events/unrated` and `/api/v1/watch-events/{watch_id}/rate`
   - watch-specific version and runtime overrides can now be set manually through `/api/v1/watch-events/{watch_id}/version`
@@ -90,6 +93,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - Horrorfest year configuration and ordered entry operator panel
   - compact stats section with summary cards, monthly rollups, and Horrorfest annual summaries
   - import runner (file upload + mode/dry-run/resume options)
+  - manual watch add form for off-Kodi viewing
   - cursor visibility (`cursor_before`, `cursor_after`, local last cursor)
   - import batch history with status filter (persisted)
   - import batch detail panel

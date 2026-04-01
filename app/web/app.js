@@ -30,6 +30,21 @@ const importLastCursor = document.getElementById("import-last-cursor");
 const importSummary = document.getElementById("import-summary");
 const importErrorsStatus = document.getElementById("import-errors-status");
 const importErrorsList = document.getElementById("import-errors-list");
+const manualWatchForm = document.getElementById("manual-watch-form");
+const manualWatchUserId = document.getElementById("manual-watch-user-id");
+const manualWatchWatchedAt = document.getElementById("manual-watch-watched-at");
+const manualWatchPlaybackSource = document.getElementById("manual-watch-playback-source");
+const manualWatchMediaType = document.getElementById("manual-watch-media-type");
+const manualWatchTmdbId = document.getElementById("manual-watch-tmdb-id");
+const manualWatchShowTmdbId = document.getElementById("manual-watch-show-tmdb-id");
+const manualWatchTmdbEpisodeId = document.getElementById("manual-watch-tmdb-episode-id");
+const manualWatchSeasonNumber = document.getElementById("manual-watch-season-number");
+const manualWatchEpisodeNumber = document.getElementById("manual-watch-episode-number");
+const manualWatchRatingValue = document.getElementById("manual-watch-rating-value");
+const manualWatchCreatedBy = document.getElementById("manual-watch-created-by");
+const manualWatchCompleted = document.getElementById("manual-watch-completed");
+const manualWatchStatus = document.getElementById("manual-watch-status");
+const manualWatchDetail = document.getElementById("manual-watch-detail");
 const importHistoryStatusFilter = document.getElementById("import-history-status-filter");
 const importHistoryClearFilter = document.getElementById("import-history-clear-filter");
 const importHistoryStatus = document.getElementById("import-history-status");
@@ -131,6 +146,11 @@ const IMPORT_PREF_KEYS = {
   lastCursor: "klug.import_last_cursor",
   importHistoryStatusFilter: "klug.import_history_status_filter",
 };
+const MANUAL_WATCH_PREF_KEYS = {
+  userId: "klug.manual_watch_user_id",
+  playbackSource: "klug.manual_watch_playback_source",
+  createdBy: "klug.manual_watch_created_by",
+};
 const IMPORT_UPLOAD_MAX_MB = 25;
 const IMPORT_UPLOAD_MAX_BYTES = IMPORT_UPLOAD_MAX_MB * 1024 * 1024;
 
@@ -191,6 +211,40 @@ function setLastRefreshNow() {
   opsLastRefresh.textContent = `Last Refresh: ${new Date().toLocaleString()}`;
 }
 
+function toggleManualWatchInputs() {
+  const isMovie = manualWatchMediaType.value === "movie";
+  manualWatchTmdbId.disabled = !isMovie;
+  manualWatchShowTmdbId.disabled = isMovie;
+  manualWatchTmdbEpisodeId.disabled = isMovie;
+  manualWatchSeasonNumber.disabled = isMovie;
+  manualWatchEpisodeNumber.disabled = isMovie;
+}
+
+function loadManualWatchPreferences() {
+  manualWatchUserId.value =
+    localStorage.getItem(MANUAL_WATCH_PREF_KEYS.userId) || importUserId.value || "";
+  manualWatchPlaybackSource.value =
+    localStorage.getItem(MANUAL_WATCH_PREF_KEYS.playbackSource) || "streaming";
+  manualWatchCreatedBy.value =
+    localStorage.getItem(MANUAL_WATCH_PREF_KEYS.createdBy) || "";
+  if (!manualWatchWatchedAt.value) {
+    const now = new Date();
+    manualWatchWatchedAt.value = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+  }
+  toggleManualWatchInputs();
+}
+
+function saveManualWatchPreferences() {
+  localStorage.setItem(MANUAL_WATCH_PREF_KEYS.userId, manualWatchUserId.value.trim());
+  localStorage.setItem(
+    MANUAL_WATCH_PREF_KEYS.playbackSource,
+    manualWatchPlaybackSource.value.trim()
+  );
+  localStorage.setItem(MANUAL_WATCH_PREF_KEYS.createdBy, manualWatchCreatedBy.value.trim());
+}
+
 async function checkSession() {
   authStatus.textContent = "Checking session...";
   await loadOpsHealth();
@@ -216,6 +270,7 @@ async function checkSession() {
 }
 
 async function loadDashboardData() {
+  loadManualWatchPreferences();
   await Promise.all([
     loadShows(),
     loadProgress(),
@@ -722,6 +777,75 @@ function parseApiError(payload) {
   }
 
   return "Import failed due to an unknown error.";
+}
+
+function formatManualWatchDetail(payload) {
+  return [
+    `watch_id: ${payload.watch_id}`,
+    `media_item_id: ${payload.media_item_id}`,
+    `watched_at: ${payload.watched_at}`,
+    `playback_source: ${payload.playback_source}`,
+    `completed: ${payload.completed}`,
+    `rating_value: ${payload.rating_value || "n/a"}`,
+    `rating_scale: ${payload.rating_scale || "n/a"}`,
+    `origin_kind: ${payload.origin_kind}`,
+    `horrorfest_year: ${payload.horrorfest_year || "n/a"}`,
+    `horrorfest_watch_order: ${payload.horrorfest_watch_order || "n/a"}`,
+  ].join("\n");
+}
+
+async function submitManualWatch(event) {
+  event.preventDefault();
+  saveManualWatchPreferences();
+  manualWatchStatus.textContent = "Submitting manual watch...";
+  manualWatchDetail.textContent = "";
+
+  const payload = {
+    user_id: manualWatchUserId.value.trim(),
+    watched_at: new Date(manualWatchWatchedAt.value).toISOString(),
+    playback_source: manualWatchPlaybackSource.value.trim(),
+    media_type: manualWatchMediaType.value,
+    completed: manualWatchCompleted.checked,
+    rating_value: manualWatchRatingValue.value
+      ? Number.parseInt(manualWatchRatingValue.value, 10)
+      : null,
+    created_by: manualWatchCreatedBy.value.trim() || null,
+  };
+  if (payload.media_type === "movie") {
+    payload.tmdb_id = manualWatchTmdbId.value
+      ? Number.parseInt(manualWatchTmdbId.value, 10)
+      : null;
+  } else {
+    payload.show_tmdb_id = manualWatchShowTmdbId.value
+      ? Number.parseInt(manualWatchShowTmdbId.value, 10)
+      : null;
+    payload.tmdb_episode_id = manualWatchTmdbEpisodeId.value
+      ? Number.parseInt(manualWatchTmdbEpisodeId.value, 10)
+      : null;
+    payload.season_number = manualWatchSeasonNumber.value
+      ? Number.parseInt(manualWatchSeasonNumber.value, 10)
+      : null;
+    payload.episode_number = manualWatchEpisodeNumber.value
+      ? Number.parseInt(manualWatchEpisodeNumber.value, 10)
+      : null;
+  }
+
+  const response = await api("/api/v1/watch-events/manual", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => null);
+    manualWatchStatus.textContent =
+      errorPayload?.detail || "Manual watch submission failed.";
+    manualWatchDetail.textContent = errorPayload ? JSON.stringify(errorPayload, null, 2) : "";
+    return;
+  }
+
+  const created = await response.json();
+  manualWatchStatus.textContent = `Created manual watch ${created.watch_id}`;
+  manualWatchDetail.textContent = formatManualWatchDetail(created);
+  await loadDashboardData();
 }
 
 async function runImport(event) {
@@ -1907,6 +2031,20 @@ enrichmentBody.addEventListener("click", async (event) => {
 });
 
 importForm.addEventListener("submit", runImport);
+
+manualWatchForm.addEventListener("submit", async (event) => {
+  await submitManualWatch(event);
+});
+
+manualWatchMediaType.addEventListener("change", () => {
+  toggleManualWatchInputs();
+});
+
+importUserId.addEventListener("change", () => {
+  if (!manualWatchUserId.value.trim()) {
+    manualWatchUserId.value = importUserId.value.trim();
+  }
+});
 
 importUseLatestCursor.addEventListener("click", () => {
   importMode.value = "incremental";

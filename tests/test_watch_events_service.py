@@ -6,7 +6,11 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.services.watch_events import WatchEventConstraintError, WatchEventService
+from app.services.watch_events import (
+    WatchEventConstraintError,
+    WatchEventCreateResult,
+    WatchEventService,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -269,6 +273,178 @@ def test_create_watch_event_returns_existing_collision_match(monkeypatch) -> Non
     assert result.created is False
     assert result.match_reason == "collision_window"
     session.commit.assert_not_called()
+
+
+def test_create_manual_movie_watch_reuses_existing_media_item(monkeypatch) -> None:
+    session = Mock()
+    media_item_id = uuid4()
+    watch_event = Mock()
+    create_watch = Mock(return_value=WatchEventCreateResult(watch_event=watch_event, created=True))
+
+    monkeypatch.setattr(
+        "app.services.watch_events.MediaItemService.find_media_item_by_external_ids",
+        lambda *_args, **_kwargs: Mock(media_item_id=media_item_id),
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.WatchEventService.create_watch_event",
+        create_watch,
+    )
+
+    result = WatchEventService.create_manual_watch_event(
+        session,
+        user_id=uuid4(),
+        watched_at=datetime.now(UTC),
+        playback_source="manual",
+        media_type="movie",
+        tmdb_id=123,
+        show_tmdb_id=None,
+        tmdb_episode_id=None,
+        season_number=None,
+        episode_number=None,
+        completed=True,
+        rating_value=8,
+        source_event_id=None,
+        created_by="operator",
+    )
+
+    assert result.watch_event is watch_event
+    assert create_watch.call_args.kwargs["media_item_id"] == media_item_id
+    assert create_watch.call_args.kwargs["rating_value"] == Decimal(8)
+    assert create_watch.call_args.kwargs["rating_scale"] == "10-star"
+
+
+def test_create_manual_movie_watch_creates_media_item_from_tmdb(monkeypatch) -> None:
+    session = Mock()
+    media_item_id = uuid4()
+
+    monkeypatch.setattr(
+        "app.services.watch_events.MediaItemService.find_media_item_by_external_ids",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.TmdbService.get_movie_details",
+        lambda *_args, **_kwargs: {
+            "title": "The Thing",
+            "release_date": "1982-06-25",
+            "imdb_id": "tt0084787",
+        },
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.MediaItemService.create_media_item",
+        lambda *_args, **_kwargs: Mock(media_item_id=media_item_id),
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.WatchEventService.create_watch_event",
+        lambda *_args, **_kwargs: WatchEventCreateResult(
+            watch_event=Mock(media_item_id=media_item_id), created=True
+        ),
+    )
+
+    result = WatchEventService.create_manual_watch_event(
+        session,
+        user_id=uuid4(),
+        watched_at=datetime.now(UTC),
+        playback_source="blu_ray",
+        media_type="movie",
+        tmdb_id=1091,
+        show_tmdb_id=None,
+        tmdb_episode_id=None,
+        season_number=None,
+        episode_number=None,
+        completed=True,
+        rating_value=None,
+        source_event_id=None,
+        created_by=None,
+    )
+
+    assert result.created is True
+
+
+def test_create_manual_episode_watch_creates_episode_from_show_tmdb(monkeypatch) -> None:
+    session = Mock()
+    media_item_id = uuid4()
+    show_id = uuid4()
+    create_watch = Mock(return_value=WatchEventCreateResult(watch_event=Mock(), created=True))
+
+    monkeypatch.setattr(
+        "app.services.watch_events.MediaItemService.find_episode_media_item",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.TmdbService.get_tv_details",
+        lambda *_args, **_kwargs: {"name": "Fringe", "first_air_date": "2008-09-09"},
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.TmdbService.get_episode_details",
+        lambda *_args, **_kwargs: {"id": 456, "name": "Pilot", "air_date": "2008-09-09"},
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.ShowService.get_or_create_show",
+        lambda *_args, **_kwargs: Mock(show_id=show_id),
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.MediaItemService.create_media_item",
+        lambda *_args, **_kwargs: Mock(media_item_id=media_item_id),
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.WatchEventService.create_watch_event",
+        create_watch,
+    )
+
+    result = WatchEventService.create_manual_watch_event(
+        session,
+        user_id=uuid4(),
+        watched_at=datetime.now(UTC),
+        playback_source="streaming",
+        media_type="episode",
+        tmdb_id=None,
+        show_tmdb_id=1705,
+        tmdb_episode_id=456,
+        season_number=1,
+        episode_number=1,
+        completed=True,
+        rating_value=None,
+        source_event_id=None,
+        created_by="operator",
+    )
+
+    assert result.created is True
+    assert create_watch.call_args.kwargs["media_item_id"] == media_item_id
+
+
+def test_create_manual_episode_watch_rejects_tmdb_episode_id_mismatch(monkeypatch) -> None:
+    session = Mock()
+
+    monkeypatch.setattr(
+        "app.services.watch_events.MediaItemService.find_episode_media_item",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.TmdbService.get_tv_details",
+        lambda *_args, **_kwargs: {"name": "Fringe", "first_air_date": "2008-09-09"},
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.TmdbService.get_episode_details",
+        lambda *_args, **_kwargs: {"id": 999, "name": "Pilot", "air_date": "2008-09-09"},
+    )
+
+    with pytest.raises(ValueError, match="tmdb_episode_id does not match"):
+        WatchEventService.create_manual_watch_event(
+            session,
+            user_id=uuid4(),
+            watched_at=datetime.now(UTC),
+            playback_source="streaming",
+            media_type="episode",
+            tmdb_id=None,
+            show_tmdb_id=1705,
+            tmdb_episode_id=456,
+            season_number=1,
+            episode_number=1,
+            completed=True,
+            rating_value=None,
+            source_event_id=None,
+            created_by="operator",
+        )
 
 
 def test_list_watch_events_clamps_limit(monkeypatch) -> None:

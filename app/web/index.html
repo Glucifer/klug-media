@@ -69,6 +69,43 @@
         <p id="import-errors-status" class="muted"></p>
         <ul id="import-errors-list"></ul>
 
+        <h2 style="margin-top: 18px">Manual Watch Add</h2>
+        <form id="manual-watch-form">
+          <input id="manual-watch-user-id" type="text" placeholder="User UUID" required />
+          <input id="manual-watch-watched-at" type="datetime-local" required />
+          <input id="manual-watch-playback-source" type="text" placeholder="blu_ray, theatre, streaming" required />
+          <select id="manual-watch-media-type">
+            <option value="movie">Movie</option>
+            <option value="episode">Episode</option>
+          </select>
+          <input id="manual-watch-tmdb-id" type="number" min="1" placeholder="Movie TMDB ID" />
+          <input id="manual-watch-show-tmdb-id" type="number" min="1" placeholder="Episode Show TMDB ID" />
+          <input id="manual-watch-tmdb-episode-id" type="number" min="1" placeholder="Episode TMDB ID (optional validation)" />
+          <input id="manual-watch-season-number" type="number" min="1" placeholder="Season" />
+          <input id="manual-watch-episode-number" type="number" min="1" placeholder="Episode" />
+          <select id="manual-watch-rating-value">
+            <option value="">No rating</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+          </select>
+          <input id="manual-watch-created-by" type="text" placeholder="created by (optional)" />
+          <label class="checkbox">
+            <input id="manual-watch-completed" type="checkbox" checked />
+            Completed
+          </label>
+          <button id="manual-watch-submit" type="submit">Add Watch</button>
+        </form>
+        <p id="manual-watch-status" class="muted">No manual watch submitted.</p>
+        <pre id="manual-watch-detail" class="code-block"></pre>
+
         <h2 style="margin-top: 18px">Import History</h2>
         <div class="row">
           <label for="import-history-status-filter">Status</label>

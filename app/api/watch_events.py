@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.auth import require_request_auth
 from app.db.session import get_db_session
 from app.schemas.watch_events import (
+    ManualWatchEventCreate,
     WatchEventCorrect,
     WatchEventCreate,
     WatchEventDelete,
@@ -97,6 +98,41 @@ def create_watch_event(
             source_event_id=payload.source_event_id,
             created_by=payload.created_by,
             origin_kind="manual_entry",
+        )
+    except WatchEventConstraintError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    return WatchEventRead.model_validate(result.watch_event)
+
+
+@router.post("/manual", response_model=WatchEventRead, status_code=status.HTTP_201_CREATED)
+def create_manual_watch_event(
+    payload: ManualWatchEventCreate,
+    session: Session = Depends(get_db_session),
+) -> WatchEventRead:
+    try:
+        result = WatchEventService.create_manual_watch_event(
+            session,
+            user_id=payload.user_id,
+            watched_at=payload.watched_at,
+            playback_source=payload.playback_source,
+            media_type=payload.media_type.strip().lower(),
+            tmdb_id=payload.tmdb_id,
+            show_tmdb_id=payload.show_tmdb_id,
+            tmdb_episode_id=payload.tmdb_episode_id,
+            season_number=payload.season_number,
+            episode_number=payload.episode_number,
+            completed=payload.completed,
+            rating_value=payload.rating_value,
+            source_event_id=payload.source_event_id,
+            created_by=payload.created_by,
         )
     except WatchEventConstraintError as exc:
         raise HTTPException(
