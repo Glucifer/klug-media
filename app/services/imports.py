@@ -41,6 +41,35 @@ class WatchEventImportResult:
 
 class WatchEventImportService:
     @staticmethod
+    def _record_skip(
+        session: Session,
+        *,
+        import_batch_id: UUID,
+        row_index: int,
+        mapped,
+        mode: str,
+        reason: str,
+        message: str,
+    ) -> None:
+        ImportBatchService.add_import_batch_error(
+            session,
+            import_batch_id=import_batch_id,
+            severity="info",
+            entity_type="watch_event",
+            entity_ref=mapped.source_event_id or str(row_index),
+            message=message,
+            details={
+                "row_index": row_index,
+                "reason": reason,
+                "watched_at": to_utc_z_string(mapped.watched_at),
+                "user_id": str(mapped.user_id),
+                "media_item_id": str(mapped.media_item_id),
+                "playback_source": mapped.playback_source,
+                "mode": mode,
+            },
+        )
+
+    @staticmethod
     def _to_cursor(
         *,
         watched_at: datetime,
@@ -232,6 +261,15 @@ class WatchEventImportService:
                 )
             ):
                 skipped_count += 1
+                WatchEventImportService._record_skip(
+                    session,
+                    import_batch_id=batch.import_batch_id,
+                    row_index=index,
+                    mapped=mapped,
+                    mode=payload.mode.value,
+                    reason="incremental_cursor_skip",
+                    message="Skipped because the row is at or before the incremental cursor",
+                )
                 continue
 
             try:
@@ -242,6 +280,15 @@ class WatchEventImportService:
                         source_event_id=mapped.source_event_id,
                     ):
                         skipped_count += 1
+                        WatchEventImportService._record_skip(
+                            session,
+                            import_batch_id=batch.import_batch_id,
+                            row_index=index,
+                            mapped=mapped,
+                            mode=payload.mode.value,
+                            reason="duplicate_source_event",
+                            message="Skipped because the source event was already imported",
+                        )
                         cursor_after = WatchEventImportService._max_cursor(
                             cursor_after, row_cursor
                         )
@@ -268,8 +315,18 @@ class WatchEventImportService:
                     inserted_count += 1
                 else:
                     skipped_count += 1
+                    skip_reason = create_result.match_reason or "matched_existing_watch"
                     if create_result.match_reason == "collision_window":
                         collision_deduped_count += 1
+                    WatchEventImportService._record_skip(
+                        session,
+                        import_batch_id=batch.import_batch_id,
+                        row_index=index,
+                        mapped=mapped,
+                        mode=payload.mode.value,
+                        reason=skip_reason,
+                        message="Skipped because the watch matched an existing imported watch",
+                    )
                 if mapped.horrorfest_year is not None:
                     HorrorfestService.include_watch_event(
                         session,
@@ -286,6 +343,15 @@ class WatchEventImportService:
                 )
             except WatchEventDuplicateError:
                 skipped_count += 1
+                WatchEventImportService._record_skip(
+                    session,
+                    import_batch_id=batch.import_batch_id,
+                    row_index=index,
+                    mapped=mapped,
+                    mode=payload.mode.value,
+                    reason="duplicate_watch_event",
+                    message="Skipped because an equivalent watch event already exists",
+                )
                 cursor_after = WatchEventImportService._max_cursor(
                     cursor_after, row_cursor
                 )

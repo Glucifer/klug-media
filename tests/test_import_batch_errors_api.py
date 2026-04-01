@@ -1,10 +1,21 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 
+from app.core.auth import require_request_auth
 from app.main import app
 from app.services.import_batches import ImportBatchNotFoundError, ImportBatchService
+
+
+@pytest.fixture(autouse=True)
+def _bypass_import_batch_error_auth() -> None:
+    app.dependency_overrides[require_request_auth] = lambda: None
+    try:
+        yield
+    finally:
+        app.dependency_overrides.pop(require_request_auth, None)
 
 
 class DummyImportBatchError:

@@ -101,7 +101,8 @@ def test_run_import_partial_failure_and_duplicate_skip(monkeypatch) -> None:
             self.import_batch_id = import_batch_id
             self.status = status
 
-    calls = {"create": 0, "errors": 0}
+    calls = {"create": 0}
+    recorded_errors: list[dict] = []
 
     def fake_start_import_batch(_session: Session, **_kwargs):
         return DummyBatch(batch_id)
@@ -115,8 +116,7 @@ def test_run_import_partial_failure_and_duplicate_skip(monkeypatch) -> None:
         return WatchEventCreateResult(watch_event=Mock(), created=True)
 
     def fake_add_import_batch_error(_session: Session, **kwargs):
-        calls["errors"] += 1
-        assert kwargs["entity_ref"] == "evt-2"
+        recorded_errors.append(kwargs)
         return None
 
     def fake_finish_import_batch(_session: Session, **kwargs):
@@ -149,7 +149,11 @@ def test_run_import_partial_failure_and_duplicate_skip(monkeypatch) -> None:
     assert result.collision_deduped_count == 0
     assert result.error_count == 1
     assert result.rejected_before_import == 1
-    assert calls["errors"] == 1
+    assert len(recorded_errors) == 2
+    assert recorded_errors[0]["severity"] == "info"
+    assert recorded_errors[0]["details"]["reason"] == "duplicate_watch_event"
+    assert recorded_errors[1]["severity"] == "error"
+    assert recorded_errors[1]["entity_ref"] == "evt-2"
 
 
 def test_run_import_dry_run_skips_db_writes(monkeypatch) -> None:
@@ -363,9 +367,10 @@ def test_run_incremental_resume_skips_rows_before_cursor(monkeypatch) -> None:
             watch_event=Mock(), created=True
         ),
     )
+    recorded_errors: list[dict] = []
     monkeypatch.setattr(
         "app.services.imports.ImportBatchService.add_import_batch_error",
-        lambda *_args, **_kwargs: None,
+        lambda *_args, **kwargs: recorded_errors.append(kwargs),
     )
 
     def fake_finish_import_batch(_session: Session, **kwargs):
@@ -386,6 +391,12 @@ def test_run_incremental_resume_skips_rows_before_cursor(monkeypatch) -> None:
     assert result.collision_deduped_count == 0
     assert result.error_count == 0
     assert result.rejected_before_import == 2
+    assert len(recorded_errors) == 2
+    assert all(error["severity"] == "info" for error in recorded_errors)
+    assert all(
+        error["details"]["reason"] == "incremental_cursor_skip"
+        for error in recorded_errors
+    )
 
 
 def test_run_incremental_skips_existing_source_event_id(monkeypatch) -> None:
@@ -432,9 +443,10 @@ def test_run_incremental_skips_existing_source_event_id(monkeypatch) -> None:
             AssertionError("create_watch_event should not be called")
         ),
     )
+    recorded_errors: list[dict] = []
     monkeypatch.setattr(
         "app.services.imports.ImportBatchService.add_import_batch_error",
-        lambda *_args, **_kwargs: None,
+        lambda *_args, **kwargs: recorded_errors.append(kwargs),
     )
     monkeypatch.setattr(
         "app.services.imports.ImportBatchService.finish_import_batch",
@@ -446,6 +458,9 @@ def test_run_incremental_skips_existing_source_event_id(monkeypatch) -> None:
     assert result.skipped_count == 1
     assert result.collision_deduped_count == 0
     assert result.rejected_before_import == 3
+    assert len(recorded_errors) == 1
+    assert recorded_errors[0]["severity"] == "info"
+    assert recorded_errors[0]["details"]["reason"] == "duplicate_source_event"
 
 
 def test_run_import_counts_collision_deduped_rows(monkeypatch) -> None:
@@ -461,6 +476,7 @@ def test_run_import_counts_collision_deduped_rows(monkeypatch) -> None:
         return DummyBatch(batch_id)
 
     calls = {"create": 0}
+    recorded_errors: list[dict] = []
 
     def fake_create_watch_event(_session: Session, **_kwargs):
         calls["create"] += 1
@@ -486,7 +502,7 @@ def test_run_import_counts_collision_deduped_rows(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         "app.services.imports.ImportBatchService.add_import_batch_error",
-        lambda *_args, **_kwargs: None,
+        lambda *_args, **kwargs: recorded_errors.append(kwargs),
     )
     monkeypatch.setattr(
         "app.services.imports.ImportBatchService.finish_import_batch",
@@ -498,6 +514,9 @@ def test_run_import_counts_collision_deduped_rows(monkeypatch) -> None:
     assert result.inserted_count == 1
     assert result.skipped_count == 1
     assert result.collision_deduped_count == 1
+    assert len(recorded_errors) == 1
+    assert recorded_errors[0]["severity"] == "info"
+    assert recorded_errors[0]["details"]["reason"] == "collision_window"
 
 
 def test_run_import_processes_oldest_watches_first(monkeypatch) -> None:
