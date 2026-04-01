@@ -498,3 +498,63 @@ def test_run_import_counts_collision_deduped_rows(monkeypatch) -> None:
     assert result.inserted_count == 1
     assert result.skipped_count == 1
     assert result.collision_deduped_count == 1
+
+
+def test_run_import_processes_oldest_watches_first(monkeypatch) -> None:
+    session_obj = object()
+    batch_id = uuid4()
+
+    class DummyBatch:
+        def __init__(self, import_batch_id: UUID, status: str = "running") -> None:
+            self.import_batch_id = import_batch_id
+            self.status = status
+            self.parameters = {}
+
+    older = datetime.fromisoformat("2025-01-01T10:00:00+00:00")
+    newer = datetime.fromisoformat("2025-01-02T10:00:00+00:00")
+    payload = WatchEventImportRequest(
+        source="legacy_source_export",
+        mode=ImportMode.bootstrap,
+        events=[
+            ImportedWatchEvent(
+                user_id=uuid4(),
+                media_item_id=uuid4(),
+                watched_at=newer,
+                playback_source="jellyfin",
+                source_event_id="evt-newer",
+            ),
+            ImportedWatchEvent(
+                user_id=uuid4(),
+                media_item_id=uuid4(),
+                watched_at=older,
+                playback_source="jellyfin",
+                source_event_id="evt-older",
+            ),
+        ],
+    )
+    seen: list[str] = []
+
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.start_import_batch",
+        lambda *_args, **_kwargs: DummyBatch(batch_id),
+    )
+    monkeypatch.setattr(
+        "app.services.imports.WatchEventService.create_watch_event",
+        lambda *_args, **kwargs: (
+            seen.append(kwargs["source_event_id"])
+            or WatchEventCreateResult(watch_event=Mock(), created=True)
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.add_import_batch_error",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.finish_import_batch",
+        lambda *_args, **_kwargs: DummyBatch(batch_id, status="completed"),
+    )
+
+    result = WatchEventImportService.run_import(session_obj, payload=payload)
+
+    assert result.inserted_count == 2
+    assert seen == ["evt-older", "evt-newer"]

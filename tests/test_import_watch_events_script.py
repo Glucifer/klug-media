@@ -40,6 +40,7 @@ def _backup_row_dict() -> dict[str, str]:
 
 def _trakt_csv_episode_row() -> dict[str, str]:
     return {
+        "matchkey": "EPISODE-5560984-2026-03-29T22:20:00Z",
         "watched_at": "2026-03-29T22:20:00Z",
         "action": "scrobble",
         "type": "episode",
@@ -398,7 +399,7 @@ def test_legacy_backup_maps_flat_trakt_csv_episode_shape(monkeypatch) -> None:
     assert not preprocess.rejected_rows
     assert len(preprocess.mapped_rows) == 1
     mapped = preprocess.mapped_rows[0]
-    assert mapped["source_event_id"] == "12237155"
+    assert mapped["source_event_id"] == "EPISODE-5560984-2026-03-29T22:20:00Z"
     assert str(mapped["rating"]) == "9"
     assert dummy_session.last_media_item is not None
     assert dummy_session.last_media_item.title == "Revelations: Chapter Two"

@@ -136,6 +136,17 @@ class WatchEventImportService:
         payload: WatchEventImportRequest,
     ) -> WatchEventImportResult:
         adapter = get_watch_event_import_adapter(payload.source)
+        mapped_events = [
+            (index, adapter.to_watch_event_create_args(event))
+            for index, event in enumerate(payload.events)
+        ]
+        mapped_events.sort(
+            key=lambda item: (
+                item[1].watched_at,
+                item[1].source_event_id or "",
+                item[0],
+            )
+        )
         source_detail = payload.source_detail or payload.mode.value
         cursor_before = (
             WatchEventImportService._resolve_cursor_before(
@@ -155,8 +166,7 @@ class WatchEventImportService:
         error_count = 0
 
         if payload.dry_run:
-            for event in payload.events:
-                mapped = adapter.to_watch_event_create_args(event)
+            for _index, mapped in mapped_events:
                 if not mapped.playback_source.strip():
                     error_count += 1
                 else:
@@ -208,8 +218,7 @@ class WatchEventImportService:
             },
         )
 
-        for index, event in enumerate(payload.events):
-            mapped = adapter.to_watch_event_create_args(event)
+        for index, mapped in mapped_events:
             row_cursor = WatchEventImportService._to_cursor(
                 watched_at=mapped.watched_at,
                 source_event_id=mapped.source_event_id,

@@ -624,7 +624,7 @@ def _build_mapped_rows_from_legacy_backup(
             else:
                 media_item_id = media_item.media_item_id
 
-            source_event_id = row.get("source_event_id") or row.get("id")
+            source_event_id = row.get("matchkey") or row.get("source_event_id") or row.get("id")
             if source_event_id is None and media_type == "episode":
                 source_event_id = row.get("episode_trakt_id")
             if source_event_id is None:

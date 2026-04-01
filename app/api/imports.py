@@ -82,7 +82,11 @@ def _load_csv_rows_from_text(file_text: str) -> list[dict]:
     reader = csv.DictReader(io.StringIO(file_text))
     rows: list[dict] = []
     for row in reader:
-        cleaned = {key: value for key, value in row.items() if key is not None}
+        cleaned = {
+            (key.lstrip("\ufeff") if isinstance(key, str) else key): value
+            for key, value in row.items()
+            if key is not None
+        }
         rows.append(cleaned)
     return rows
 
@@ -155,7 +159,7 @@ async def import_legacy_source_watch_events_upload(
                 ),
             )
 
-        file_text = raw_bytes.decode("utf-8")
+        file_text = raw_bytes.decode("utf-8-sig")
         detected_format = _detect_upload_format(input_file.filename, file_format)
         raw_rows = _load_uploaded_rows(file_text, detected_format)
         rows_for_validation = raw_rows
