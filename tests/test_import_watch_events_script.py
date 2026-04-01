@@ -38,6 +38,31 @@ def _backup_row_dict() -> dict[str, str]:
     }
 
 
+def _trakt_csv_episode_row() -> dict[str, str]:
+    return {
+        "watched_at": "2026-03-29T22:20:00Z",
+        "action": "scrobble",
+        "type": "episode",
+        "title": "FROM",
+        "year": "2022",
+        "trakt_rating": "7.94347",
+        "trakt_id": "188205",
+        "imdb_id": "tt9813792",
+        "tmdb_id": "124364",
+        "tvdb_id": "401003",
+        "runtime": "58",
+        "season_number": "3",
+        "episode_number": "10",
+        "episode_title": "Revelations: Chapter Two",
+        "episode_trakt_rating": "7.69336",
+        "episode_trakt_id": "12237155",
+        "episode_imdb_id": "tt28246647",
+        "episode_tmdb_id": "5560984",
+        "episode_tvdb_id": "10706489",
+        "my_trakt_rating": "9",
+    }
+
+
 def test_load_json_rows_from_array(tmp_path: Path) -> None:
     rows = [_row_dict()]
     file_path = tmp_path / "events.json"
@@ -319,6 +344,67 @@ def test_legacy_backup_dry_run_does_not_create_media_items(monkeypatch) -> None:
     assert preprocess.shows_created == 1
     assert dummy_session.created == 0
     assert dummy_session.commits == 0
+
+
+def test_legacy_backup_maps_flat_trakt_csv_episode_shape(monkeypatch) -> None:
+    class DummyShow:
+        def __init__(self) -> None:
+            self.show_id = uuid4()
+
+    class DummySession:
+        def __init__(self) -> None:
+            self.created = 0
+            self.commits = 0
+            self.last_media_item = None
+
+        def add(self, media_item) -> None:
+            media_item.media_item_id = uuid4()
+            self.last_media_item = media_item
+            self.created += 1
+
+        def flush(self) -> None:
+            return None
+
+        def commit(self) -> None:
+            self.commits += 1
+
+        def close(self) -> None:
+            return None
+
+    dummy_session = DummySession()
+    monkeypatch.setattr(import_watch_events, "SessionLocal", lambda: dummy_session)
+    monkeypatch.setattr(
+        import_watch_events.MediaItemService,
+        "find_media_item_by_external_ids",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        import_watch_events.ShowService,
+        "get_or_create_show",
+        lambda *_args, **_kwargs: DummyShow(),
+    )
+    monkeypatch.setattr(
+        import_watch_events.ShowService,
+        "find_show_by_tmdb_id",
+        lambda *_args, **_kwargs: None,
+    )
+
+    preprocess = import_watch_events._build_mapped_rows_from_legacy_backup(
+        [_trakt_csv_episode_row()],
+        user_id=uuid4(),
+        dry_run=False,
+    )
+
+    assert not preprocess.rejected_rows
+    assert len(preprocess.mapped_rows) == 1
+    mapped = preprocess.mapped_rows[0]
+    assert mapped["source_event_id"] == "12237155"
+    assert str(mapped["rating"]) == "9"
+    assert dummy_session.last_media_item is not None
+    assert dummy_session.last_media_item.title == "Revelations: Chapter Two"
+    assert dummy_session.last_media_item.tmdb_id == 5560984
+    assert dummy_session.last_media_item.tvdb_id == 10706489
+    assert dummy_session.last_media_item.show_tmdb_id == 124364
 
 
 def test_run_returns_2_for_missing_file() -> None:

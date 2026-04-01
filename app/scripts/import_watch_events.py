@@ -215,6 +215,16 @@ def _extract_nested_ids(container: Any) -> tuple[int | None, str | None]:
 def _extract_external_ids(
     row: dict[str, Any], media_type: str
 ) -> tuple[int | None, str | None]:
+    if media_type == "episode":
+        episode_tmdb = _parse_int(row.get("episode_tmdb_id"))
+        episode_imdb = row.get("episode_imdb_id")
+        if isinstance(episode_imdb, str):
+            episode_imdb = episode_imdb.strip() or None
+        else:
+            episode_imdb = None
+        if episode_tmdb is not None or episode_imdb is not None:
+            return episode_tmdb, episode_imdb
+
     top_tmdb = _parse_int(row.get("tmdb_id"))
     top_imdb = row.get("imdb_id")
     if isinstance(top_imdb, str):
@@ -234,6 +244,11 @@ def _extract_external_ids(
 
 
 def _extract_media_title(row: dict[str, Any], media_type: str) -> str | None:
+    if media_type == "episode":
+        episode_title = row.get("episode_title")
+        if isinstance(episode_title, str) and episode_title.strip():
+            return episode_title.strip()
+
     title_value = row.get("title")
     if isinstance(title_value, str) and title_value.strip():
         return title_value.strip()
@@ -272,6 +287,11 @@ def _extract_media_year(row: dict[str, Any], media_type: str) -> int | None:
 
 
 def _extract_tvdb_id(row: dict[str, Any], media_type: str) -> int | None:
+    if media_type == "episode":
+        episode_tvdb = _parse_int(row.get("episode_tvdb_id"))
+        if episode_tvdb is not None:
+            return episode_tvdb
+
     top_tvdb = _parse_int(row.get("tvdb_id"))
     if top_tvdb is not None:
         return top_tvdb
@@ -293,6 +313,10 @@ def _extract_show_tmdb_id(row: dict[str, Any], media_type: str) -> int | None:
     if media_type != "episode":
         return None
 
+    top_level_tmdb = _parse_int(row.get("tmdb_id"))
+    if top_level_tmdb is not None:
+        return top_level_tmdb
+
     show_value = row.get("show")
     if isinstance(show_value, dict):
         ids = show_value.get("ids")
@@ -309,6 +333,10 @@ def _extract_show_tvdb_id(row: dict[str, Any], media_type: str) -> int | None:
 
     if media_type != "episode":
         return None
+
+    top_level_tvdb = _parse_int(row.get("tvdb_id"))
+    if top_level_tvdb is not None:
+        return top_level_tvdb
 
     show_value = row.get("show")
     if isinstance(show_value, dict):
@@ -328,6 +356,12 @@ def _extract_show_imdb_id(row: dict[str, Any], media_type: str) -> str | None:
 
     if media_type != "episode":
         return None
+
+    top_level_imdb = row.get("imdb_id")
+    if isinstance(top_level_imdb, str):
+        normalized = top_level_imdb.strip()
+        if normalized:
+            return normalized
 
     show_value = row.get("show")
     if isinstance(show_value, dict):
@@ -352,6 +386,12 @@ def _extract_show_title(row: dict[str, Any], media_type: str) -> str | None:
     if media_type != "episode":
         return None
 
+    title_value = row.get("title")
+    if isinstance(title_value, str):
+        normalized = title_value.strip()
+        if normalized:
+            return normalized
+
     show_value = row.get("show")
     if isinstance(show_value, dict):
         show_title = show_value.get("title")
@@ -370,6 +410,10 @@ def _extract_show_year(row: dict[str, Any], media_type: str) -> int | None:
 
     if media_type != "episode":
         return None
+
+    top_level_year = _parse_int(row.get("year"))
+    if top_level_year is not None:
+        return top_level_year
 
     show_value = row.get("show")
     if isinstance(show_value, dict):
@@ -577,6 +621,10 @@ def _build_mapped_rows_from_legacy_backup(
                 media_item_id = media_item.media_item_id
 
             source_event_id = row.get("source_event_id") or row.get("id")
+            if source_event_id is None and media_type == "episode":
+                source_event_id = row.get("episode_trakt_id")
+            if source_event_id is None:
+                source_event_id = row.get("trakt_id")
             if source_event_id is not None:
                 source_event_id = str(source_event_id)
 
@@ -597,7 +645,9 @@ def _build_mapped_rows_from_legacy_backup(
                     ),
                     "completed": _parse_bool(row.get("completed"), default=True),
                     "rating": _parse_decimal(
-                        row.get("rating") or row.get("rating_value")
+                        row.get("rating")
+                        or row.get("rating_value")
+                        or row.get("my_trakt_rating")
                     ),
                     "media_version_id": row.get("media_version_id"),
                     "source_event_id": source_event_id,
