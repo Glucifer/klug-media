@@ -601,6 +601,14 @@ def _build_mapped_rows_from_legacy_backup(
                     ),
                     "media_version_id": row.get("media_version_id"),
                     "source_event_id": source_event_id,
+                    "horrorfest_year": _parse_int(
+                        row.get("horrorfest_year") or row.get("festival_year")
+                    ),
+                    "horrorfest_watch_order": _parse_int(
+                        row.get("horrorfest_watch_order")
+                        or row.get("watch_order")
+                        or row.get("festival_watch_order")
+                    ),
                 }
             )
         if created_media_items > 0 and not dry_run:

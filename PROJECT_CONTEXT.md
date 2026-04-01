@@ -58,6 +58,13 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - default watch history and show-progress reads now exclude soft-deleted watch events
   - completed, unrated watch events can now be listed and rated through `/api/v1/watch-events/unrated` and `/api/v1/watch-events/{watch_id}/rate`
   - watch-specific version and runtime overrides can now be set manually through `/api/v1/watch-events/{watch_id}/version`
+- Horrorfest overlay:
+  - Horrorfest is now modeled as a dedicated annual overlay on top of canonical `watch_event` rows
+  - yearly windows are configured through `app.horrorfest_year`
+  - qualifying completed movie watches now auto-create ordered `app.horrorfest_entry` rows for live, import, and manual watch creation paths
+  - operator endpoints now exist under `/api/v1/horrorfest/*` for year config, listing, include/remove/restore, and manual reordering
+  - watch-event list responses now expose `horrorfest_year`, `horrorfest_watch_order`, and `is_horrorfest_watch`
+  - legacy import rows can now carry optional `horrorfest_year` and `horrorfest_watch_order` values so historical annual order can be preserved during import
 - Legacy export import script:
   - `python -m app.scripts.import_watch_events`
   - supports dry run + incremental resume
@@ -74,6 +81,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - watch history detail/editor panel for safe corrections and restore
   - watch history version/runtime override controls for per-watch movie cuts
   - recently watched, unrated queue with 1-10 rating actions
+  - Horrorfest year configuration and ordered entry operator panel
   - import runner (file upload + mode/dry-run/resume options)
   - cursor visibility (`cursor_before`, `cursor_after`, local last cursor)
   - import batch history with status filter (persisted)

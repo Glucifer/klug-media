@@ -20,6 +20,8 @@ class WatchEventCreateArgs:
     rating_scale: str | None
     media_version_id: UUID | None
     source_event_id: str | None
+    horrorfest_year: int | None
+    horrorfest_watch_order: int | None
 
 
 class WatchEventImportAdapter:
@@ -40,6 +42,8 @@ class WatchEventImportAdapter:
             rating_scale=event.rating_scale,
             media_version_id=event.media_version_id,
             source_event_id=event.source_event_id,
+            horrorfest_year=event.horrorfest_year,
+            horrorfest_watch_order=event.horrorfest_watch_order,
         )
 
 
@@ -58,6 +62,8 @@ class LegacySourceWatchEventImportAdapter:
             rating_scale="legacy_source_rating",
             media_version_id=row.media_version_id,
             source_event_id=row.source_event_id,
+            horrorfest_year=row.horrorfest_year,
+            horrorfest_watch_order=row.horrorfest_watch_order,
         )
 
 

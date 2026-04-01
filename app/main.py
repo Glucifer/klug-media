@@ -3,6 +3,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.frontend import WEB_ROOT, router as frontend_router
 from app.api.health import router as health_router
+from app.api.horrorfest import router as horrorfest_router
 from app.api.imports import router as imports_router
 from app.api.import_batches import router as import_batches_router
 from app.api.metadata_enrichment import router as metadata_enrichment_router
@@ -28,6 +29,7 @@ def create_app() -> FastAPI:
     app.mount("/web", StaticFiles(directory=WEB_ROOT), name="web")
     app.include_router(frontend_router)
     app.include_router(health_router, prefix=settings.api_v1_prefix)
+    app.include_router(horrorfest_router, prefix=settings.api_v1_prefix)
     app.include_router(session_router, prefix=settings.api_v1_prefix)
     app.include_router(imports_router, prefix=settings.api_v1_prefix)
     app.include_router(import_batches_router, prefix=settings.api_v1_prefix)

@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.datetime_utils import ensure_timezone_aware
 from app.db.models.entities import WatchEvent
 from app.services.media_items import MediaItemService
+from app.services.horrorfest import HorrorfestService
 from app.repositories import watch_events as watch_event_repository
 
 
@@ -115,6 +116,7 @@ class WatchEventService:
                 user_id=updated.user_id,
                 media_item_id=updated.media_item_id,
             )
+            HorrorfestService.sync_watch_event(session, watch_event=updated)
             session.commit()
             return updated
         except IntegrityError as exc:
@@ -152,6 +154,7 @@ class WatchEventService:
                 user_id=updated.user_id,
                 media_item_id=updated.media_item_id,
             )
+            HorrorfestService.sync_watch_event(session, watch_event=updated)
             session.commit()
             return updated
         except IntegrityError as exc:
@@ -243,6 +246,7 @@ class WatchEventService:
                 )
                 updated = watch_event_repository.update_watch_event(session, watch_event=updated)
 
+            HorrorfestService.sync_watch_event(session, watch_event=updated)
             session.commit()
             return updated
         except IntegrityError as exc:
@@ -416,6 +420,7 @@ class WatchEventService:
                 origin_playback_event_id=origin_playback_event_id,
                 rewatch=is_rewatch,
             )
+            HorrorfestService.sync_watch_event(session, watch_event=watch_event)
             session.commit()
             return WatchEventCreateResult(
                 watch_event=watch_event,

@@ -35,9 +35,10 @@ The repository currently includes:
 - Health endpoint (`GET /api/v1/health`)
 - Import endpoints (`/api/v1/imports/*`)
 - Users, media items, watch events, and shows endpoints
+- Horrorfest year/entry endpoints for annual challenge tracking
 - Config wiring via `pydantic-settings`
 - SQLAlchemy engine/session module
-- Alembic migrations through `0004_align_show_progress_view_with_backup`
+- Alembic migrations through `0012_add_horrorfest_overlay`
 
 ## Architecture Direction
 
@@ -53,6 +54,7 @@ The repository currently includes:
 - Jellyfin webhook sync
 - Radarr/Sonarr import
 - One-time external watch-history export import workflow
+- Horrorfest annual watch tracking and stats
 
 ## Naming Note
 
@@ -190,3 +192,5 @@ The page uses:
 - `DELETE /api/v1/session/logout`
 - `GET /api/v1/shows`
 - `GET /api/v1/shows/{show_id}`
+- `GET /api/v1/horrorfest/years`
+- `GET /api/v1/horrorfest/years/{year}/entries`

@@ -54,6 +54,9 @@ class WatchEventRead(KlugORMModel):
     dedupe_hash: str | None
     created_by: str | None
     source_event_id: str | None
+    horrorfest_year: int | None = None
+    horrorfest_watch_order: int | None = None
+    is_horrorfest_watch: bool = False
 
 
 class WatchEventListRead(WatchEventRead):

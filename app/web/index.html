@@ -249,6 +249,72 @@
         </div>
         <pre id="ratings-detail" class="code-block"></pre>
 
+        <h2 style="margin-top: 18px">Horrorfest</h2>
+        <div class="row">
+          <label for="horrorfest-year-select">Year</label>
+          <select id="horrorfest-year-select"></select>
+          <label class="checkbox">
+            <input id="horrorfest-include-removed" type="checkbox" />
+            Include Removed
+          </label>
+          <button id="horrorfest-refresh" class="secondary">Refresh</button>
+        </div>
+        <p id="horrorfest-status" class="muted">Loading Horrorfest years...</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Watched At</th>
+              <th>Title</th>
+              <th>Rating</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="horrorfest-body"></tbody>
+        </table>
+        <p id="horrorfest-detail-status" class="muted">Select a Horrorfest row to inspect or correct.</p>
+        <div class="row">
+          <label for="horrorfest-updated-by">Updated By</label>
+          <input id="horrorfest-updated-by" type="text" placeholder="operator name" />
+          <label for="horrorfest-reason">Reason</label>
+          <input id="horrorfest-reason" type="text" placeholder="optional reason" />
+        </div>
+        <div class="row">
+          <label for="horrorfest-target-order">Target Order</label>
+          <input id="horrorfest-target-order" type="number" min="1" max="10000" />
+          <label for="horrorfest-include-watch-id">Include Watch ID</label>
+          <input id="horrorfest-include-watch-id" type="text" placeholder="watch uuid" />
+        </div>
+        <div class="row">
+          <button id="horrorfest-move" class="secondary" type="button">Move Entry</button>
+          <button id="horrorfest-remove" class="secondary" type="button">Remove</button>
+          <button id="horrorfest-restore" class="secondary" type="button">Restore</button>
+          <button id="horrorfest-include" class="secondary" type="button">Include Watch</button>
+        </div>
+        <pre id="horrorfest-detail" class="code-block"></pre>
+        <h3 style="margin-top: 18px">Year Config</h3>
+        <div class="row">
+          <label for="horrorfest-config-year">Year</label>
+          <input id="horrorfest-config-year" type="number" min="1900" max="9999" />
+          <label for="horrorfest-config-label">Label</label>
+          <input id="horrorfest-config-label" type="text" placeholder="Horrorfest 2026" />
+        </div>
+        <div class="row">
+          <label for="horrorfest-config-start">Window Start</label>
+          <input id="horrorfest-config-start" type="datetime-local" />
+          <label for="horrorfest-config-end">Window End</label>
+          <input id="horrorfest-config-end" type="datetime-local" />
+        </div>
+        <div class="row">
+          <label for="horrorfest-config-notes">Notes</label>
+          <input id="horrorfest-config-notes" type="text" placeholder="optional notes" />
+          <label class="checkbox">
+            <input id="horrorfest-config-active" type="checkbox" checked />
+            Active
+          </label>
+          <button id="horrorfest-config-save" class="secondary" type="button">Save Year</button>
+        </div>
+
         <h2 style="margin-top: 18px">Scrobble Activity</h2>
         <div class="row">
           <label for="activity-source">Source</label>

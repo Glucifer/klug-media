@@ -263,6 +263,30 @@ class Tag(Base):
     watch_event_tags: Mapped[list[WatchEventTag]] = relationship(back_populates="tag")
 
 
+class HorrorfestYear(Base):
+    __tablename__ = "horrorfest_year"
+    __table_args__ = {"schema": APP_SCHEMA}
+
+    horrorfest_year: Mapped[int] = mapped_column(Integer, primary_key=True)
+    window_start_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    window_end_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    label: Mapped[str | None] = mapped_column(String)
+    notes: Mapped[str | None] = mapped_column(String)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, server_default=text("true"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    entries: Mapped[list["HorrorfestEntry"]] = relationship(back_populates="year_config")
+
+
 class TmdbMetadataCache(Base):
     __tablename__ = "tmdb_metadata_cache"
     __table_args__ = (
@@ -467,6 +491,9 @@ class WatchEvent(Base):
     watch_event_tags: Mapped[list[WatchEventTag]] = relationship(
         back_populates="watch_event"
     )
+    horrorfest_entries: Mapped[list["HorrorfestEntry"]] = relationship(
+        back_populates="watch_event"
+    )
 
 
 class WatchEventTag(Base):
@@ -486,3 +513,59 @@ class WatchEventTag(Base):
 
     watch_event: Mapped[WatchEvent] = relationship(back_populates="watch_event_tags")
     tag: Mapped[Tag] = relationship(back_populates="watch_event_tags")
+
+
+class HorrorfestEntry(Base):
+    __tablename__ = "horrorfest_entry"
+    __table_args__ = (
+        Index(
+            "ux_horrorfest_entry_watch_active",
+            "watch_id",
+            unique=True,
+            postgresql_where=text("is_removed IS FALSE"),
+        ),
+        Index(
+            "ux_horrorfest_entry_year_order_active",
+            "horrorfest_year",
+            "watch_order",
+            unique=True,
+            postgresql_where=text("is_removed IS FALSE AND watch_order IS NOT NULL"),
+        ),
+        Index(
+            "ix_horrorfest_entry_year_order",
+            "horrorfest_year",
+            "watch_order",
+        ),
+        {"schema": APP_SCHEMA},
+    )
+
+    horrorfest_entry_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    watch_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey(f"{APP_SCHEMA}.watch_event.watch_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    horrorfest_year: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey(f"{APP_SCHEMA}.horrorfest_year.horrorfest_year", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    watch_order: Mapped[int | None] = mapped_column(Integer)
+    source_kind: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_by: Mapped[str | None] = mapped_column(String)
+    update_reason: Mapped[str | None] = mapped_column(String)
+    is_removed: Mapped[bool] = mapped_column(
+        Boolean, server_default=text("false"), nullable=False
+    )
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    removed_by: Mapped[str | None] = mapped_column(String)
+    removed_reason: Mapped[str | None] = mapped_column(String)
+
+    watch_event: Mapped[WatchEvent] = relationship(back_populates="horrorfest_entries")
+    year_config: Mapped[HorrorfestYear] = relationship(back_populates="entries")

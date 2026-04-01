@@ -14,6 +14,7 @@ from app.services.import_adapters import (
     get_watch_event_import_adapter,
 )
 from app.services.import_batches import ImportBatchService
+from app.services.horrorfest import HorrorfestConstraintError, HorrorfestService
 from app.services.watch_events import (
     WatchEventConstraintError,
     WatchEventDuplicateError,
@@ -260,6 +261,17 @@ class WatchEventImportService:
                     skipped_count += 1
                     if create_result.match_reason == "collision_window":
                         collision_deduped_count += 1
+                if mapped.horrorfest_year is not None:
+                    HorrorfestService.include_watch_event(
+                        session,
+                        watch_id=create_result.watch_event.watch_id,
+                        horrorfest_year=mapped.horrorfest_year,
+                        updated_by="import",
+                        update_reason="Imported Horrorfest assignment",
+                        target_order=mapped.horrorfest_watch_order,
+                        source_kind="auto_import",
+                        commit=False,
+                    )
                 cursor_after = WatchEventImportService._max_cursor(
                     cursor_after, row_cursor
                 )
@@ -268,7 +280,11 @@ class WatchEventImportService:
                 cursor_after = WatchEventImportService._max_cursor(
                     cursor_after, row_cursor
                 )
-            except (WatchEventConstraintError, ValueError) as exc:
+            except (
+                HorrorfestConstraintError,
+                WatchEventConstraintError,
+                ValueError,
+            ) as exc:
                 error_count += 1
                 ImportBatchService.add_import_batch_error(
                     session,

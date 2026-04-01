@@ -25,6 +25,8 @@ class ImportedWatchEvent(KlugBaseModel):
     rating_scale: str | None = Field(default=None, max_length=50)
     media_version_id: UUID | None = None
     source_event_id: str | None = Field(default=None, max_length=255)
+    horrorfest_year: int | None = Field(default=None, ge=1900, le=9999)
+    horrorfest_watch_order: int | None = Field(default=None, ge=1)
 
 
 class WatchEventImportRequest(KlugBaseModel):
@@ -68,6 +70,8 @@ class LegacySourceWatchEventRow(KlugBaseModel):
     rating: Decimal | None = None
     media_version_id: UUID | None = None
     source_event_id: str | None = Field(default=None, max_length=255)
+    horrorfest_year: int | None = Field(default=None, ge=1900, le=9999)
+    horrorfest_watch_order: int | None = Field(default=None, ge=1)
 
 
 class LegacySourceWatchEventImportRequest(KlugBaseModel):

@@ -68,6 +68,28 @@ const ratingsUpdatedBy = document.getElementById("ratings-updated-by");
 const ratingsReason = document.getElementById("ratings-reason");
 const ratingsValue = document.getElementById("ratings-value");
 const ratingsSave = document.getElementById("ratings-save");
+const horrorfestYearSelect = document.getElementById("horrorfest-year-select");
+const horrorfestIncludeRemoved = document.getElementById("horrorfest-include-removed");
+const horrorfestRefresh = document.getElementById("horrorfest-refresh");
+const horrorfestStatus = document.getElementById("horrorfest-status");
+const horrorfestBody = document.getElementById("horrorfest-body");
+const horrorfestDetailStatus = document.getElementById("horrorfest-detail-status");
+const horrorfestDetail = document.getElementById("horrorfest-detail");
+const horrorfestUpdatedBy = document.getElementById("horrorfest-updated-by");
+const horrorfestReason = document.getElementById("horrorfest-reason");
+const horrorfestTargetOrder = document.getElementById("horrorfest-target-order");
+const horrorfestIncludeWatchId = document.getElementById("horrorfest-include-watch-id");
+const horrorfestMove = document.getElementById("horrorfest-move");
+const horrorfestRemove = document.getElementById("horrorfest-remove");
+const horrorfestRestore = document.getElementById("horrorfest-restore");
+const horrorfestInclude = document.getElementById("horrorfest-include");
+const horrorfestConfigYear = document.getElementById("horrorfest-config-year");
+const horrorfestConfigLabel = document.getElementById("horrorfest-config-label");
+const horrorfestConfigStart = document.getElementById("horrorfest-config-start");
+const horrorfestConfigEnd = document.getElementById("horrorfest-config-end");
+const horrorfestConfigNotes = document.getElementById("horrorfest-config-notes");
+const horrorfestConfigActive = document.getElementById("horrorfest-config-active");
+const horrorfestConfigSave = document.getElementById("horrorfest-config-save");
 const activitySource = document.getElementById("activity-source");
 const activityStatus = document.getElementById("activity-status");
 const activityOnlyUnmatched = document.getElementById("activity-only-unmatched");
@@ -115,6 +137,9 @@ let selectedHistoryId = null;
 let ratingsLimit = Number.parseInt(ratingsLimitSelect.value, 10);
 let ratingsRows = [];
 let selectedRatingWatchId = null;
+let horrorfestYears = [];
+let horrorfestRows = [];
+let selectedHorrorfestEntryId = null;
 let activityOffset = 0;
 let activityLimit = Number.parseInt(activityLimitSelect.value, 10);
 let selectedActivityId = null;
@@ -192,6 +217,7 @@ async function loadDashboardData() {
     loadProgress(),
     loadHistory(),
     loadUnratedWatches(),
+    loadHorrorfest(),
     loadImportHistory(),
     loadScrobbleActivity(),
     loadMetadataEnrichment(),
@@ -770,6 +796,233 @@ async function saveWatchRating() {
   await Promise.all([loadUnratedWatches(), loadHistory()]);
 }
 
+function syncSelectedHorrorfestRow() {
+  const rows = horrorfestBody.querySelectorAll("tr[data-horrorfest-entry-id]");
+  for (const row of rows) {
+    row.classList.toggle(
+      "selected",
+      row.dataset.horrorfestEntryId === selectedHorrorfestEntryId
+    );
+  }
+}
+
+function formatHorrorfestDetail(row) {
+  return [
+    `horrorfest_entry_id: ${row.horrorfest_entry_id}`,
+    `watch_id: ${row.watch_id}`,
+    `horrorfest_year: ${row.horrorfest_year}`,
+    `watch_order: ${row.watch_order ?? "n/a"}`,
+    `source_kind: ${row.source_kind}`,
+    `watched_at: ${row.watched_at}`,
+    `title: ${row.display_title}`,
+    `rating_value: ${row.rating_value ?? "n/a"}`,
+    `effective_runtime_seconds: ${row.effective_runtime_seconds ?? "n/a"}`,
+    `completed: ${row.completed}`,
+    `rewatch: ${row.rewatch}`,
+    `is_removed: ${row.is_removed}`,
+    `removed_at: ${row.removed_at || "n/a"}`,
+    `removed_by: ${row.removed_by || "n/a"}`,
+    `removed_reason: ${row.removed_reason || "n/a"}`,
+    `updated_at: ${row.updated_at || "n/a"}`,
+    `updated_by: ${row.updated_by || "n/a"}`,
+    `update_reason: ${row.update_reason || "n/a"}`,
+  ].join("\n");
+}
+
+function populateHorrorfestYearConfig(yearRow) {
+  if (!yearRow) {
+    horrorfestConfigYear.value = "";
+    horrorfestConfigLabel.value = "";
+    horrorfestConfigStart.value = "";
+    horrorfestConfigEnd.value = "";
+    horrorfestConfigNotes.value = "";
+    horrorfestConfigActive.checked = true;
+    return;
+  }
+  horrorfestConfigYear.value = String(yearRow.horrorfest_year);
+  horrorfestConfigLabel.value = yearRow.label || "";
+  horrorfestConfigStart.value = toDateTimeLocalValue(yearRow.window_start_at);
+  horrorfestConfigEnd.value = toDateTimeLocalValue(yearRow.window_end_at);
+  horrorfestConfigNotes.value = yearRow.notes || "";
+  horrorfestConfigActive.checked = yearRow.is_active;
+}
+
+function populateHorrorfestDetail(row) {
+  selectedHorrorfestEntryId = row.horrorfest_entry_id;
+  syncSelectedHorrorfestRow();
+  horrorfestDetailStatus.textContent = `Selected Horrorfest watch ${row.display_title}`;
+  horrorfestDetail.textContent = formatHorrorfestDetail(row);
+  horrorfestTargetOrder.value = row.watch_order || "";
+}
+
+async function loadHorrorfestYears() {
+  const response = await api("/api/v1/horrorfest/years");
+  if (!response.ok) {
+    throw new Error("Failed to load Horrorfest years");
+  }
+  horrorfestYears = await response.json();
+  horrorfestYearSelect.innerHTML = "";
+  if (!horrorfestYears.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No years configured";
+    horrorfestYearSelect.appendChild(option);
+    populateHorrorfestYearConfig(null);
+    return null;
+  }
+  for (const yearRow of horrorfestYears) {
+    const option = document.createElement("option");
+    option.value = String(yearRow.horrorfest_year);
+    option.textContent = `${yearRow.horrorfest_year} (${yearRow.entry_count} watches)`;
+    horrorfestYearSelect.appendChild(option);
+  }
+  if (!horrorfestYearSelect.value) {
+    horrorfestYearSelect.value = String(horrorfestYears[0].horrorfest_year);
+  }
+  const selectedYear =
+    horrorfestYears.find(
+      (item) => String(item.horrorfest_year) === horrorfestYearSelect.value
+    ) || horrorfestYears[0];
+  horrorfestYearSelect.value = String(selectedYear.horrorfest_year);
+  populateHorrorfestYearConfig(selectedYear);
+  return selectedYear;
+}
+
+async function loadHorrorfest() {
+  horrorfestStatus.textContent = "Loading Horrorfest years...";
+  horrorfestBody.innerHTML = "";
+  horrorfestRows = [];
+  selectedHorrorfestEntryId = null;
+  try {
+    const selectedYear = await loadHorrorfestYears();
+    if (!selectedYear) {
+      horrorfestStatus.textContent = "No Horrorfest years configured yet";
+      horrorfestDetailStatus.textContent = "Configure a year to begin using Horrorfest.";
+      horrorfestDetail.textContent = "";
+      return;
+    }
+    const response = await api(
+      `/api/v1/horrorfest/years/${selectedYear.horrorfest_year}/entries?include_removed=${horrorfestIncludeRemoved.checked}`
+    );
+    if (!response.ok) {
+      horrorfestStatus.textContent = "Failed to load Horrorfest entries";
+      return;
+    }
+    horrorfestRows = await response.json();
+    if (!horrorfestRows.length) {
+      horrorfestStatus.textContent = `Year ${selectedYear.horrorfest_year} is configured with no matching entries yet`;
+      horrorfestDetailStatus.textContent = "Select a Horrorfest row to inspect or correct.";
+      horrorfestDetail.textContent = "";
+      return;
+    }
+    for (const row of horrorfestRows) {
+      const tr = document.createElement("tr");
+      tr.dataset.horrorfestEntryId = row.horrorfest_entry_id;
+      tr.innerHTML = `
+        <td>${row.watch_order ?? "-"}</td>
+        <td>${new Date(row.watched_at).toLocaleString()}</td>
+        <td>${row.display_title}</td>
+        <td>${row.rating_value ?? "-"}</td>
+        <td>${row.is_removed ? "Removed" : "Active"}</td>
+      `;
+      horrorfestBody.appendChild(tr);
+    }
+    horrorfestStatus.textContent = `Loaded ${horrorfestRows.length} Horrorfest row(s) for ${selectedYear.horrorfest_year}`;
+    populateHorrorfestDetail(horrorfestRows[0]);
+  } catch (_error) {
+    horrorfestStatus.textContent = "Failed to load Horrorfest";
+  }
+}
+
+function selectedHorrorfestYear() {
+  return Number.parseInt(horrorfestYearSelect.value, 10);
+}
+
+async function saveHorrorfestYear() {
+  if (!horrorfestConfigYear.value || !horrorfestConfigStart.value || !horrorfestConfigEnd.value) {
+    horrorfestStatus.textContent = "Year, window start, and window end are required.";
+    return;
+  }
+  const yearValue = Number.parseInt(horrorfestConfigYear.value, 10);
+  const response = await api(`/api/v1/horrorfest/years/${yearValue}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      window_start_at: new Date(horrorfestConfigStart.value).toISOString(),
+      window_end_at: new Date(horrorfestConfigEnd.value).toISOString(),
+      label: horrorfestConfigLabel.value.trim() || null,
+      notes: horrorfestConfigNotes.value.trim() || null,
+      is_active: horrorfestConfigActive.checked,
+    }),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    horrorfestStatus.textContent = payload?.detail || "Failed to save Horrorfest year.";
+    return;
+  }
+  horrorfestStatus.textContent = `Saved Horrorfest year ${yearValue}.`;
+  await loadHorrorfest();
+  horrorfestYearSelect.value = String(yearValue);
+}
+
+async function mutateHorrorfestEntry(action, payload = null) {
+  const selected = horrorfestRows.find(
+    (item) => item.horrorfest_entry_id === selectedHorrorfestEntryId
+  );
+  if (!selected) {
+    horrorfestDetailStatus.textContent = "Select a Horrorfest entry first.";
+    return;
+  }
+  const response = await api(
+    `/api/v1/horrorfest/entries/${selected.horrorfest_entry_id}/${action}`,
+    {
+      method: "POST",
+      body: JSON.stringify(
+        payload || {
+          updated_by: horrorfestUpdatedBy.value.trim(),
+          update_reason: horrorfestReason.value.trim() || null,
+        }
+      ),
+    }
+  );
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => null);
+    horrorfestDetailStatus.textContent =
+      errorPayload?.detail || `Failed to ${action} Horrorfest entry.`;
+    return;
+  }
+  const updated = await response.json();
+  horrorfestDetailStatus.textContent = `${action} completed for Horrorfest watch ${updated.watch_id}.`;
+  await Promise.all([loadHorrorfest(), loadHistory(), loadUnratedWatches()]);
+}
+
+async function includeWatchInHorrorfest() {
+  const watchId = horrorfestIncludeWatchId.value.trim();
+  if (!watchId) {
+    horrorfestDetailStatus.textContent = "Enter a watch UUID to include in Horrorfest.";
+    return;
+  }
+  const response = await api(`/api/v1/horrorfest/watch-events/${watchId}/include`, {
+    method: "POST",
+    body: JSON.stringify({
+      horrorfest_year: selectedHorrorfestYear(),
+      updated_by: horrorfestUpdatedBy.value.trim(),
+      update_reason: horrorfestReason.value.trim() || null,
+      target_order: horrorfestTargetOrder.value
+        ? Number.parseInt(horrorfestTargetOrder.value, 10)
+        : null,
+    }),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    horrorfestDetailStatus.textContent =
+      payload?.detail || "Failed to include watch in Horrorfest.";
+    return;
+  }
+  const updated = await response.json();
+  horrorfestDetailStatus.textContent = `Included watch ${updated.watch_id} in Horrorfest ${updated.horrorfest_year}.`;
+  await Promise.all([loadHorrorfest(), loadHistory()]);
+}
+
 function buildHistoryQuery() {
   const params = new URLSearchParams();
   params.set("limit", String(historyLimit));
@@ -812,6 +1065,8 @@ function formatHistoryDetail(row) {
     `watch_version_name: ${row.watch_version_name || "n/a"}`,
     `watch_runtime_seconds: ${row.watch_runtime_seconds ?? "n/a"}`,
     `effective_runtime_seconds: ${row.effective_runtime_seconds ?? "n/a"}`,
+    `horrorfest_year: ${row.horrorfest_year ?? "n/a"}`,
+    `horrorfest_watch_order: ${row.horrorfest_watch_order ?? "n/a"}`,
     `completed: ${row.completed}`,
     `rewatch: ${row.rewatch}`,
     `is_deleted: ${row.is_deleted}`,
@@ -1340,6 +1595,68 @@ ratingsBody.addEventListener("click", async (event) => {
 
 ratingsSave.addEventListener("click", async () => {
   await saveWatchRating();
+});
+
+horrorfestRefresh.addEventListener("click", async () => {
+  await loadHorrorfest();
+});
+
+horrorfestYearSelect.addEventListener("change", async () => {
+  const selected = horrorfestYears.find(
+    (item) => String(item.horrorfest_year) === horrorfestYearSelect.value
+  );
+  populateHorrorfestYearConfig(selected || null);
+  await loadHorrorfest();
+});
+
+horrorfestIncludeRemoved.addEventListener("change", async () => {
+  await loadHorrorfest();
+});
+
+horrorfestBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const row = target.closest("tr[data-horrorfest-entry-id]");
+  if (!(row instanceof HTMLTableRowElement)) {
+    return;
+  }
+  const selectedRow = horrorfestRows.find(
+    (item) => item.horrorfest_entry_id === row.dataset.horrorfestEntryId
+  );
+  if (!selectedRow) {
+    return;
+  }
+  populateHorrorfestDetail(selectedRow);
+});
+
+horrorfestConfigSave.addEventListener("click", async () => {
+  await saveHorrorfestYear();
+});
+
+horrorfestMove.addEventListener("click", async () => {
+  if (!horrorfestTargetOrder.value) {
+    horrorfestDetailStatus.textContent = "Enter a target order before moving.";
+    return;
+  }
+  await mutateHorrorfestEntry("move", {
+    updated_by: horrorfestUpdatedBy.value.trim(),
+    update_reason: horrorfestReason.value.trim() || null,
+    target_order: Number.parseInt(horrorfestTargetOrder.value, 10),
+  });
+});
+
+horrorfestRemove.addEventListener("click", async () => {
+  await mutateHorrorfestEntry("remove");
+});
+
+horrorfestRestore.addEventListener("click", async () => {
+  await mutateHorrorfestEntry("restore");
+});
+
+horrorfestInclude.addEventListener("click", async () => {
+  await includeWatchInHorrorfest();
 });
 
 historySave.addEventListener("click", async () => {

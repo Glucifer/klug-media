@@ -3,10 +3,17 @@ from typing import Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, and_, func, select
 from sqlalchemy.orm import Session
 
-from app.db.models.entities import MediaItem, MediaVersion, Show, User, WatchEvent
+from app.db.models.entities import (
+    HorrorfestEntry,
+    MediaItem,
+    MediaVersion,
+    Show,
+    User,
+    WatchEvent,
+)
 
 
 def _format_display_title(
@@ -56,6 +63,8 @@ def list_watch_events(
             int | None,
             str | None,
             str,
+            int | None,
+            int | None,
         ]
     ] = (
         select(
@@ -68,6 +77,8 @@ def list_watch_events(
             MediaItem.base_runtime_seconds,
             Show.title,
             User.timezone,
+            HorrorfestEntry.horrorfest_year,
+            HorrorfestEntry.watch_order,
         )
         .join(User, WatchEvent.user_id == User.user_id)
         .join(
@@ -77,6 +88,13 @@ def list_watch_events(
         .outerjoin(
             Show,
             MediaItem.show_id == Show.show_id,
+        )
+        .outerjoin(
+            HorrorfestEntry,
+            and_(
+                HorrorfestEntry.watch_id == WatchEvent.watch_id,
+                HorrorfestEntry.is_removed.is_(False),
+            ),
         )
     )
     if media_type is not None:
@@ -115,6 +133,8 @@ def list_watch_events(
         base_runtime_seconds,
         show_title,
         user_timezone,
+        horrorfest_year,
+        horrorfest_watch_order,
     ) in rows:
         normalized_user_timezone = user_timezone or "UTC"
         try:
@@ -358,10 +378,19 @@ def list_unrated_watch_events(
             MediaItem.base_runtime_seconds,
             Show.title,
             User.timezone,
+            HorrorfestEntry.horrorfest_year,
+            HorrorfestEntry.watch_order,
         )
         .join(User, WatchEvent.user_id == User.user_id)
         .join(MediaItem, WatchEvent.media_item_id == MediaItem.media_item_id)
         .outerjoin(Show, MediaItem.show_id == Show.show_id)
+        .outerjoin(
+            HorrorfestEntry,
+            and_(
+                HorrorfestEntry.watch_id == WatchEvent.watch_id,
+                HorrorfestEntry.is_removed.is_(False),
+            ),
+        )
         .where(
             WatchEvent.completed.is_(True),
             WatchEvent.rating_value.is_(None),
@@ -383,6 +412,8 @@ def list_unrated_watch_events(
         base_runtime_seconds,
         show_title,
         user_timezone,
+        horrorfest_year,
+        horrorfest_watch_order,
     ) in rows:
         normalized_user_timezone = user_timezone or "UTC"
         try:
@@ -425,6 +456,9 @@ def list_unrated_watch_events(
                 "dedupe_hash": watch_event.dedupe_hash,
                 "created_by": watch_event.created_by,
                 "source_event_id": watch_event.source_event_id,
+                "horrorfest_year": horrorfest_year,
+                "horrorfest_watch_order": horrorfest_watch_order,
+                "is_horrorfest_watch": horrorfest_year is not None,
                 "media_item_title": item_title,
                 "media_item_type": item_type,
                 "media_item_season_number": season_number,

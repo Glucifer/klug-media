@@ -177,6 +177,67 @@ def test_run_import_dry_run_skips_db_writes(monkeypatch) -> None:
     assert result.rejected_before_import == 1
 
 
+def test_run_import_preserves_horrorfest_assignment(monkeypatch) -> None:
+    session_obj = object()
+    batch_id = uuid4()
+    watch_id = uuid4()
+
+    class DummyBatch:
+        def __init__(self, import_batch_id: UUID, status: str = "running") -> None:
+            self.import_batch_id = import_batch_id
+            self.status = status
+
+    payload = WatchEventImportRequest(
+        source="legacy_source_export",
+        mode=ImportMode.bootstrap,
+        events=[
+            ImportedWatchEvent(
+                user_id=uuid4(),
+                media_item_id=uuid4(),
+                watched_at=datetime.now(UTC),
+                playback_source="legacy_backup",
+                source_event_id="evt-hf-1",
+                horrorfest_year=2025,
+                horrorfest_watch_order=7,
+            )
+        ],
+    )
+
+    calls: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.start_import_batch",
+        lambda *_args, **_kwargs: DummyBatch(batch_id),
+    )
+    monkeypatch.setattr(
+        "app.services.imports.WatchEventService.create_watch_event",
+        lambda *_args, **_kwargs: WatchEventCreateResult(
+            watch_event=type("WatchRow", (), {"watch_id": watch_id})(),
+            created=True,
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.imports.HorrorfestService.include_watch_event",
+        lambda *_args, **kwargs: calls.update(kwargs),
+    )
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.add_import_batch_error",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.imports.ImportBatchService.finish_import_batch",
+        lambda *_args, **_kwargs: DummyBatch(batch_id, status="completed"),
+    )
+
+    result = WatchEventImportService.run_import(session_obj, payload=payload)
+
+    assert result.status == "completed"
+    assert calls["watch_id"] == watch_id
+    assert calls["horrorfest_year"] == 2025
+    assert calls["target_order"] == 7
+    assert calls["commit"] is False
+
+
 def test_run_legacy_source_import_maps_rows(monkeypatch) -> None:
     session_obj = object()
 

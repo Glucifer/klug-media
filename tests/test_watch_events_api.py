@@ -43,6 +43,9 @@ class DummyWatchEvent:
         self.dedupe_hash = "abc123"
         self.created_by = None
         self.source_event_id = "evt-1"
+        self.horrorfest_year = None
+        self.horrorfest_watch_order = None
+        self.is_horrorfest_watch = False
 
 
 def _set_permissive_auth(monkeypatch) -> None:

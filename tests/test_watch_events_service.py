@@ -9,6 +9,14 @@ from sqlalchemy.exc import IntegrityError
 from app.services.watch_events import WatchEventConstraintError, WatchEventService
 
 
+@pytest.fixture(autouse=True)
+def _stub_horrorfest_sync(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.services.watch_events.HorrorfestService.sync_watch_event",
+        lambda *_args, **_kwargs: None,
+    )
+
+
 def test_create_watch_event_normalizes_input(monkeypatch) -> None:
     session = Mock()
     expected_event = Mock()
