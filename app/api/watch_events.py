@@ -13,6 +13,7 @@ from app.schemas.watch_events import (
     WatchEventCreate,
     WatchEventDelete,
     WatchEventListRead,
+    WatchEventRate,
     WatchEventRead,
     WatchEventRestore,
 )
@@ -51,6 +52,22 @@ def list_watch_events(
         media_type=media_type,
         include_deleted=include_deleted,
         deleted_only=deleted_only,
+        limit=limit,
+        offset=offset,
+    )
+    return [WatchEventListRead.model_validate(item) for item in watch_events]
+
+
+@router.get("/unrated", response_model=list[WatchEventListRead])
+def list_unrated_watch_events(
+    user_id: UUID | None = Query(default=None),
+    limit: int = Query(default=25, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    session: Session = Depends(get_db_session),
+) -> list[WatchEventListRead]:
+    watch_events = WatchEventService.list_unrated_watch_events(
+        session,
+        user_id=user_id,
         limit=limit,
         offset=offset,
     )
@@ -159,6 +176,32 @@ def correct_watch_event(
             media_item_id=payload.media_item_id,
             completed=payload.completed,
             rewatch=payload.rewatch,
+        )
+    except ValueError as exc:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if "not found" in str(exc)
+            else status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+    except WatchEventConstraintError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return WatchEventRead.model_validate(watch_event)
+
+
+@router.post("/{watch_id}/rate", response_model=WatchEventRead)
+def rate_watch_event(
+    watch_id: UUID,
+    payload: WatchEventRate,
+    session: Session = Depends(get_db_session),
+) -> WatchEventRead:
+    try:
+        watch_event = WatchEventService.rate_watch_event(
+            session,
+            watch_id=watch_id,
+            updated_by=payload.updated_by,
+            update_reason=payload.update_reason,
+            rating_value=payload.rating_value,
         )
     except ValueError as exc:
         status_code = (

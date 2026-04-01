@@ -461,3 +461,75 @@ def test_correct_watch_event_requires_changes() -> None:
             )
     finally:
         monkeypatch.undo()
+
+
+def test_list_unrated_watch_events_clamps_limit(monkeypatch) -> None:
+    session = Mock()
+
+    def fake_list_unrated_watch_events(_session, **kwargs):
+        assert kwargs["limit"] == 100
+        assert kwargs["offset"] == 0
+        return []
+
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.list_unrated_watch_events",
+        fake_list_unrated_watch_events,
+    )
+
+    WatchEventService.list_unrated_watch_events(
+        session,
+        user_id=None,
+        limit=1000,
+        offset=-5,
+    )
+
+
+def test_rate_watch_event_sets_ten_point_rating(monkeypatch) -> None:
+    session = Mock()
+    event = Mock(
+        watch_id=uuid4(),
+        is_deleted=False,
+        rating_value=None,
+        rating_scale=None,
+    )
+
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.get_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.update_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+
+    result = WatchEventService.rate_watch_event(
+        session,
+        watch_id=event.watch_id,
+        updated_by="operator",
+        update_reason="post-watch rating",
+        rating_value=9,
+    )
+
+    assert result.rating_value == Decimal(9)
+    assert result.rating_scale == "10-star"
+    assert result.updated_by == "operator"
+    assert result.update_reason == "post-watch rating"
+    session.commit.assert_called_once()
+
+
+def test_rate_watch_event_rejects_deleted_watch(monkeypatch) -> None:
+    session = Mock()
+    event = Mock(watch_id=uuid4(), is_deleted=True)
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.get_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+
+    with pytest.raises(ValueError, match="Cannot rate a deleted watch event"):
+        WatchEventService.rate_watch_event(
+            session,
+            watch_id=event.watch_id,
+            updated_by="operator",
+            update_reason=None,
+            rating_value=7,
+        )

@@ -328,3 +328,98 @@ def list_user_media_watch_events(
         .order_by(WatchEvent.watched_at.asc(), WatchEvent.created_at.asc())
     )
     return list(session.scalars(statement))
+
+
+def list_unrated_watch_events(
+    session: Session,
+    *,
+    user_id: UUID | None,
+    limit: int,
+    offset: int,
+) -> list[dict[str, object]]:
+    statement = (
+        select(
+            WatchEvent,
+            MediaItem.title,
+            MediaItem.type,
+            MediaItem.season_number,
+            MediaItem.episode_number,
+            MediaItem.year,
+            Show.title,
+            User.timezone,
+        )
+        .join(User, WatchEvent.user_id == User.user_id)
+        .join(MediaItem, WatchEvent.media_item_id == MediaItem.media_item_id)
+        .outerjoin(Show, MediaItem.show_id == Show.show_id)
+        .where(
+            WatchEvent.completed.is_(True),
+            WatchEvent.rating_value.is_(None),
+            WatchEvent.is_deleted.is_(False),
+        )
+    )
+    if user_id is not None:
+        statement = statement.where(WatchEvent.user_id == user_id)
+    statement = statement.order_by(WatchEvent.watched_at.desc()).offset(offset).limit(limit)
+    rows = session.execute(statement).all()
+    payload: list[dict[str, object]] = []
+    for (
+        watch_event,
+        item_title,
+        item_type,
+        season_number,
+        episode_number,
+        item_year,
+        show_title,
+        user_timezone,
+    ) in rows:
+        normalized_user_timezone = user_timezone or "UTC"
+        try:
+            watched_at_local = watch_event.watched_at.astimezone(ZoneInfo(normalized_user_timezone))
+        except ZoneInfoNotFoundError:
+            watched_at_local = watch_event.watched_at
+        payload.append(
+            {
+                "watch_id": watch_event.watch_id,
+                "user_id": watch_event.user_id,
+                "media_item_id": watch_event.media_item_id,
+                "watched_at": watch_event.watched_at,
+                "playback_source": watch_event.playback_source,
+                "total_seconds": watch_event.total_seconds,
+                "watched_seconds": watch_event.watched_seconds,
+                "progress_percent": watch_event.progress_percent,
+                "completed": watch_event.completed,
+                "rating_value": watch_event.rating_value,
+                "rating_scale": watch_event.rating_scale,
+                "media_version_id": watch_event.media_version_id,
+                "import_batch_id": watch_event.import_batch_id,
+                "origin_kind": watch_event.origin_kind,
+                "origin_playback_event_id": watch_event.origin_playback_event_id,
+                "created_at": watch_event.created_at,
+                "updated_at": watch_event.updated_at,
+                "updated_by": watch_event.updated_by,
+                "update_reason": watch_event.update_reason,
+                "rewatch": watch_event.rewatch,
+                "is_deleted": watch_event.is_deleted,
+                "deleted_at": watch_event.deleted_at,
+                "deleted_by": watch_event.deleted_by,
+                "deleted_reason": watch_event.deleted_reason,
+                "dedupe_hash": watch_event.dedupe_hash,
+                "created_by": watch_event.created_by,
+                "source_event_id": watch_event.source_event_id,
+                "media_item_title": item_title,
+                "media_item_type": item_type,
+                "media_item_season_number": season_number,
+                "media_item_episode_number": episode_number,
+                "display_title": _format_display_title(
+                    item_type=item_type,
+                    item_title=item_title,
+                    item_year=item_year,
+                    show_title=show_title,
+                    season_number=season_number,
+                    episode_number=episode_number,
+                ),
+                "watched_at_local": watched_at_local,
+                "user_timezone": normalized_user_timezone,
+            }
+        )
+    return payload

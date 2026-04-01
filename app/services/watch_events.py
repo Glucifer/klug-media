@@ -67,6 +67,23 @@ class WatchEventService:
         )
 
     @staticmethod
+    def list_unrated_watch_events(
+        session: Session,
+        *,
+        user_id: UUID | None,
+        limit: int,
+        offset: int,
+    ) -> list[dict[str, object]]:
+        safe_limit = max(1, min(limit, 100))
+        safe_offset = max(0, offset)
+        return watch_event_repository.list_unrated_watch_events(
+            session,
+            user_id=user_id,
+            limit=safe_limit,
+            offset=safe_offset,
+        )
+
+    @staticmethod
     def soft_delete_watch_event(
         session: Session,
         *,
@@ -226,6 +243,36 @@ class WatchEventService:
                 )
                 updated = watch_event_repository.update_watch_event(session, watch_event=updated)
 
+            session.commit()
+            return updated
+        except IntegrityError as exc:
+            session.rollback()
+            raise WatchEventConstraintError("Watch event failed database constraints") from exc
+
+    @staticmethod
+    def rate_watch_event(
+        session: Session,
+        *,
+        watch_id: UUID,
+        updated_by: str,
+        update_reason: str | None,
+        rating_value: int,
+    ) -> WatchEvent:
+        watch_event = WatchEventService._get_watch_event_or_raise(session, watch_id=watch_id)
+        normalized_updated_by = WatchEventService._normalize_updated_by(updated_by)
+        normalized_reason = WatchEventService._normalize_update_reason(update_reason)
+        if watch_event.is_deleted:
+            raise ValueError("Cannot rate a deleted watch event")
+        if rating_value < 1 or rating_value > 10:
+            raise ValueError("rating_value must be between 1 and 10")
+
+        watch_event.rating_value = Decimal(rating_value)
+        watch_event.rating_scale = "10-star"
+        watch_event.updated_at = datetime.now(UTC)
+        watch_event.updated_by = normalized_updated_by
+        watch_event.update_reason = normalized_reason
+        try:
+            updated = watch_event_repository.update_watch_event(session, watch_event=watch_event)
             session.commit()
             return updated
         except IntegrityError as exc:

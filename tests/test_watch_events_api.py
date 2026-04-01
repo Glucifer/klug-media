@@ -125,6 +125,31 @@ def test_list_watch_events_invalid_media_type_returns_422() -> None:
     assert response.status_code == 422
 
 
+def test_list_unrated_watch_events_returns_items(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    event = DummyWatchEvent()
+    event.rating_value = None
+    event.rating_scale = None
+    called: dict[str, object] = {}
+
+    def fake_list_unrated_watch_events(_session, **kwargs):
+        called.update(kwargs)
+        return [event]
+
+    monkeypatch.setattr(
+        WatchEventService,
+        "list_unrated_watch_events",
+        fake_list_unrated_watch_events,
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/watch-events/unrated?limit=10")
+
+    assert response.status_code == 200
+    assert called["limit"] == 10
+    assert response.json()[0]["rating_value"] is None
+
+
 def test_list_watch_events_returns_enriched_media_fields(monkeypatch) -> None:
     _set_permissive_auth(monkeypatch)
     watch_id = uuid4()
@@ -336,3 +361,33 @@ def test_correct_watch_event_returns_updated_row(monkeypatch) -> None:
     payload = response.json()
     assert payload["updated_by"] == "operator"
     assert payload["update_reason"] == "timezone fix"
+
+
+def test_rate_watch_event_returns_updated_row(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    event = DummyWatchEvent()
+    event.rating_value = Decimal("8")
+    event.rating_scale = "10-star"
+    event.updated_by = "operator"
+    event.update_reason = "rated from queue"
+
+    monkeypatch.setattr(
+        WatchEventService,
+        "rate_watch_event",
+        lambda *_args, **_kwargs: event,
+    )
+
+    client = TestClient(app)
+    response = client.post(
+        f"/api/v1/watch-events/{event.watch_id}/rate",
+        json={
+            "updated_by": "operator",
+            "update_reason": "rated from queue",
+            "rating_value": 8,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["rating_value"] == "8"
+    assert payload["rating_scale"] == "10-star"

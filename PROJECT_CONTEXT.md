@@ -56,6 +56,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - `watch_event` now supports lightweight correction metadata (`updated_*`) and soft delete fields (`is_deleted`, `deleted_*`)
   - correction endpoints now exist under `/api/v1/watch-events/{watch_id}/delete|restore|correct`
   - default watch history and show-progress reads now exclude soft-deleted watch events
+  - completed, unrated watch events can now be listed and rated through `/api/v1/watch-events/unrated` and `/api/v1/watch-events/{watch_id}/rate`
 - Legacy export import script:
   - `python -m app.scripts.import_watch_events`
   - supports dry run + incremental resume
@@ -70,6 +71,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - ops strip (API health, auth mode, session state, last refresh)
   - watch history table with pagination/filtering
   - watch history detail/editor panel for safe corrections and restore
+  - recently watched, unrated queue with 1-10 rating actions
   - import runner (file upload + mode/dry-run/resume options)
   - cursor visibility (`cursor_before`, `cursor_after`, local last cursor)
   - import batch history with status filter (persisted)

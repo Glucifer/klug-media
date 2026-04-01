@@ -54,6 +54,16 @@ const historyEditorRewatch = document.getElementById("history-editor-rewatch");
 const historySave = document.getElementById("history-save");
 const historyDelete = document.getElementById("history-delete");
 const historyRestore = document.getElementById("history-restore");
+const ratingsLimitSelect = document.getElementById("ratings-limit");
+const ratingsApply = document.getElementById("ratings-apply");
+const ratingsStatus = document.getElementById("ratings-status");
+const ratingsBody = document.getElementById("ratings-body");
+const ratingsDetailStatus = document.getElementById("ratings-detail-status");
+const ratingsDetail = document.getElementById("ratings-detail");
+const ratingsUpdatedBy = document.getElementById("ratings-updated-by");
+const ratingsReason = document.getElementById("ratings-reason");
+const ratingsValue = document.getElementById("ratings-value");
+const ratingsSave = document.getElementById("ratings-save");
 const activitySource = document.getElementById("activity-source");
 const activityStatus = document.getElementById("activity-status");
 const activityOnlyUnmatched = document.getElementById("activity-only-unmatched");
@@ -98,6 +108,9 @@ let historyOffset = 0;
 let historyLimit = Number.parseInt(historyLimitSelect.value, 10);
 let historyRows = [];
 let selectedHistoryId = null;
+let ratingsLimit = Number.parseInt(ratingsLimitSelect.value, 10);
+let ratingsRows = [];
+let selectedRatingWatchId = null;
 let activityOffset = 0;
 let activityLimit = Number.parseInt(activityLimitSelect.value, 10);
 let selectedActivityId = null;
@@ -174,6 +187,7 @@ async function loadDashboardData() {
     loadShows(),
     loadProgress(),
     loadHistory(),
+    loadUnratedWatches(),
     loadImportHistory(),
     loadScrobbleActivity(),
     loadMetadataEnrichment(),
@@ -654,6 +668,102 @@ function setHistoryPagination(rowsLoaded) {
   historyPage.textContent = `Page ${page}`;
   historyPrev.disabled = historyOffset === 0;
   historyNext.disabled = rowsLoaded < historyLimit;
+}
+
+function syncSelectedRatingRow() {
+  const rows = ratingsBody.querySelectorAll("tr[data-watch-id]");
+  for (const row of rows) {
+    row.classList.toggle("selected", row.dataset.watchId === selectedRatingWatchId);
+  }
+}
+
+function formatRatingDetail(row) {
+  return [
+    `watch_id: ${row.watch_id}`,
+    `display_title: ${row.display_title || row.media_item_title || row.media_item_id}`,
+    `watched_at_utc: ${row.watched_at}`,
+    `watched_at_local: ${row.watched_at_local || "n/a"}`,
+    `playback_source: ${row.playback_source}`,
+    `completed: ${row.completed}`,
+    `rating_value: ${row.rating_value || "n/a"}`,
+    `rating_scale: ${row.rating_scale || "n/a"}`,
+  ].join("\n");
+}
+
+function populateRatingEditor(row) {
+  selectedRatingWatchId = row.watch_id;
+  syncSelectedRatingRow();
+  ratingsDetailStatus.textContent = `Rating ${row.display_title || row.media_item_title || row.watch_id}`;
+  ratingsDetail.textContent = formatRatingDetail(row);
+  ratingsValue.value = "";
+}
+
+async function loadUnratedWatches() {
+  ratingsStatus.textContent = "Loading unrated watches...";
+  ratingsBody.innerHTML = "";
+  ratingsRows = [];
+  selectedRatingWatchId = null;
+  try {
+    const response = await api(`/api/v1/watch-events/unrated?limit=${ratingsLimit}`);
+    if (!response.ok) {
+      ratingsStatus.textContent = "Failed to load unrated watches";
+      ratingsDetailStatus.textContent = "Select an unrated watch to rate it.";
+      ratingsDetail.textContent = "";
+      return;
+    }
+    const rows = await response.json();
+    ratingsRows = rows;
+    if (!rows.length) {
+      ratingsStatus.textContent = "No unrated completed watches";
+      ratingsDetailStatus.textContent = "Select an unrated watch to rate it.";
+      ratingsDetail.textContent = "";
+      return;
+    }
+    for (const row of rows) {
+      const tr = document.createElement("tr");
+      tr.dataset.watchId = row.watch_id;
+      tr.innerHTML = `
+        <td>${new Date(row.watched_at).toLocaleString()}</td>
+        <td>${row.display_title || row.media_item_title || row.media_item_id}</td>
+        <td>${row.playback_source}</td>
+        <td>Awaiting rating</td>
+      `;
+      ratingsBody.appendChild(tr);
+    }
+    ratingsStatus.textContent = `Loaded ${rows.length} unrated watch(es)`;
+    populateRatingEditor(rows[0]);
+  } catch (_error) {
+    ratingsStatus.textContent = "Failed to load unrated watches";
+    ratingsDetailStatus.textContent = "Select an unrated watch to rate it.";
+    ratingsDetail.textContent = "";
+  }
+}
+
+async function saveWatchRating() {
+  if (!selectedRatingWatchId) {
+    ratingsDetailStatus.textContent = "Select an unrated watch first.";
+    return;
+  }
+  if (!ratingsValue.value) {
+    ratingsDetailStatus.textContent = "Choose a rating from 1 to 10.";
+    return;
+  }
+  const response = await api(`/api/v1/watch-events/${selectedRatingWatchId}/rate`, {
+    method: "POST",
+    body: JSON.stringify({
+      updated_by: ratingsUpdatedBy.value.trim(),
+      update_reason: ratingsReason.value.trim() || null,
+      rating_value: Number.parseInt(ratingsValue.value, 10),
+    }),
+  });
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => null);
+    ratingsDetailStatus.textContent = errorPayload?.detail || "Failed to save rating.";
+    return;
+  }
+  const updated = await response.json();
+  ratingsDetailStatus.textContent = `Saved ${updated.rating_value}/10 for ${updated.media_item_id}`;
+  await Promise.all([loadUnratedWatches(), loadHistory()]);
 }
 
 function buildHistoryQuery() {
@@ -1159,6 +1269,31 @@ historyBody.addEventListener("click", async (event) => {
     return;
   }
   populateHistoryEditor(selectedRow);
+});
+
+ratingsApply.addEventListener("click", async () => {
+  ratingsLimit = Number.parseInt(ratingsLimitSelect.value, 10);
+  await loadUnratedWatches();
+});
+
+ratingsBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const row = target.closest("tr[data-watch-id]");
+  if (!(row instanceof HTMLTableRowElement)) {
+    return;
+  }
+  const selectedRow = ratingsRows.find((item) => item.watch_id === row.dataset.watchId);
+  if (!selectedRow) {
+    return;
+  }
+  populateRatingEditor(selectedRow);
+});
+
+ratingsSave.addEventListener("click", async () => {
+  await saveWatchRating();
 });
 
 historySave.addEventListener("click", async () => {

@@ -80,3 +80,9 @@ class WatchEventCorrect(KlugBaseModel):
     media_item_id: UUID | None = None
     completed: bool | None = None
     rewatch: bool | None = None
+
+
+class WatchEventRate(KlugBaseModel):
+    updated_by: str = Field(min_length=1, max_length=100)
+    update_reason: str | None = Field(default=None, max_length=500)
+    rating_value: int = Field(ge=1, le=10)

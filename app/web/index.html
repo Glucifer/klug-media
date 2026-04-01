@@ -193,6 +193,54 @@
         </div>
         <pre id="history-detail" class="code-block"></pre>
 
+        <h2 style="margin-top: 18px">Recently Watched Not Rated</h2>
+        <div class="row">
+          <label for="ratings-limit">Rows</label>
+          <select id="ratings-limit">
+            <option value="10">10</option>
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+          </select>
+          <button id="ratings-apply" class="secondary">Apply</button>
+        </div>
+        <p id="ratings-status" class="muted">Loading unrated watches...</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Watched At</th>
+              <th>Title</th>
+              <th>Source</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="ratings-body"></tbody>
+        </table>
+        <p id="ratings-detail-status" class="muted">Select an unrated watch to rate it.</p>
+        <div class="row">
+          <label for="ratings-updated-by">Updated By</label>
+          <input id="ratings-updated-by" type="text" placeholder="operator name" />
+          <label for="ratings-reason">Reason</label>
+          <input id="ratings-reason" type="text" placeholder="optional reason" />
+        </div>
+        <div class="row">
+          <label for="ratings-value">Rating</label>
+          <select id="ratings-value">
+            <option value="">Choose</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+          </select>
+          <button id="ratings-save" class="secondary" type="button">Save Rating</button>
+        </div>
+        <pre id="ratings-detail" class="code-block"></pre>
+
         <h2 style="margin-top: 18px">Scrobble Activity</h2>
         <div class="row">
           <label for="activity-source">Source</label>
