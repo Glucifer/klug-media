@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -29,6 +30,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Validate and summarize without writing to the database",
     )
+    parser.add_argument(
+        "--error-report",
+        default=None,
+        help="Optional path to write unmatched rows as JSON",
+    )
     return parser.parse_args(argv)
 
 
@@ -36,6 +42,15 @@ def _load_csv_rows(file_path: Path) -> list[dict[str, Any]]:
     with file_path.open("r", encoding="utf-8", newline="") as file:
         reader = csv.DictReader(file)
         return [{key: value for key, value in row.items() if key is not None} for row in reader]
+
+
+def _write_error_report(path: Path, unmatched_rows: list[dict[str, Any]]) -> None:
+    payload = {
+        "unmatched_count": len(unmatched_rows),
+        "rows": unmatched_rows,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
 def run(argv: list[str] | None = None) -> int:
@@ -76,6 +91,21 @@ def run(argv: list[str] | None = None) -> int:
     print(f"  errors: {result.error_count}")
     print(f"  year_configs_created: {result.year_configs_created}")
     print(f"  dry_run: {args.dry_run}")
+    if result.unmatched_rows:
+        print("  unmatched sample:")
+        for row in result.unmatched_rows[:10]:
+            print(
+                "   - "
+                f"trakt_log_id={row['trakt_log_id']} "
+                f"tmdb_id={row['tmdb_id']} "
+                f"watched_at={row['watched_at']} "
+                f"watch_year={row['watch_year']} "
+                f"watch_order={row['watch_order']}"
+            )
+    if args.error_report and result.unmatched_rows:
+        report_path = Path(args.error_report)
+        _write_error_report(report_path, result.unmatched_rows)
+        print(f"  wrote_error_report: {report_path}")
     return 0
 
 

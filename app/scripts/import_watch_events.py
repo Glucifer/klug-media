@@ -9,6 +9,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
@@ -19,6 +20,7 @@ from app.schemas.imports import ImportMode, LegacySourceWatchEventImportRequest
 from app.services.imports import WatchEventImportService
 from app.services.media_items import MediaItemService
 from app.services.shows import ShowService
+from app.services.users import UserService
 
 
 @dataclass(frozen=True)
@@ -170,7 +172,11 @@ def _parse_bool(value: Any, *, default: bool) -> bool:
     return default
 
 
-def _parse_datetime(value: Any) -> datetime | None:
+def _parse_datetime(
+    value: Any,
+    *,
+    naive_timezone_name: str = "UTC",
+) -> datetime | None:
     if value is None or value == "":
         return None
     if isinstance(value, datetime):
@@ -183,7 +189,11 @@ def _parse_datetime(value: Any) -> datetime | None:
         return None
 
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=UTC)
+        try:
+            naive_timezone = ZoneInfo(naive_timezone_name)
+        except ZoneInfoNotFoundError:
+            naive_timezone = UTC
+        return parsed.replace(tzinfo=naive_timezone)
     return parsed
 
 
@@ -513,6 +523,7 @@ def _build_mapped_rows_from_legacy_backup(
     *,
     user_id: UUID,
     dry_run: bool,
+    naive_datetime_timezone: str = "UTC",
 ) -> LegacyBackupPreprocessResult:
     session = SessionLocal()
     mapped_rows: list[dict[str, Any]] = []
@@ -530,7 +541,10 @@ def _build_mapped_rows_from_legacy_backup(
                 )
                 continue
 
-            watched_at = _parse_datetime(row.get("watched_at") or row.get("played_at"))
+            watched_at = _parse_datetime(
+                row.get("watched_at") or row.get("played_at"),
+                naive_timezone_name=naive_datetime_timezone,
+            )
             if watched_at is None:
                 rejected_rows.append(
                     {
@@ -712,10 +726,19 @@ def run(argv: list[str] | None = None) -> int:
                     "--user-id is required for --input-schema legacy_backup"
                 )
             user_id = UUID(args.user_id)
+            lookup_session = SessionLocal()
+            try:
+                user = UserService.get_user_by_id(lookup_session, user_id)
+                user_timezone = user.timezone if user is not None else "UTC"
+            finally:
+                lookup_session.close()
             preprocess = _build_mapped_rows_from_legacy_backup(
                 raw_rows,
                 user_id=user_id,
                 dry_run=args.dry_run,
+                naive_datetime_timezone=(
+                    user_timezone if detected_format == "csv" else "UTC"
+                ),
             )
             rows_for_validation = preprocess.mapped_rows
             rejected_rows = preprocess.rejected_rows

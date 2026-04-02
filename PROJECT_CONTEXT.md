@@ -77,6 +77,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Legacy export import script:
   - `python -m app.scripts.import_watch_events`
   - supports dry run + incremental resume
+  - legacy JSON imports still treat naive timestamps as UTC, but flat CSV uploads/imports now interpret naive `watched_at` values in the target user's timezone before normalizing to UTC
 - Preserved Horrorfest overlay import script:
   - `python -m app.scripts.import_horrorfest`
   - applies legacy Horrorfest year/order plus preserved rating/version metadata onto already-imported canonical `watch_event` rows

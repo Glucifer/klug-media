@@ -178,6 +178,11 @@ def test_run_legacy_backup_writes_error_report(monkeypatch, tmp_path: Path) -> N
 
     monkeypatch.setattr(import_watch_events, "SessionLocal", lambda: DummySession())
     monkeypatch.setattr(
+        import_watch_events.UserService,
+        "get_user_by_id",
+        lambda _session, _user_id: None,
+    )
+    monkeypatch.setattr(
         import_watch_events.MediaItemService,
         "find_media_item_by_external_ids",
         lambda *_args, **_kwargs: DummyMediaItem(),
@@ -222,6 +227,11 @@ def test_run_legacy_backup_rejected_rows_write_report(
             return None
 
     monkeypatch.setattr(import_watch_events, "SessionLocal", lambda: DummySession())
+    monkeypatch.setattr(
+        import_watch_events.UserService,
+        "get_user_by_id",
+        lambda _session, _user_id: None,
+    )
     exit_code = import_watch_events.run(
         [
             "--input",
@@ -406,6 +416,68 @@ def test_legacy_backup_maps_flat_trakt_csv_episode_shape(monkeypatch) -> None:
     assert dummy_session.last_media_item.tmdb_id == 5560984
     assert dummy_session.last_media_item.tvdb_id == 10706489
     assert dummy_session.last_media_item.show_tmdb_id == 124364
+
+
+def test_legacy_backup_treats_naive_csv_timestamps_as_user_local_time(
+    monkeypatch,
+) -> None:
+    class DummySession:
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(import_watch_events, "SessionLocal", lambda: DummySession())
+    monkeypatch.setattr(
+        import_watch_events.MediaItemService,
+        "find_media_item_by_external_ids",
+        lambda *_args, **_kwargs: type("Media", (), {"media_item_id": uuid4()})(),
+    )
+
+    preprocess = import_watch_events._build_mapped_rows_from_legacy_backup(
+        [
+            {
+                "type": "movie",
+                "watched_at": "1969-12-31T17:00:00",
+                "tmdb_id": "123",
+                "title": "Test Movie",
+            }
+        ],
+        user_id=uuid4(),
+        dry_run=True,
+        naive_datetime_timezone="America/Edmonton",
+    )
+
+    assert preprocess.rejected_rows == []
+    assert preprocess.mapped_rows[0]["watched_at"] == "1969-12-31T17:00:00-07:00"
+
+
+def test_legacy_backup_treats_naive_json_timestamps_as_utc(monkeypatch) -> None:
+    class DummySession:
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(import_watch_events, "SessionLocal", lambda: DummySession())
+    monkeypatch.setattr(
+        import_watch_events.MediaItemService,
+        "find_media_item_by_external_ids",
+        lambda *_args, **_kwargs: type("Media", (), {"media_item_id": uuid4()})(),
+    )
+
+    preprocess = import_watch_events._build_mapped_rows_from_legacy_backup(
+        [
+            {
+                "type": "movie",
+                "watched_at": "1969-12-31T17:00:00",
+                "tmdb_id": "123",
+                "title": "Test Movie",
+            }
+        ],
+        user_id=uuid4(),
+        dry_run=True,
+        naive_datetime_timezone="UTC",
+    )
+
+    assert preprocess.rejected_rows == []
+    assert preprocess.mapped_rows[0]["watched_at"] == "1969-12-31T17:00:00+00:00"
 
 
 def test_run_returns_2_for_missing_file() -> None:

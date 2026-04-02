@@ -3,7 +3,7 @@ from typing import Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import Select, and_, func, select
+from sqlalchemy import Select, and_, extract, func, select
 from sqlalchemy.orm import Session
 
 from app.db.models.entities import (
@@ -396,6 +396,52 @@ def list_user_movie_watch_events_by_tmdb_and_local_date(
             MediaItem.type == "movie",
             MediaItem.tmdb_id == tmdb_id,
             local_watch_date == local_date,
+        )
+        .order_by(WatchEvent.watched_at.asc(), WatchEvent.created_at.asc())
+    )
+    return list(session.scalars(statement))
+
+
+def list_user_movie_watch_events_by_tmdb_and_local_year(
+    session: Session,
+    *,
+    user_id: UUID,
+    tmdb_id: int,
+    local_year: int,
+) -> list[WatchEvent]:
+    local_watch_year = extract("year", func.timezone(User.timezone, WatchEvent.watched_at))
+    statement = (
+        select(WatchEvent)
+        .join(User, WatchEvent.user_id == User.user_id)
+        .join(MediaItem, WatchEvent.media_item_id == MediaItem.media_item_id)
+        .where(
+            WatchEvent.user_id == user_id,
+            WatchEvent.is_deleted.is_(False),
+            MediaItem.type == "movie",
+            MediaItem.tmdb_id == tmdb_id,
+            local_watch_year == local_year,
+        )
+        .order_by(WatchEvent.watched_at.asc(), WatchEvent.created_at.asc())
+    )
+    return list(session.scalars(statement))
+
+
+def list_user_movie_watch_events_by_local_year(
+    session: Session,
+    *,
+    user_id: UUID,
+    local_year: int,
+) -> list[WatchEvent]:
+    local_watch_year = extract("year", func.timezone(User.timezone, WatchEvent.watched_at))
+    statement = (
+        select(WatchEvent)
+        .join(User, WatchEvent.user_id == User.user_id)
+        .join(MediaItem, WatchEvent.media_item_id == MediaItem.media_item_id)
+        .where(
+            WatchEvent.user_id == user_id,
+            WatchEvent.is_deleted.is_(False),
+            MediaItem.type == "movie",
+            local_watch_year == local_year,
         )
         .order_by(WatchEvent.watched_at.asc(), WatchEvent.created_at.asc())
     )

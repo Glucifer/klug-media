@@ -15,8 +15,8 @@ class HorrorfestPreserveRow(KlugBaseModel):
     watch_year: int = Field(ge=1900, le=9999)
     movie_id: int | None = None
     tmdb_id: int = Field(ge=1)
-    origin_country: str | None = Field(default=None, max_length=10)
-    original_language: str | None = Field(default=None, max_length=20)
+    origin_country: str | None = Field(default=None, max_length=100)
+    original_language: str | None = Field(default=None, max_length=100)
     runtime_used: int | None = Field(default=None, ge=1)
 
     def watched_at_start_utc(self) -> datetime:
@@ -32,3 +32,4 @@ class HorrorfestPreserveImportSummary(KlugBaseModel):
     updated_count: int
     error_count: int
     year_configs_created: int = 0
+    unmatched_rows: list[dict] = Field(default_factory=list)

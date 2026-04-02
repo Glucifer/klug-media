@@ -9,6 +9,11 @@ def list_users(session: Session) -> list[User]:
     return list(session.scalars(statement))
 
 
+def get_user_by_id(session: Session, user_id) -> User | None:
+    statement = select(User).where(User.user_id == user_id)
+    return session.scalar(statement)
+
+
 def create_user(session: Session, username: str, timezone: str) -> User:
     user = User(username=username, timezone=timezone)
     session.add(user)

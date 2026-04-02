@@ -19,6 +19,7 @@ from app.schemas.imports import (
     WatchEventImportResponse,
 )
 from app.services.imports import WatchEventImportResult, WatchEventImportService
+from app.services.users import UserService
 
 router = APIRouter(
     prefix="/imports",
@@ -167,12 +168,17 @@ async def import_legacy_source_watch_events_upload(
         if input_schema == "legacy_backup":
             if user_id is None:
                 raise ValueError("user_id is required for input_schema=legacy_backup")
+            user = UserService.get_user_by_id(session, user_id)
+            user_timezone = user.timezone if user is not None else "UTC"
 
             preprocess = (
                 import_watch_events_script._build_mapped_rows_from_legacy_backup(
                     raw_rows,
                     user_id=user_id,
                     dry_run=dry_run,
+                    naive_datetime_timezone=(
+                        user_timezone if detected_format == "csv" else "UTC"
+                    ),
                 )
             )
             rows_for_validation = preprocess.mapped_rows

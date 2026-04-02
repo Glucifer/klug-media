@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import UTC, datetime, time
+from datetime import UTC, datetime, time, timedelta
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -42,6 +42,7 @@ class HorrorfestImportService:
         matched_count = 0
         updated_count = 0
         error_count = 0
+        unmatched_rows: list[dict] = []
 
         for row in rows:
             watch_event = HorrorfestImportService._match_watch_event(
@@ -51,6 +52,16 @@ class HorrorfestImportService:
             )
             if watch_event is None:
                 error_count += 1
+                unmatched_rows.append(
+                    {
+                        "trakt_log_id": row.trakt_log_id,
+                        "tmdb_id": row.tmdb_id,
+                        "watched_at": row.watched_at.isoformat(),
+                        "watch_year": row.watch_year,
+                        "watch_order": row.watch_order,
+                        "alternate_version": row.alternate_version,
+                    }
+                )
                 continue
 
             matched_count += 1
@@ -73,6 +84,7 @@ class HorrorfestImportService:
             updated_count=updated_count,
             error_count=error_count,
             year_configs_created=year_configs_created,
+            unmatched_rows=unmatched_rows,
         )
 
     @staticmethod
@@ -133,7 +145,66 @@ class HorrorfestImportService:
         )
         if len(fallback_rows) == 1:
             return fallback_rows[0]
+
+        nearby_match = HorrorfestImportService._match_by_nearby_local_date(
+            session,
+            user_id=user_id,
+            row=row,
+        )
+        if nearby_match is not None:
+            return nearby_match
+
+        ordered_match = HorrorfestImportService._match_by_year_watch_order(
+            session,
+            user_id=user_id,
+            row=row,
+        )
+        if ordered_match is not None:
+            return ordered_match
         return None
+
+    @staticmethod
+    def _match_by_nearby_local_date(
+        session: Session,
+        *,
+        user_id: UUID,
+        row: HorrorfestPreserveRow,
+    ):
+        candidates: dict[UUID, object] = {}
+        for offset in (-1, 1):
+            candidate_date = row.watched_at + timedelta(days=offset)
+            nearby_rows = watch_event_repository.list_user_movie_watch_events_by_tmdb_and_local_date(
+                session,
+                user_id=user_id,
+                tmdb_id=row.tmdb_id,
+                local_date=candidate_date,
+            )
+            for watch_event in nearby_rows:
+                candidates[watch_event.watch_id] = watch_event
+        if len(candidates) == 1:
+            return next(iter(candidates.values()))
+        return None
+
+    @staticmethod
+    def _match_by_year_watch_order(
+        session: Session,
+        *,
+        user_id: UUID,
+        row: HorrorfestPreserveRow,
+    ):
+        year_watch_events = watch_event_repository.list_user_movie_watch_events_by_local_year(
+            session,
+            user_id=user_id,
+            local_year=row.watch_year,
+        )
+        target_index = row.watch_order - 1
+        if target_index < 0 or target_index >= len(year_watch_events):
+            return None
+        candidate = year_watch_events[target_index]
+        media_item = getattr(candidate, "media_item", None)
+        if media_item is None or media_item.tmdb_id != row.tmdb_id:
+            return None
+        return candidate
 
     @staticmethod
     def _apply_preserved_horrorfest_metadata(

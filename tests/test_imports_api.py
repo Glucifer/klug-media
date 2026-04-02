@@ -2,11 +2,22 @@ from datetime import UTC, datetime
 import json
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 
+from app.core.auth import require_request_auth
 from app.main import app
 from app.scripts.import_watch_events import LegacyBackupPreprocessResult
 from app.services.imports import WatchEventImportResult, WatchEventImportService
+
+
+@pytest.fixture(autouse=True)
+def _bypass_import_auth() -> None:
+    app.dependency_overrides[require_request_auth] = lambda: None
+    try:
+        yield
+    finally:
+        app.dependency_overrides.pop(require_request_auth, None)
 
 
 def test_import_watch_events_returns_summary(monkeypatch) -> None:
@@ -162,7 +173,7 @@ def test_import_legacy_source_watch_events_upload_endpoint(monkeypatch) -> None:
 
     monkeypatch.setattr(
         "app.api.imports.import_watch_events_script._build_mapped_rows_from_legacy_backup",
-        lambda _rows, *, user_id, dry_run: LegacyBackupPreprocessResult(
+        lambda _rows, *, user_id, dry_run, naive_datetime_timezone="UTC": LegacyBackupPreprocessResult(
             mapped_rows=[
                 {
                     "user_id": str(user_id),
@@ -210,6 +221,77 @@ def test_import_legacy_source_watch_events_upload_endpoint(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["status"] == "dry_run"
+
+
+def test_import_upload_legacy_csv_uses_user_timezone_for_naive_timestamps(
+    monkeypatch,
+) -> None:
+    expected_result = WatchEventImportResult(
+        import_batch_id=uuid4(),
+        status="dry_run",
+        dry_run=True,
+        processed_count=1,
+        inserted_count=1,
+        skipped_count=0,
+        collision_deduped_count=0,
+        error_count=0,
+        rejected_before_import=0,
+    )
+
+    class DummyUser:
+        timezone = "America/Edmonton"
+
+    monkeypatch.setattr(
+        "app.api.imports.UserService.get_user_by_id",
+        lambda _session, _user_id: DummyUser(),
+    )
+
+    def fake_build(_rows, *, user_id, dry_run, naive_datetime_timezone):
+        assert naive_datetime_timezone == "America/Edmonton"
+        return LegacyBackupPreprocessResult(
+            mapped_rows=[
+                {
+                    "user_id": str(user_id),
+                    "media_item_id": str(uuid4()),
+                    "watched_at": "1969-12-31T17:00:00-07:00",
+                    "player": "legacy_backup",
+                }
+            ],
+            rejected_rows=[],
+            media_items_created=0,
+            shows_created=0,
+        )
+
+    monkeypatch.setattr(
+        "app.api.imports.import_watch_events_script._build_mapped_rows_from_legacy_backup",
+        fake_build,
+    )
+    monkeypatch.setattr(
+        WatchEventImportService,
+        "run_legacy_source_import",
+        lambda _session, *, payload: expected_result,
+    )
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/imports/watch-events/legacy-source/upload",
+        data={
+            "input_schema": "legacy_backup",
+            "file_format": "csv",
+            "mode": "bootstrap",
+            "dry_run": "true",
+            "user_id": str(uuid4()),
+        },
+        files={
+            "input_file": (
+                "history.csv",
+                "watched_at,type,title,tmdb_id\n1969-12-31T17:00:00,movie,Test Movie,123\n",
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200
 
 
 def test_import_upload_legacy_backup_requires_user_id() -> None:

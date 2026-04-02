@@ -54,6 +54,8 @@ const importCopyDetail = document.getElementById("import-copy-detail");
 const importDownloadErrors = document.getElementById("import-download-errors");
 const importDetail = document.getElementById("import-detail");
 const historyMediaType = document.getElementById("history-media-type");
+const historyLocalDateFrom = document.getElementById("history-local-date-from");
+const historyLocalDateTo = document.getElementById("history-local-date-to");
 const historyIncludeDeleted = document.getElementById("history-include-deleted");
 const historyLimitSelect = document.getElementById("history-limit");
 const historyApply = document.getElementById("history-apply");
@@ -1264,6 +1266,12 @@ function buildHistoryQuery() {
   if (historyMediaType.value) {
     params.set("media_type", historyMediaType.value);
   }
+  if (historyLocalDateFrom.value) {
+    params.set("local_date_from", historyLocalDateFrom.value);
+  }
+  if (historyLocalDateTo.value) {
+    params.set("local_date_to", historyLocalDateTo.value);
+  }
   if (historyIncludeDeleted.checked) {
     params.set("include_deleted", "true");
   }
@@ -1771,6 +1779,16 @@ historyApply.addEventListener("click", async () => {
 });
 
 historyMediaType.addEventListener("change", async () => {
+  historyOffset = 0;
+  await loadHistory();
+});
+
+historyLocalDateFrom.addEventListener("change", async () => {
+  historyOffset = 0;
+  await loadHistory();
+});
+
+historyLocalDateTo.addEventListener("change", async () => {
   historyOffset = 0;
   await loadHistory();
 });

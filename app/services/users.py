@@ -15,6 +15,10 @@ class UserService:
         return user_repository.list_users(session)
 
     @staticmethod
+    def get_user_by_id(session: Session, user_id) -> User | None:
+        return user_repository.get_user_by_id(session, user_id)
+
+    @staticmethod
     def create_user(session: Session, username: str, timezone: str = "UTC") -> User:
         normalized_username = username.strip()
         if not normalized_username:
