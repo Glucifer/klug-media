@@ -185,6 +185,43 @@ def test_run_preserve_import_falls_back_to_year_watch_order(monkeypatch) -> None
     assert result.error_count == 0
 
 
+def test_run_preserve_import_records_apply_failure_without_aborting(monkeypatch) -> None:
+    session = Mock()
+    watch_event = Mock(watch_id=uuid4())
+
+    monkeypatch.setattr(
+        "app.services.horrorfest_import.HorrorfestService.list_years",
+        lambda *_args, **_kwargs: [{"horrorfest_year": 2012}],
+    )
+    monkeypatch.setattr(
+        "app.services.horrorfest_import.watch_event_repository.find_user_watch_event_by_source_event_id",
+        lambda *_args, **_kwargs: watch_event,
+    )
+    monkeypatch.setattr(
+        HorrorfestImportService,
+        "_apply_preserved_horrorfest_metadata",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            ValueError("Watch event watched_at must fall inside the configured Horrorfest year window")
+        ),
+    )
+
+    result = HorrorfestImportService.run_preserve_import(
+        session,
+        user_id=uuid4(),
+        rows=[_row()],
+        dry_run=False,
+        updated_by="import",
+    )
+
+    assert result.matched_count == 1
+    assert result.updated_count == 0
+    assert result.error_count == 1
+    assert result.unmatched_rows[0]["reason"] == (
+        "Watch event watched_at must fall inside the configured Horrorfest year window"
+    )
+    session.rollback.assert_called_once()
+
+
 def test_run_preserve_import_creates_missing_year_configs_in_dry_run(monkeypatch) -> None:
     session = Mock()
 

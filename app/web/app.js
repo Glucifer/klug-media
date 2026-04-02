@@ -1091,12 +1091,13 @@ function populateHorrorfestDetail(row) {
   horrorfestTargetOrder.value = row.watch_order || "";
 }
 
-async function loadHorrorfestYears() {
+async function loadHorrorfestYears(preferredYear = null) {
   const response = await api("/api/v1/horrorfest/years");
   if (!response.ok) {
     throw new Error("Failed to load Horrorfest years");
   }
   horrorfestYears = await response.json();
+  const previousSelection = preferredYear || horrorfestYearSelect.value;
   horrorfestYearSelect.innerHTML = "";
   if (!horrorfestYears.length) {
     const option = document.createElement("option");
@@ -1112,7 +1113,12 @@ async function loadHorrorfestYears() {
     option.textContent = `${yearRow.horrorfest_year} (${yearRow.entry_count} watches)`;
     horrorfestYearSelect.appendChild(option);
   }
-  if (!horrorfestYearSelect.value) {
+  const matchingSelection = horrorfestYears.find(
+    (item) => String(item.horrorfest_year) === previousSelection
+  );
+  if (matchingSelection) {
+    horrorfestYearSelect.value = previousSelection;
+  } else if (!horrorfestYearSelect.value) {
     horrorfestYearSelect.value = String(horrorfestYears[0].horrorfest_year);
   }
   const selectedYear =
@@ -1124,13 +1130,13 @@ async function loadHorrorfestYears() {
   return selectedYear;
 }
 
-async function loadHorrorfest() {
+async function loadHorrorfest(preferredYear = null) {
   horrorfestStatus.textContent = "Loading Horrorfest years...";
   horrorfestBody.innerHTML = "";
   horrorfestRows = [];
   selectedHorrorfestEntryId = null;
   try {
-    const selectedYear = await loadHorrorfestYears();
+    const selectedYear = await loadHorrorfestYears(preferredYear);
     if (!selectedYear) {
       horrorfestStatus.textContent = "No Horrorfest years configured yet";
       horrorfestDetailStatus.textContent = "Configure a year to begin using Horrorfest.";
@@ -1854,11 +1860,12 @@ horrorfestRefresh.addEventListener("click", async () => {
 });
 
 horrorfestYearSelect.addEventListener("change", async () => {
+  const selectedYearValue = horrorfestYearSelect.value;
   const selected = horrorfestYears.find(
-    (item) => String(item.horrorfest_year) === horrorfestYearSelect.value
+    (item) => String(item.horrorfest_year) === selectedYearValue
   );
   populateHorrorfestYearConfig(selected || null);
-  await loadHorrorfest();
+  await loadHorrorfest(selectedYearValue);
 });
 
 horrorfestIncludeRemoved.addEventListener("change", async () => {

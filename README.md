@@ -27,7 +27,20 @@ The goal is complete ownership of watch history, metadata, analytics, and integr
 
 ## Project Status
 
-Phase 1 backend scaffolding is in progress.
+Klug Media is now at a personal-use `v1` milestone.
+The current system is usable for day-to-day tracking without direct database edits, with the intentionally minimal dashboard acting as the operator UI.
+
+Core v1 workflows now include:
+
+- full watch-history import from legacy JSON/CSV exports
+- live Kodi scrobbling through Node-RED/Home Assistant
+- manual watch entry for off-Kodi viewing
+- TMDB-first metadata enrichment
+- ratings and per-watch version/runtime overrides
+- Horrorfest yearly overlay management
+- manual watch correction and soft delete/restore
+- basic dashboard stats, recent history, and operator troubleshooting views
+
 The repository currently includes:
 
 - FastAPI app entrypoint
@@ -40,7 +53,7 @@ The repository currently includes:
 - Stats endpoints for dashboard summaries and monthly/Horrorfest rollups
 - Config wiring via `pydantic-settings`
 - SQLAlchemy engine/session module
-- Alembic migrations through `0012_add_horrorfest_overlay`
+- Alembic migrations through `0013_filter_deleted_from_watch_event_enriched`
 
 ## Architecture Direction
 
@@ -50,7 +63,7 @@ The repository currently includes:
 - `app/db/` for database session and models
 - `app/schemas/` for request/response DTOs
 
-## Planned Integrations
+## Planned / Post-v1 Integrations
 
 - TMDB metadata sync
 - Jellyfin webhook sync
@@ -125,6 +138,14 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8010
 For this environment, Klug runs on the Windows host at `172.20.1.10:8010`.
 That allows Docker-hosted services on `172.20.1.20` such as Node-RED and Home Assistant to reach the API over the LAN.
 
+If Windows reserves `8010` after an OS update and you hit `WinError 10013`, run on `8210` instead:
+
+```bash
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8210
+```
+
+If you change the port, update the Node-RED/Home Assistant target URL to match.
+
 6. Run tests:
 ```bash
 uv run pytest -q
@@ -159,6 +180,11 @@ uv run python -m app.scripts.import_horrorfest --input ./v_horrorfest_trakt_pres
 Dry run example:
 ```bash
 uv run python -m app.scripts.import_horrorfest --input ./v_horrorfest_trakt_preserve_export.csv --user-id <your-user-uuid> --dry-run
+```
+
+Dry run with unmatched-row report:
+```bash
+uv run python -m app.scripts.import_horrorfest --input ./v_horrorfest_trakt_preserve_export.csv --user-id <your-user-uuid> --dry-run --error-report ./horrorfest_unmatched.json
 ```
 
 10. Backfill episode `show_id` links for older data:
@@ -220,3 +246,14 @@ V1 manual entry is intentionally rough but usable from the existing dashboard or
 - optional TMDB episode id can be included as a validation check
 
 Episode note: TMDB does not provide episode-detail lookup by episode id alone, so Klug uses the canonical local episode identity of `show_tmdb_id + season + episode`.
+
+## V1 Notes
+
+This `v1` milestone is focused on operational correctness, importability, and long-term personal use rather than polished browsing UX.
+
+Current expectations:
+
+- the dashboard is an operator/admin surface, not a consumer-ready frontend
+- manual corrections are expected for some legacy-history edge cases
+- Horrorfest imports may require curation of old historical rows where the original source data was incomplete or wrong
+- TMDB enrichment is intentionally ID-first and avoids fuzzy title matching wherever possible

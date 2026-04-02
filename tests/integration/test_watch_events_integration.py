@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.models.entities import MediaItem, User, WatchEvent
@@ -112,3 +113,47 @@ def test_list_watch_events_applies_user_local_date_filters(
     payload_utc_day_only = response_utc_day_only.json()
     assert len(payload_utc_day_only) == 1
     assert payload_utc_day_only[0]["watched_at"] == "2026-01-02T09:00:00Z"
+
+
+def test_watch_event_enriched_excludes_soft_deleted_rows(
+    integration_session_factory: sessionmaker[Session],
+) -> None:
+    session = integration_session_factory()
+    user = User(username="view-user")
+    media_item = MediaItem(type="movie", title="Visible Movie")
+    session.add_all([user, media_item])
+    session.flush()
+
+    kept_event = WatchEvent(
+        user_id=user.user_id,
+        media_item_id=media_item.media_item_id,
+        watched_at=datetime.fromisoformat("2026-01-03T05:00:00+00:00"),
+        playback_source="integration",
+        completed=True,
+        is_deleted=False,
+    )
+    deleted_event = WatchEvent(
+        user_id=user.user_id,
+        media_item_id=media_item.media_item_id,
+        watched_at=datetime.fromisoformat("2026-01-04T05:00:00+00:00"),
+        playback_source="integration",
+        completed=True,
+        is_deleted=True,
+    )
+    session.add_all([kept_event, deleted_event])
+    session.commit()
+
+    rows = session.execute(
+        text(
+            """
+            SELECT watch_id
+            FROM app.watch_event_enriched
+            WHERE user_id = :user_id
+            ORDER BY watched_at
+            """
+        ),
+        {"user_id": str(user.user_id)},
+    ).scalars().all()
+    session.close()
+
+    assert rows == [kept_event.watch_id]

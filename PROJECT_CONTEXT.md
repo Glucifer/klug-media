@@ -59,6 +59,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - v1 manual movie entry resolves by TMDB movie id
   - v1 manual episode entry resolves by TMDB show id + season + episode; an optional TMDB episode id can be supplied as a validation check, but TMDB does not support episode-detail lookup by episode id alone
   - default watch history and show-progress reads now exclude soft-deleted watch events
+  - `app.watch_event_enriched` now also excludes soft-deleted rows so downstream view consumers match active watch history behavior
   - completed, unrated watch events can now be listed and rated through `/api/v1/watch-events/unrated` and `/api/v1/watch-events/{watch_id}/rate`
   - watch-specific version and runtime overrides can now be set manually through `/api/v1/watch-events/{watch_id}/version`
 - Horrorfest overlay:
@@ -108,6 +109,27 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - scrobble activity operator view
   - metadata enrichment operator queue with process/retry actions
 
+## V1 Status
+- Klug Media is now at a personal-use v1 milestone.
+- Real history CSV import has been validated against the user's merged export and now:
+  - handles BOM-prefixed headers
+  - treats flat CSV naive timestamps as user-local time
+  - prefers `matchkey` as per-watch `source_event_id`
+  - processes oldest-first so `rewatch` is calculated correctly
+  - records skipped rows into `import_batch_error` as informational batch detail
+- Preserved Horrorfest import has been validated against the user's legacy export and now:
+  - supports multi-country legacy rows
+  - provides unmatched-row error reports
+  - uses deterministic fallback matching beyond exact source-event/date matches
+  - continues past per-row year-window failures and reports them instead of aborting the full run
+- The minimal frontend is sufficient for v1 operations, including:
+  - import review
+  - watch correction
+  - manual entry
+  - Horrorfest curation
+  - scrobble debugging
+  - ratings and basic stats
+
 ## What Is Not Implemented Yet (or only partial)
 - Production-grade frontend UI (current page is intentionally minimal).
 - Full watch-history browsing UX polish (sorting/search/column customization, richer metadata views).
@@ -147,10 +169,14 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Development environment is Windows-native using the Codex desktop app and `uv`.
 - Prefer guidance that remains valid across sessions; update temporary goal notes when they materially change.
 - If adding temporary session notes here, keep them short and remove or refresh them once they become stale.
+- Local Codex MCP setup:
+  - A local `postgres` MCP server is configured in Codex and verified working against `klug_local`.
+  - Prefer the MCP database tools for schema inspection and query work when available in-session.
 - Local network topology for current dev setup:
   - Klug API runs on the Windows host at `172.20.1.10`
   - PostgreSQL, Home Assistant, and Node-RED run on `172.20.1.20`
   - Preferred dev bind/port for Klug is `0.0.0.0:8010` so container-hosted services can reach it without colliding with an existing service on port `8000`
+  - After a recent Windows update, TCP port `8010` may be in an excluded port range on this machine; `8210` is a working fallback dev port when `8010` fails with `WinError 10013`
 - Node-RED collector notes:
   - Flow tab: `Kodi Scrobbler`
   - The current flow reads flow env vars first, then falls back to Node-RED global values for:
@@ -164,12 +190,13 @@ Purpose: quick rehydration file after context compaction so work can resume with
 ## 🛠 Status Dashboard
 - [x] Backend Core (FastAPI)
 - [x] Auth (Session-based)
-- [/] Import Logic (Watch-events - 80% complete)
-- [ ] Production UI (Minimal state)
-- [/] External Metadata Sync (TMDB-first operator queue in place)
+- [x] Import Logic (watch history + preserved Horrorfest flow validated on real data)
+- [ ] Production UI (Minimal state by design for v1)
+- [x] External Metadata Sync (TMDB-first operator queue in place and validated on real data)
 
 ## Canonical Dev Commands
 - Run API: `uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8010`
+- Alternate run API if Windows reserves 8010: `uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8210`
 - Run tests: `uv run pytest -q`
 - Run lint: `uv run ruff check app tests`
 - Run integration tests (PowerShell): `$env:KLUG_TEST_DATABASE_URL="..."; uv run pytest -q tests/integration`

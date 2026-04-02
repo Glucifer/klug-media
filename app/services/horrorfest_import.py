@@ -53,14 +53,10 @@ class HorrorfestImportService:
             if watch_event is None:
                 error_count += 1
                 unmatched_rows.append(
-                    {
-                        "trakt_log_id": row.trakt_log_id,
-                        "tmdb_id": row.tmdb_id,
-                        "watched_at": row.watched_at.isoformat(),
-                        "watch_year": row.watch_year,
-                        "watch_order": row.watch_order,
-                        "alternate_version": row.alternate_version,
-                    }
+                    HorrorfestImportService._build_error_row(
+                        row=row,
+                        reason="no_matching_watch_event",
+                    )
                 )
                 continue
 
@@ -69,12 +65,24 @@ class HorrorfestImportService:
                 updated_count += 1
                 continue
 
-            changed = HorrorfestImportService._apply_preserved_horrorfest_metadata(
-                session,
-                watch_id=watch_event.watch_id,
-                row=row,
-                updated_by=normalized_updated_by,
-            )
+            try:
+                changed = HorrorfestImportService._apply_preserved_horrorfest_metadata(
+                    session,
+                    watch_id=watch_event.watch_id,
+                    row=row,
+                    updated_by=normalized_updated_by,
+                )
+            except ValueError as exc:
+                session.rollback()
+                error_count += 1
+                unmatched_rows.append(
+                    HorrorfestImportService._build_error_row(
+                        row=row,
+                        reason=str(exc),
+                        watch_id=str(watch_event.watch_id),
+                    )
+                )
+                continue
             if changed:
                 updated_count += 1
 
@@ -266,3 +274,21 @@ class HorrorfestImportService:
             return None, None
         runtime_minutes = row.runtime_used
         return HorrorfestImportService.VERSION_NAME_MAP.get(alt, "Alternate Version"), runtime_minutes
+
+    @staticmethod
+    def _build_error_row(
+        *,
+        row: HorrorfestPreserveRow,
+        reason: str,
+        watch_id: str | None = None,
+    ) -> dict:
+        return {
+            "trakt_log_id": row.trakt_log_id,
+            "tmdb_id": row.tmdb_id,
+            "watched_at": row.watched_at.isoformat(),
+            "watch_year": row.watch_year,
+            "watch_order": row.watch_order,
+            "alternate_version": row.alternate_version,
+            "reason": reason,
+            "watch_id": watch_id,
+        }
