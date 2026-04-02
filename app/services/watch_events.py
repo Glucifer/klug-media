@@ -46,6 +46,7 @@ class WatchEventService:
         watched_before: datetime | None,
         local_date_from: date | None,
         local_date_to: date | None,
+        query: str | None,
         media_type: Literal["movie", "show", "episode"] | None,
         include_deleted: bool,
         deleted_only: bool,
@@ -54,6 +55,7 @@ class WatchEventService:
     ) -> list[dict[str, object]]:
         safe_limit = max(1, min(limit, 100))
         safe_offset = max(0, offset)
+        normalized_query = query.strip() if query else None
         return watch_event_repository.list_watch_events(
             session,
             user_id=user_id,
@@ -62,6 +64,7 @@ class WatchEventService:
             watched_before=watched_before,
             local_date_from=local_date_from,
             local_date_to=local_date_to,
+            query=normalized_query or None,
             media_type=media_type,
             include_deleted=include_deleted,
             deleted_only=deleted_only,

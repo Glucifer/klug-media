@@ -7,6 +7,7 @@ from uuid import UUID
 from app.db.models.entities import MediaItem
 from app.core.config import get_settings
 from app.repositories import media_items as media_item_repository
+from app.repositories import watch_events as watch_event_repository
 
 
 class MediaItemAlreadyExistsError(Exception):
@@ -112,6 +113,80 @@ class MediaItemService:
     @staticmethod
     def get_media_item(session: Session, *, media_item_id: UUID) -> MediaItem | None:
         return media_item_repository.get_media_item(session, media_item_id=media_item_id)
+
+    @staticmethod
+    def get_media_item_detail(
+        session: Session,
+        *,
+        media_item_id: UUID,
+        user_id: UUID | None,
+        recent_watch_limit: int = 8,
+    ) -> dict[str, object] | None:
+        media_row = media_item_repository.get_media_item_with_show(
+            session,
+            media_item_id=media_item_id,
+        )
+        if media_row is None:
+            return None
+
+        media_item, show = media_row
+        watch_summary = media_item_repository.get_media_item_watch_summary(
+            session,
+            media_item_id=media_item_id,
+            user_id=user_id,
+        )
+        recent_watches = watch_event_repository.list_watch_events(
+            session,
+            user_id=user_id,
+            media_item_id=media_item_id,
+            watched_after=None,
+            watched_before=None,
+            local_date_from=None,
+            local_date_to=None,
+            query=None,
+            media_type=None,
+            include_deleted=False,
+            deleted_only=False,
+            limit=max(1, min(recent_watch_limit, 25)),
+            offset=0,
+        )
+
+        return {
+            "media_item_id": media_item.media_item_id,
+            "type": media_item.type,
+            "title": media_item.title,
+            "year": media_item.year,
+            "summary": media_item.summary,
+            "poster_url": media_item.poster_url,
+            "release_date": media_item.release_date,
+            "tmdb_id": media_item.tmdb_id,
+            "imdb_id": media_item.imdb_id,
+            "tvdb_id": media_item.tvdb_id,
+            "show_tmdb_id": media_item.show_tmdb_id,
+            "season_number": media_item.season_number,
+            "episode_number": media_item.episode_number,
+            "metadata_source": media_item.metadata_source,
+            "metadata_updated_at": media_item.metadata_updated_at,
+            "base_runtime_seconds": media_item.base_runtime_seconds,
+            "enrichment_status": media_item.enrichment_status,
+            "enrichment_error": media_item.enrichment_error,
+            "enrichment_attempted_at": media_item.enrichment_attempted_at,
+            "created_at": media_item.created_at,
+            "show": (
+                {
+                    "show_id": show.show_id,
+                    "title": show.title,
+                    "year": show.year,
+                    "tmdb_id": show.tmdb_id,
+                    "tvdb_id": show.tvdb_id,
+                    "imdb_id": show.imdb_id,
+                }
+                if show is not None
+                else None
+            ),
+            **watch_summary,
+            "recent_watches": recent_watches,
+        }
 
     @staticmethod
     def list_media_items_for_enrichment(

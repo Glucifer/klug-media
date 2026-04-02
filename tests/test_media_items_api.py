@@ -96,3 +96,71 @@ def test_create_media_item_duplicate_returns_409(monkeypatch) -> None:
 
     assert response.status_code == 409
     assert response.json()["detail"] == "Duplicate media reference"
+
+
+def test_get_media_item_detail_returns_movie_detail(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    media_item = DummyMediaItem(media_type="movie", title="Alien")
+
+    def fake_get_media_item_detail(_session, **kwargs):
+        assert kwargs["media_item_id"] == media_item.media_item_id
+        return {
+            "media_item_id": media_item.media_item_id,
+            "type": "movie",
+            "title": media_item.title,
+            "year": media_item.year,
+            "summary": "Space horror classic",
+            "poster_url": None,
+            "release_date": None,
+            "tmdb_id": media_item.tmdb_id,
+            "imdb_id": media_item.imdb_id,
+            "tvdb_id": media_item.tvdb_id,
+            "show_tmdb_id": None,
+            "season_number": None,
+            "episode_number": None,
+            "metadata_source": "tmdb",
+            "metadata_updated_at": None,
+            "base_runtime_seconds": 7020,
+            "enrichment_status": "enriched",
+            "enrichment_error": None,
+            "enrichment_attempted_at": None,
+            "created_at": media_item.created_at,
+            "show": None,
+            "watch_count": 2,
+            "completed_watch_count": 2,
+            "latest_watch_at": datetime.now(UTC),
+            "latest_rating_value": None,
+            "latest_rating_scale": None,
+            "recent_watches": [],
+        }
+
+    monkeypatch.setattr(
+        MediaItemService,
+        "get_media_item_detail",
+        fake_get_media_item_detail,
+    )
+
+    client = TestClient(app)
+    response = client.get(f"/api/v1/media-items/{media_item.media_item_id}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["title"] == "Alien"
+    assert payload["watch_count"] == 2
+    assert payload["enrichment_status"] == "enriched"
+
+
+def test_get_media_item_detail_returns_404(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    monkeypatch.setattr(
+        MediaItemService,
+        "get_media_item_detail",
+        lambda *_args, **_kwargs: None,
+    )
+
+    media_item_id = uuid4()
+    client = TestClient(app)
+    response = client.get(f"/api/v1/media-items/{media_item_id}")
+
+    assert response.status_code == 404
+    assert str(media_item_id) in response.json()["detail"]

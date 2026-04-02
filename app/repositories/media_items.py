@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.db.models.entities import MediaItem
+from app.db.models.entities import MediaItem, Show, WatchEvent
 
 
 def list_media_items(session: Session) -> list[MediaItem]:
@@ -145,6 +145,62 @@ def find_show_media_item_by_tmdb_id(
 def get_media_item(session: Session, *, media_item_id) -> MediaItem | None:
     statement = select(MediaItem).where(MediaItem.media_item_id == media_item_id)
     return session.scalar(statement)
+
+
+def get_media_item_with_show(
+    session: Session, *, media_item_id
+) -> tuple[MediaItem, Show | None] | None:
+    statement = (
+        select(MediaItem, Show)
+        .outerjoin(Show, MediaItem.show_id == Show.show_id)
+        .where(MediaItem.media_item_id == media_item_id)
+    )
+    return session.execute(statement).first()
+
+
+def get_media_item_watch_summary(
+    session: Session,
+    *,
+    media_item_id,
+    user_id=None,
+) -> dict[str, object]:
+    statement = select(
+        func.count(WatchEvent.watch_id),
+        func.coalesce(
+            func.sum(case((WatchEvent.completed.is_(True), 1), else_=0)),
+            0,
+        ),
+        func.max(WatchEvent.watched_at),
+    ).where(
+        WatchEvent.media_item_id == media_item_id,
+        WatchEvent.is_deleted.is_(False),
+    )
+    if user_id is not None:
+        statement = statement.where(WatchEvent.user_id == user_id)
+    row = session.execute(statement).one()
+
+    latest_rating_statement = (
+        select(WatchEvent.rating_value, WatchEvent.rating_scale)
+        .where(
+            WatchEvent.media_item_id == media_item_id,
+            WatchEvent.is_deleted.is_(False),
+            WatchEvent.rating_value.is_not(None),
+        )
+        .order_by(WatchEvent.watched_at.desc(), WatchEvent.created_at.desc())
+        .limit(1)
+    )
+    if user_id is not None:
+        latest_rating_statement = latest_rating_statement.where(
+            WatchEvent.user_id == user_id
+        )
+    latest_rating = session.execute(latest_rating_statement).first()
+    return {
+        "watch_count": int(row[0] or 0),
+        "completed_watch_count": int(row[1] or 0),
+        "latest_watch_at": row[2],
+        "latest_rating_value": latest_rating[0] if latest_rating is not None else None,
+        "latest_rating_scale": latest_rating[1] if latest_rating is not None else None,
+    }
 
 
 def list_media_items_for_enrichment(

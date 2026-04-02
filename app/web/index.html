@@ -7,496 +7,309 @@
     <link rel="stylesheet" href="/web/styles.css" />
   </head>
   <body>
-    <div class="wrap">
-      <div class="card">
-        <h1>Klug Media</h1>
-        <p class="muted">Session-based frontend smoke page</p>
-        <div id="auth-status" class="muted">Checking session...</div>
-        <div class="ops-strip">
-          <span id="ops-health" class="muted">API Health: checking...</span>
-          <span id="ops-auth-mode" class="muted">Auth Mode: unknown</span>
-          <span id="ops-session" class="muted">Session: unknown</span>
-          <span id="ops-last-refresh" class="muted">Last Refresh: not yet</span>
+    <div class="shell-root">
+      <div id="login-card" class="auth-shell hidden">
+        <div class="auth-card">
+          <p class="eyebrow">Klug Media</p>
+          <h1>Operator Login</h1>
+          <p class="muted">Personal media tracking, enrichment, and Horrorfest curation.</p>
+          <form id="login-form">
+            <input id="password" type="password" placeholder="Session password" required />
+            <button type="submit">Login</button>
+          </form>
+          <p id="login-error" class="error"></p>
         </div>
       </div>
 
-      <div id="login-card" class="card hidden">
-        <h2>Login</h2>
-        <form id="login-form">
-          <input id="password" type="password" placeholder="Session password" required />
-          <button type="submit">Login</button>
-        </form>
-        <p id="login-error" class="error"></p>
-      </div>
+      <div id="app-card" class="app-shell hidden">
+        <aside class="app-sidebar">
+          <div class="sidebar-brand">
+            <img class="sidebar-logo" src="/web/klug-logo-k-mark.png" alt="Klug Media logo" />
+            <p class="eyebrow brand-kicker">Klug Media</p>
+            <h1>v1 Control Center</h1>
+            <p class="muted">Daily browsing, stats, and admin tools.</p>
+          </div>
+          <nav class="sidebar-nav">
+            <button class="nav-link active" data-view-target="dashboard" type="button">Dashboard</button>
+            <button class="nav-link" data-view-target="history" type="button">History</button>
+            <button class="nav-link" data-view-target="horrorfest" type="button">Horrorfest</button>
+            <button class="nav-link" data-view-target="shows" type="button">Shows</button>
+            <button class="nav-link" data-view-target="admin" type="button">Admin</button>
+          </nav>
+          <div class="sidebar-footer">
+            <button id="theme-toggle" class="secondary" type="button">Switch Theme</button>
+            <span id="ops-auth-mode" class="muted">Auth Mode: unknown</span>
+            <span id="ops-session" class="muted">Session: unknown</span>
+          </div>
+        </aside>
 
-      <div id="app-card" class="card hidden">
-        <div class="row">
-          <button id="refresh-data">Refresh Data</button>
-          <button id="logout-btn" class="secondary">Logout</button>
-        </div>
+        <main class="shell-main">
+          <header class="app-header">
+            <div>
+              <p class="eyebrow">Personal Media Tracker</p>
+              <h2>Own your watch history without one giant page.</h2>
+              <p id="auth-status" class="muted">Checking session...</p>
+            </div>
+            <div class="header-actions">
+              <button id="refresh-data" type="button">Refresh Data</button>
+              <button id="logout-btn" class="secondary" type="button">Logout</button>
+            </div>
+            <div class="ops-strip">
+              <span id="ops-health" class="muted">API Health: checking...</span>
+              <span id="ops-last-refresh" class="muted">Last Refresh: not yet</span>
+            </div>
+          </header>
 
-        <h2 style="margin-top: 18px">Import Watch History</h2>
-        <form id="import-form">
-          <input
-            id="import-file"
-            type="file"
-            accept=".json,.csv,application/json,text/csv"
-            required
-          />
-          <input id="import-user-id" type="text" placeholder="User UUID (required for legacy backup)" />
-          <select id="import-mode">
-            <option value="bootstrap">Bootstrap</option>
-            <option value="incremental">Incremental</option>
-          </select>
-          <label class="checkbox">
-            <input id="import-dry-run" type="checkbox" checked />
-            Dry Run
-          </label>
-          <label class="checkbox">
-            <input id="import-resume" type="checkbox" />
-            Resume From Latest
-          </label>
-          <button id="import-use-latest-cursor" type="button" class="secondary">
-            Use Latest Cursor
-          </button>
-          <button id="import-submit" type="submit">Run Import</button>
-        </form>
-        <p id="import-status" class="muted">No import started.</p>
-        <p id="import-cursor-before" class="muted">Cursor before: none</p>
-        <p id="import-cursor-after" class="muted">Cursor after: none</p>
-        <p id="import-last-cursor" class="muted">Last successful local cursor: none</p>
-        <pre id="import-summary" class="code-block"></pre>
-        <p id="import-errors-status" class="muted"></p>
-        <ul id="import-errors-list"></ul>
+          <section class="view-panel" data-view="dashboard">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Overview</p>
+                <h2>Dashboard</h2>
+              </div>
+              <div class="section-actions">
+                <button class="secondary" data-jump-view="history" type="button">Open History</button>
+                <button class="secondary" data-jump-view="horrorfest" type="button">Open Horrorfest</button>
+                <button class="secondary" data-jump-view="admin" data-jump-admin="enrichment" type="button">Open Enrichment</button>
+              </div>
+            </div>
+            <section class="section-card">
+              <h3>Stats Snapshot</h3>
+              <p id="stats-status" class="muted">Loading stats...</p>
+              <div id="stats-summary-cards" class="stats-grid"></div>
+            </section>
+            <div class="dashboard-grid">
+              <section class="section-card">
+                <h3>Monthly Timeline</h3>
+                <table><thead><tr><th>Month</th><th>Watches</th><th>Movies</th><th>Episodes</th><th>Rewatches</th><th>Rated</th><th>Runtime (hrs)</th><th>Avg Rating</th></tr></thead><tbody id="stats-monthly-body"></tbody></table>
+              </section>
+              <section class="section-card">
+                <h3>Horrorfest Annual Stats</h3>
+                <table><thead><tr><th>Year</th><th>Entries</th><th>Runtime (hrs)</th><th>Avg Rating</th><th>Rated</th><th>Rewatches</th><th>First Watch</th><th>Latest Watch</th></tr></thead><tbody id="stats-horrorfest-body"></tbody></table>
+              </section>
+              <section class="section-card">
+                <div class="section-headline"><h3>Recent Watches</h3><button class="secondary" data-jump-view="history" type="button">Browse All</button></div>
+                <p id="dashboard-history-status" class="muted">Loading recent watches...</p>
+                <table><thead><tr><th>Watched</th><th>Title</th><th>Source</th><th>Signals</th></tr></thead><tbody id="dashboard-history-body"></tbody></table>
+              </section>
+              <section class="section-card">
+                <div class="section-headline"><h3>Unrated Queue</h3><button class="secondary" data-jump-view="history" type="button">Rate Watches</button></div>
+                <p id="dashboard-ratings-status" class="muted">Loading unrated queue...</p>
+                <table><thead><tr><th>Watched</th><th>Title</th><th>Source</th></tr></thead><tbody id="dashboard-ratings-body"></tbody></table>
+              </section>
+              <section class="section-card">
+                <div class="section-headline"><h3>Enrichment Watchlist</h3><button class="secondary" data-jump-view="admin" data-jump-admin="enrichment" type="button">Open Queue</button></div>
+                <p id="dashboard-enrichment-status" class="muted">Loading enrichment watchlist...</p>
+                <table><thead><tr><th>Title</th><th>Type</th><th>Status</th><th>Next Action</th></tr></thead><tbody id="dashboard-enrichment-body"></tbody></table>
+              </section>
+            </div>
+          </section>
 
-        <h2 style="margin-top: 18px">Manual Watch Add</h2>
-        <form id="manual-watch-form">
-          <input id="manual-watch-user-id" type="text" placeholder="User UUID" required />
-          <input id="manual-watch-watched-at" type="datetime-local" required />
-          <input id="manual-watch-playback-source" type="text" placeholder="blu_ray, theatre, streaming" required />
-          <select id="manual-watch-media-type">
-            <option value="movie">Movie</option>
-            <option value="episode">Episode</option>
-          </select>
-          <input id="manual-watch-tmdb-id" type="number" min="1" placeholder="Movie TMDB ID" />
-          <input id="manual-watch-show-tmdb-id" type="number" min="1" placeholder="Episode Show TMDB ID" />
-          <input id="manual-watch-tmdb-episode-id" type="number" min="1" placeholder="Episode TMDB ID (optional validation)" />
-          <input id="manual-watch-season-number" type="number" min="1" placeholder="Season" />
-          <input id="manual-watch-episode-number" type="number" min="1" placeholder="Episode" />
-          <select id="manual-watch-rating-value">
-            <option value="">No rating</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-            <option value="6">6</option>
-            <option value="7">7</option>
-            <option value="8">8</option>
-            <option value="9">9</option>
-            <option value="10">10</option>
-          </select>
-          <input id="manual-watch-created-by" type="text" placeholder="created by (optional)" />
-          <label class="checkbox">
-            <input id="manual-watch-completed" type="checkbox" checked />
-            Completed
-          </label>
-          <button id="manual-watch-submit" type="submit">Add Watch</button>
-        </form>
-        <p id="manual-watch-status" class="muted">No manual watch submitted.</p>
-        <pre id="manual-watch-detail" class="code-block"></pre>
+          <section class="view-panel hidden" data-view="history">
+            <div class="section-header"><div><p class="eyebrow">Daily Use</p><h2>History</h2></div></div>
+            <div class="split-layout">
+              <section class="section-card section-primary">
+                <h3>Recent Watch History</h3>
+                <p id="history-status" class="muted">Loading history...</p>
+                <div class="toolbar-grid">
+                  <label for="history-query">Title Search</label><input id="history-query" type="search" placeholder="Search by movie, show, or episode title" />
+                  <label for="history-media-type">Media Type</label><select id="history-media-type"><option value="">All</option><option value="movie">Movie</option><option value="show">Show</option><option value="episode">Episode</option></select>
+                  <label for="history-local-date-from">From</label><input id="history-local-date-from" type="date" />
+                  <label for="history-local-date-to">To</label><input id="history-local-date-to" type="date" />
+                  <label class="checkbox"><input id="history-include-deleted" type="checkbox" />Include Deleted</label>
+                  <label for="history-limit">Rows</label><select id="history-limit"><option value="10">10</option><option value="25">25</option><option value="50">50</option></select>
+                  <button id="history-apply" class="secondary" type="button">Apply</button>
+                </div>
+                <table class="history-table"><thead><tr><th><button class="table-sort active" data-history-sort="watched_at" type="button">Watched At</button></th><th><button class="table-sort" data-history-sort="title" type="button">Title</button></th><th><button class="table-sort" data-history-sort="rating" type="button">Rating</button></th><th>Type</th><th>Source</th><th>Status</th></tr></thead><tbody id="history-body"></tbody></table>
+                <div class="pagination-row"><button id="history-prev" class="secondary" type="button">Previous</button><span id="history-page" class="muted">Page 1</span><button id="history-next" class="secondary" type="button">Next</button></div>
+              </section>
+              <aside class="section-card sticky-card">
+                <h3>Watch Correction</h3>
+                <p id="history-detail-status" class="muted">Select a watch event to inspect or correct.</p>
+                <div class="button-cluster"><button id="history-open-media" class="secondary" type="button" disabled>Open Media Detail</button></div>
+                <div id="history-detail" class="detail-stack"></div>
+                <div class="toolbar-grid">
+                  <label for="history-editor-updated-by">Updated By</label><input id="history-editor-updated-by" type="text" placeholder="operator name" />
+                  <label for="history-editor-reason">Reason</label><input id="history-editor-reason" type="text" placeholder="optional reason" />
+                  <label for="history-editor-watched-at">Watched At</label><input id="history-editor-watched-at" type="datetime-local" />
+                  <label for="history-editor-media-item-id">Media Item ID</label><input id="history-editor-media-item-id" type="text" placeholder="media item uuid" />
+                  <label for="history-editor-version-name">Version Name</label><input id="history-editor-version-name" type="text" placeholder="Default, Director's Cut, Uncut" />
+                  <label for="history-editor-runtime-minutes">Runtime Minutes</label><input id="history-editor-runtime-minutes" type="number" min="1" max="1000" />
+                </div>
+                <div class="toggle-row"><label class="checkbox"><input id="history-editor-completed" type="checkbox" />Completed</label><label class="checkbox"><input id="history-editor-rewatch" type="checkbox" />Rewatch</label></div>
+                <div class="button-cluster"><button id="history-save" class="secondary" type="button">Save Correction</button><button id="history-save-version" class="secondary" type="button">Save Version</button><button id="history-clear-version" class="secondary" type="button">Clear Version</button><button id="history-delete" class="secondary" type="button">Soft Delete</button><button id="history-restore" class="secondary" type="button">Restore</button></div>
+              </aside>
+            </div>
+            <section class="section-card">
+              <h3>Recently Watched Not Rated</h3>
+              <p id="ratings-status" class="muted">Loading unrated watches...</p>
+              <div class="toolbar-inline"><label for="ratings-limit">Rows</label><select id="ratings-limit"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select><button id="ratings-apply" class="secondary" type="button">Apply</button></div>
+              <div class="split-layout compact-split">
+                <div class="section-primary"><table><thead><tr><th>Watched At</th><th>Title</th><th>Source</th><th>Action</th></tr></thead><tbody id="ratings-body"></tbody></table></div>
+                <aside class="sticky-card">
+                  <p id="ratings-detail-status" class="muted">Select an unrated watch to rate it.</p>
+                  <div class="toolbar-grid"><label for="ratings-updated-by">Updated By</label><input id="ratings-updated-by" type="text" placeholder="operator name" /><label for="ratings-reason">Reason</label><input id="ratings-reason" type="text" placeholder="optional reason" /><label for="ratings-value">Rating</label><select id="ratings-value"><option value="">Choose</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select></div>
+                  <div class="button-cluster"><button id="ratings-save" class="secondary" type="button">Save Rating</button></div>
+                  <pre id="ratings-detail" class="code-block"></pre>
+                </aside>
+              </div>
+            </section>
+          </section>
 
-        <h2 style="margin-top: 18px">Import History</h2>
-        <div class="row">
-          <label for="import-history-status-filter">Status</label>
-          <select id="import-history-status-filter">
-            <option value="">All</option>
-            <option value="running">running</option>
-            <option value="completed">completed</option>
-            <option value="completed_with_errors">completed_with_errors</option>
-            <option value="failed">failed</option>
-          </select>
-          <button id="import-history-clear-filter" type="button" class="secondary">
-            Clear Filter
-          </button>
-        </div>
-        <p id="import-history-status" class="muted">Loading import history...</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Started</th>
-              <th>Status</th>
-              <th>Source</th>
-              <th>Inserted</th>
-              <th>Errors</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="import-history-body"></tbody>
-        </table>
-        <p id="import-detail-status" class="muted">Select an import batch to view details.</p>
-        <div class="row">
-          <button id="import-copy-detail" type="button" class="secondary" disabled>
-            Copy Detail JSON
-          </button>
-          <button id="import-download-errors" type="button" class="secondary" disabled>
-            Download Errors JSON
-          </button>
-        </div>
-        <pre id="import-detail" class="code-block"></pre>
+          <section class="view-panel hidden" data-view="horrorfest">
+            <div class="section-header"><div><p class="eyebrow">Annual Challenge</p><h2>Horrorfest</h2></div></div>
+            <div class="split-layout">
+              <section class="section-card section-primary">
+                <h3>Yearly Browsing</h3>
+                <p id="horrorfest-status" class="muted">Loading Horrorfest years...</p>
+                <p id="horrorfest-year-summary" class="muted">Select a year to inspect its ordered challenge log.</p>
+                <div id="horrorfest-year-metrics" class="stats-grid compact-stats"></div>
+                <div class="toolbar-inline"><label for="horrorfest-year-select">Year</label><select id="horrorfest-year-select"></select><label class="checkbox"><input id="horrorfest-include-removed" type="checkbox" />Include Removed</label><button id="horrorfest-refresh" class="secondary" type="button">Refresh</button></div>
+                <table class="horrorfest-table"><thead><tr><th>Order</th><th>Title</th><th>Watched</th><th>Signals</th><th>Runtime</th><th>Status</th></tr></thead><tbody id="horrorfest-body"></tbody></table>
+              </section>
+              <aside class="section-card sticky-card">
+                <h3>Year Curation</h3>
+                <p id="horrorfest-detail-status" class="muted">Select a Horrorfest row to inspect or correct.</p>
+                <div class="toolbar-grid"><label for="horrorfest-updated-by">Updated By</label><input id="horrorfest-updated-by" type="text" placeholder="operator name" /><label for="horrorfest-reason">Reason</label><input id="horrorfest-reason" type="text" placeholder="optional reason" /><label for="horrorfest-target-order">Target Order</label><input id="horrorfest-target-order" type="number" min="1" max="10000" /><label for="horrorfest-include-watch-id">Include Watch ID</label><input id="horrorfest-include-watch-id" type="text" placeholder="watch uuid" /></div>
+                <div class="button-cluster"><button id="horrorfest-move" class="secondary" type="button">Move Entry</button><button id="horrorfest-remove" class="secondary" type="button">Remove</button><button id="horrorfest-restore" class="secondary" type="button">Restore</button><button id="horrorfest-include" class="secondary" type="button">Include Watch</button></div>
+                <pre id="horrorfest-detail" class="code-block"></pre>
+                <div class="section-divider"></div>
+                <h3>Year Config</h3>
+                <div class="toolbar-grid"><label for="horrorfest-config-year">Year</label><input id="horrorfest-config-year" type="number" min="1900" max="9999" /><label for="horrorfest-config-label">Label</label><input id="horrorfest-config-label" type="text" placeholder="Horrorfest 2026" /><label for="horrorfest-config-start">Window Start</label><input id="horrorfest-config-start" type="datetime-local" /><label for="horrorfest-config-end">Window End</label><input id="horrorfest-config-end" type="datetime-local" /><label for="horrorfest-config-notes">Notes</label><input id="horrorfest-config-notes" type="text" placeholder="optional notes" /></div>
+                <div class="toggle-row"><label class="checkbox"><input id="horrorfest-config-active" type="checkbox" checked />Active</label></div>
+                <div class="button-cluster"><button id="horrorfest-config-save" class="secondary" type="button">Save Year</button></div>
+              </aside>
+            </div>
+          </section>
 
-        <h2>Shows</h2>
-        <p id="shows-status" class="muted">Loading shows...</p>
-        <ul id="show-list"></ul>
-        <h2 style="margin-top: 18px">Progress</h2>
-        <p id="progress-status" class="muted">Loading progress...</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Show</th>
-              <th>Watched</th>
-              <th>Total</th>
-              <th>Percent</th>
-            </tr>
-          </thead>
-          <tbody id="progress-body"></tbody>
-        </table>
+          <section class="view-panel hidden" data-view="shows">
+            <div class="section-header"><div><p class="eyebrow">Library Pulse</p><h2>Shows</h2></div></div>
+            <div class="split-layout">
+              <section class="section-card section-primary">
+                <h3>Tracked Shows</h3>
+                <p id="shows-status" class="muted">Loading shows...</p>
+                <ul id="show-list" class="show-list show-list-cards"></ul>
+                <div class="section-divider"></div>
+                <h3>Progress</h3>
+                <p id="progress-status" class="muted">Loading progress...</p>
+                <table><thead><tr><th>Show</th><th>Watched</th><th>Total</th><th>Percent</th></tr></thead><tbody id="progress-body"></tbody></table>
+              </section>
+              <aside id="detail-card" class="section-card sticky-card hidden">
+                <h3 id="detail-title">Show Detail</h3>
+                <p id="detail-progress" class="muted"></p>
+                <p id="detail-status" class="muted">Select a show to load details.</p>
+                <div id="detail-summary" class="detail-stack"></div>
+                <ul id="episode-list" class="episode-list"></ul>
+              </aside>
+            </div>
+          </section>
 
-        <h2 style="margin-top: 18px">Stats</h2>
-        <p id="stats-status" class="muted">Loading stats...</p>
-        <div id="stats-summary-cards" class="stats-grid"></div>
-        <h3 style="margin-top: 18px">Monthly Timeline</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Month</th>
-              <th>Watches</th>
-              <th>Movies</th>
-              <th>Episodes</th>
-              <th>Rewatches</th>
-              <th>Rated</th>
-              <th>Runtime (hrs)</th>
-              <th>Avg Rating</th>
-            </tr>
-          </thead>
-          <tbody id="stats-monthly-body"></tbody>
-        </table>
-        <h3 style="margin-top: 18px">Horrorfest Annual Stats</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Year</th>
-              <th>Entries</th>
-              <th>Runtime (hrs)</th>
-              <th>Avg Rating</th>
-              <th>Rated</th>
-              <th>Rewatches</th>
-              <th>First Watch</th>
-              <th>Latest Watch</th>
-            </tr>
-          </thead>
-          <tbody id="stats-horrorfest-body"></tbody>
-        </table>
+          <section class="view-panel hidden" data-view="admin">
+            <div class="section-header"><div><p class="eyebrow">Operator Tools</p><h2>Admin Workspace</h2></div></div>
+            <div class="admin-nav">
+              <button class="admin-link active" data-admin-view-target="imports" type="button">Imports</button>
+              <button class="admin-link" data-admin-view-target="manual" type="button">Manual Add</button>
+              <button class="admin-link" data-admin-view-target="scrobbler" type="button">Scrobbler</button>
+              <button class="admin-link" data-admin-view-target="enrichment" type="button">Enrichment</button>
+            </div>
 
-        <h2 style="margin-top: 18px">Recent Watch History</h2>
-        <div class="row">
-          <label for="history-media-type">Media Type</label>
-          <select id="history-media-type">
-            <option value="">All</option>
-            <option value="movie">Movie</option>
-            <option value="show">Show</option>
-            <option value="episode">Episode</option>
-          </select>
-          <label for="history-local-date-from">From</label>
-          <input id="history-local-date-from" type="date" />
-          <label for="history-local-date-to">To</label>
-          <input id="history-local-date-to" type="date" />
-          <label class="checkbox">
-            <input id="history-include-deleted" type="checkbox" />
-            Include Deleted
-          </label>
-          <label for="history-limit">Rows</label>
-          <select id="history-limit">
-            <option value="10">10</option>
-            <option value="25">25</option>
-            <option value="50">50</option>
-          </select>
-          <button id="history-apply" class="secondary">Apply</button>
-        </div>
-        <p id="history-status" class="muted">Loading history...</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Watched At</th>
-              <th>Title</th>
-              <th>Type</th>
-              <th>Source</th>
-              <th>Completed</th>
-              <th>Progress</th>
-            </tr>
-          </thead>
-          <tbody id="history-body"></tbody>
-        </table>
-        <div class="row">
-          <button id="history-prev" class="secondary">Previous</button>
-          <button id="history-next" class="secondary">Next</button>
-          <span id="history-page" class="muted">Page 1</span>
-        </div>
-        <p id="history-detail-status" class="muted">Select a watch event to inspect or correct.</p>
-        <div class="row">
-          <label for="history-editor-updated-by">Updated By</label>
-          <input id="history-editor-updated-by" type="text" placeholder="operator name" />
-          <label for="history-editor-reason">Reason</label>
-          <input id="history-editor-reason" type="text" placeholder="optional reason" />
-        </div>
-        <div class="row">
-          <label for="history-editor-watched-at">Watched At</label>
-          <input id="history-editor-watched-at" type="datetime-local" />
-          <label for="history-editor-media-item-id">Media Item ID</label>
-          <input id="history-editor-media-item-id" type="text" placeholder="media item uuid" />
-        </div>
-        <div class="row">
-          <label for="history-editor-version-name">Version Name</label>
-          <input id="history-editor-version-name" type="text" placeholder="Default/Theatrical, Director's Cut, Uncut" />
-          <label for="history-editor-runtime-minutes">Runtime Minutes</label>
-          <input id="history-editor-runtime-minutes" type="number" min="1" max="1000" />
-        </div>
-        <div class="row">
-          <label class="checkbox">
-            <input id="history-editor-completed" type="checkbox" />
-            Completed
-          </label>
-          <label class="checkbox">
-            <input id="history-editor-rewatch" type="checkbox" />
-            Rewatch
-          </label>
-          <button id="history-save" class="secondary" type="button">Save Correction</button>
-          <button id="history-save-version" class="secondary" type="button">Save Version</button>
-          <button id="history-clear-version" class="secondary" type="button">Clear Version</button>
-          <button id="history-delete" class="secondary" type="button">Soft Delete</button>
-          <button id="history-restore" class="secondary" type="button">Restore</button>
-        </div>
-        <pre id="history-detail" class="code-block"></pre>
+            <section class="admin-panel" data-admin-view="imports">
+              <div class="section-card">
+                <h3>Import Watch History</h3>
+                <form id="import-form">
+                  <input id="import-file" type="file" accept=".json,.csv,application/json,text/csv" required />
+                  <input id="import-user-id" type="text" placeholder="User UUID (required for legacy backup)" />
+                  <select id="import-mode"><option value="bootstrap">Bootstrap</option><option value="incremental">Incremental</option></select>
+                  <label class="checkbox"><input id="import-dry-run" type="checkbox" checked />Dry Run</label>
+                  <label class="checkbox"><input id="import-resume" type="checkbox" />Resume From Latest</label>
+                  <button id="import-use-latest-cursor" type="button" class="secondary">Use Latest Cursor</button>
+                  <button id="import-submit" type="submit">Run Import</button>
+                </form>
+                <p id="import-status" class="muted">No import started.</p>
+                <p id="import-cursor-before" class="muted">Cursor before: none</p>
+                <p id="import-cursor-after" class="muted">Cursor after: none</p>
+                <p id="import-last-cursor" class="muted">Last successful local cursor: none</p>
+                <pre id="import-summary" class="code-block"></pre>
+                <p id="import-errors-status" class="muted"></p>
+                <ul id="import-errors-list"></ul>
+              </div>
+              <div class="split-layout">
+                <section class="section-card section-primary">
+                  <h3>Import History</h3>
+                  <p id="import-history-status" class="muted">Loading import history...</p>
+                  <div class="toolbar-inline"><label for="import-history-status-filter">Status</label><select id="import-history-status-filter"><option value="">All</option><option value="running">running</option><option value="completed">completed</option><option value="completed_with_errors">completed_with_errors</option><option value="failed">failed</option></select><button id="import-history-clear-filter" type="button" class="secondary">Clear Filter</button></div>
+                  <table><thead><tr><th>Started</th><th>Status</th><th>Source</th><th>Inserted</th><th>Errors</th><th>Action</th></tr></thead><tbody id="import-history-body"></tbody></table>
+                </section>
+                <aside class="section-card sticky-card">
+                  <h3>Import Detail</h3>
+                  <p id="import-detail-status" class="muted">Select an import batch to view details.</p>
+                  <div class="button-cluster"><button id="import-copy-detail" type="button" class="secondary" disabled>Copy Detail JSON</button><button id="import-download-errors" type="button" class="secondary" disabled>Download Errors JSON</button></div>
+                  <pre id="import-detail" class="code-block"></pre>
+                </aside>
+              </div>
+            </section>
 
-        <h2 style="margin-top: 18px">Recently Watched Not Rated</h2>
-        <div class="row">
-          <label for="ratings-limit">Rows</label>
-          <select id="ratings-limit">
-            <option value="10">10</option>
-            <option value="25" selected>25</option>
-            <option value="50">50</option>
-          </select>
-          <button id="ratings-apply" class="secondary">Apply</button>
-        </div>
-        <p id="ratings-status" class="muted">Loading unrated watches...</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Watched At</th>
-              <th>Title</th>
-              <th>Source</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="ratings-body"></tbody>
-        </table>
-        <p id="ratings-detail-status" class="muted">Select an unrated watch to rate it.</p>
-        <div class="row">
-          <label for="ratings-updated-by">Updated By</label>
-          <input id="ratings-updated-by" type="text" placeholder="operator name" />
-          <label for="ratings-reason">Reason</label>
-          <input id="ratings-reason" type="text" placeholder="optional reason" />
-        </div>
-        <div class="row">
-          <label for="ratings-value">Rating</label>
-          <select id="ratings-value">
-            <option value="">Choose</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-            <option value="6">6</option>
-            <option value="7">7</option>
-            <option value="8">8</option>
-            <option value="9">9</option>
-            <option value="10">10</option>
-          </select>
-          <button id="ratings-save" class="secondary" type="button">Save Rating</button>
-        </div>
-        <pre id="ratings-detail" class="code-block"></pre>
+            <section class="admin-panel hidden" data-admin-view="manual">
+              <div class="section-card">
+                <h3>Manual Watch Add</h3>
+                <form id="manual-watch-form">
+                  <input id="manual-watch-user-id" type="text" placeholder="User UUID" required />
+                  <input id="manual-watch-watched-at" type="datetime-local" required />
+                  <input id="manual-watch-playback-source" type="text" placeholder="blu_ray, theatre, streaming" required />
+                  <select id="manual-watch-media-type"><option value="movie">Movie</option><option value="episode">Episode</option></select>
+                  <input id="manual-watch-tmdb-id" type="number" min="1" placeholder="Movie TMDB ID" />
+                  <input id="manual-watch-show-tmdb-id" type="number" min="1" placeholder="Episode Show TMDB ID" />
+                  <input id="manual-watch-tmdb-episode-id" type="number" min="1" placeholder="Episode TMDB ID (optional validation)" />
+                  <input id="manual-watch-season-number" type="number" min="1" placeholder="Season" />
+                  <input id="manual-watch-episode-number" type="number" min="1" placeholder="Episode" />
+                  <select id="manual-watch-rating-value"><option value="">No rating</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select>
+                  <input id="manual-watch-created-by" type="text" placeholder="created by (optional)" />
+                  <label class="checkbox"><input id="manual-watch-completed" type="checkbox" checked />Completed</label>
+                  <button id="manual-watch-submit" type="submit">Add Watch</button>
+                </form>
+                <p id="manual-watch-status" class="muted">No manual watch submitted.</p>
+                <pre id="manual-watch-detail" class="code-block"></pre>
+              </div>
+            </section>
 
-        <h2 style="margin-top: 18px">Horrorfest</h2>
-        <div class="row">
-          <label for="horrorfest-year-select">Year</label>
-          <select id="horrorfest-year-select"></select>
-          <label class="checkbox">
-            <input id="horrorfest-include-removed" type="checkbox" />
-            Include Removed
-          </label>
-          <button id="horrorfest-refresh" class="secondary">Refresh</button>
-        </div>
-        <p id="horrorfest-status" class="muted">Loading Horrorfest years...</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Order</th>
-              <th>Watched At</th>
-              <th>Title</th>
-              <th>Rating</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="horrorfest-body"></tbody>
-        </table>
-        <p id="horrorfest-detail-status" class="muted">Select a Horrorfest row to inspect or correct.</p>
-        <div class="row">
-          <label for="horrorfest-updated-by">Updated By</label>
-          <input id="horrorfest-updated-by" type="text" placeholder="operator name" />
-          <label for="horrorfest-reason">Reason</label>
-          <input id="horrorfest-reason" type="text" placeholder="optional reason" />
-        </div>
-        <div class="row">
-          <label for="horrorfest-target-order">Target Order</label>
-          <input id="horrorfest-target-order" type="number" min="1" max="10000" />
-          <label for="horrorfest-include-watch-id">Include Watch ID</label>
-          <input id="horrorfest-include-watch-id" type="text" placeholder="watch uuid" />
-        </div>
-        <div class="row">
-          <button id="horrorfest-move" class="secondary" type="button">Move Entry</button>
-          <button id="horrorfest-remove" class="secondary" type="button">Remove</button>
-          <button id="horrorfest-restore" class="secondary" type="button">Restore</button>
-          <button id="horrorfest-include" class="secondary" type="button">Include Watch</button>
-        </div>
-        <pre id="horrorfest-detail" class="code-block"></pre>
-        <h3 style="margin-top: 18px">Year Config</h3>
-        <div class="row">
-          <label for="horrorfest-config-year">Year</label>
-          <input id="horrorfest-config-year" type="number" min="1900" max="9999" />
-          <label for="horrorfest-config-label">Label</label>
-          <input id="horrorfest-config-label" type="text" placeholder="Horrorfest 2026" />
-        </div>
-        <div class="row">
-          <label for="horrorfest-config-start">Window Start</label>
-          <input id="horrorfest-config-start" type="datetime-local" />
-          <label for="horrorfest-config-end">Window End</label>
-          <input id="horrorfest-config-end" type="datetime-local" />
-        </div>
-        <div class="row">
-          <label for="horrorfest-config-notes">Notes</label>
-          <input id="horrorfest-config-notes" type="text" placeholder="optional notes" />
-          <label class="checkbox">
-            <input id="horrorfest-config-active" type="checkbox" checked />
-            Active
-          </label>
-          <button id="horrorfest-config-save" class="secondary" type="button">Save Year</button>
-        </div>
+            <section class="admin-panel hidden" data-admin-view="scrobbler">
+              <div class="section-card">
+                <h3>Scrobble Activity</h3>
+                <p id="activity-status-text" class="muted">Loading scrobble activity...</p>
+                <div class="toolbar-grid"><label for="activity-source">Source</label><select id="activity-source"><option value="">All</option><option value="kodi">Kodi</option></select><label for="activity-status">Result</label><select id="activity-status"><option value="">All</option><option value="watch_event_created">Created</option><option value="recorded_only">Ignored</option><option value="duplicate_watch_event_skipped">Duplicate</option></select><label class="checkbox"><input id="activity-only-unmatched" type="checkbox" />Unmatched Only</label><label class="checkbox"><input id="activity-only-with-watch" type="checkbox" />With Watch Only</label><label for="activity-limit">Rows</label><select id="activity-limit"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select><button id="activity-apply" class="secondary" type="button">Apply</button></div>
+                <div class="split-layout">
+                  <div class="section-primary"><table><thead><tr><th>Time</th><th>User</th><th>Title</th><th>Source</th><th>Action</th><th>Matched Item</th><th>Result</th></tr></thead><tbody id="activity-body"></tbody></table><div class="pagination-row"><button id="activity-prev" class="secondary" type="button">Previous</button><span id="activity-page" class="muted">Page 1</span><button id="activity-next" class="secondary" type="button">Next</button></div></div>
+                  <aside class="sticky-card"><p id="activity-detail-status" class="muted">Select an activity row to inspect the raw payload.</p><pre id="activity-detail" class="code-block"></pre></aside>
+                </div>
+              </div>
+            </section>
 
-        <h2 style="margin-top: 18px">Scrobble Activity</h2>
-        <div class="row">
-          <label for="activity-source">Source</label>
-          <select id="activity-source">
-            <option value="">All</option>
-            <option value="kodi">Kodi</option>
-          </select>
-          <label for="activity-status">Result</label>
-          <select id="activity-status">
-            <option value="">All</option>
-            <option value="watch_event_created">Created</option>
-            <option value="recorded_only">Ignored</option>
-            <option value="duplicate_watch_event_skipped">Duplicate</option>
-          </select>
-          <label class="checkbox">
-            <input id="activity-only-unmatched" type="checkbox" />
-            Unmatched Only
-          </label>
-          <label class="checkbox">
-            <input id="activity-only-with-watch" type="checkbox" />
-            With Watch Only
-          </label>
-          <label for="activity-limit">Rows</label>
-          <select id="activity-limit">
-            <option value="10">10</option>
-            <option value="25" selected>25</option>
-            <option value="50">50</option>
-          </select>
-          <button id="activity-apply" class="secondary">Apply</button>
-        </div>
-        <p id="activity-status-text" class="muted">Loading scrobble activity...</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>User</th>
-              <th>Title</th>
-              <th>Source</th>
-              <th>Action</th>
-              <th>Matched Item</th>
-              <th>Result</th>
-            </tr>
-          </thead>
-          <tbody id="activity-body"></tbody>
-        </table>
-        <div class="row">
-          <button id="activity-prev" class="secondary">Previous</button>
-          <button id="activity-next" class="secondary">Next</button>
-          <span id="activity-page" class="muted">Page 1</span>
-        </div>
-        <p id="activity-detail-status" class="muted">Select an activity row to inspect the raw payload.</p>
-        <pre id="activity-detail" class="code-block"></pre>
+            <section class="admin-panel hidden" data-admin-view="enrichment">
+              <div class="section-card">
+                <h3>Metadata Enrichment</h3>
+                <p id="enrichment-status-text" class="muted">Loading metadata enrichment queue...</p>
+                <div class="toolbar-grid"><label for="enrichment-status-filter">Status</label><select id="enrichment-status-filter"><option value="">All</option><option value="pending">pending</option><option value="failed">failed</option><option value="skipped">skipped</option><option value="enriched">enriched</option></select><label class="checkbox"><input id="enrichment-missing-ids" type="checkbox" />Missing IDs Only</label><label for="enrichment-limit">Rows</label><select id="enrichment-limit"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option><option value="250">250</option><option value="500">500</option></select><button id="enrichment-apply" class="secondary" type="button">Apply</button><button id="enrichment-process-pending" class="secondary" type="button">Process Pending</button></div>
+                <div class="split-layout">
+                  <div class="section-primary"><table><thead><tr><th>Title</th><th>Type</th><th>IDs</th><th>Status</th><th>Metadata</th><th>Action</th></tr></thead><tbody id="enrichment-body"></tbody></table></div>
+                  <aside class="sticky-card"><p id="enrichment-detail-status" class="muted">Select a media item to inspect enrichment detail.</p><pre id="enrichment-detail" class="code-block"></pre></aside>
+                </div>
+              </div>
+            </section>
+          </section>
+        </main>
 
-        <h2 style="margin-top: 18px">Metadata Enrichment</h2>
-        <div class="row">
-          <label for="enrichment-status-filter">Status</label>
-          <select id="enrichment-status-filter">
-            <option value="">All</option>
-            <option value="pending">pending</option>
-            <option value="failed">failed</option>
-            <option value="skipped">skipped</option>
-            <option value="enriched">enriched</option>
-          </select>
-          <label class="checkbox">
-            <input id="enrichment-missing-ids" type="checkbox" />
-            Missing IDs Only
-          </label>
-          <label for="enrichment-limit">Rows</label>
-          <select id="enrichment-limit">
-            <option value="10">10</option>
-            <option value="25" selected>25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-            <option value="250">250</option>
-            <option value="500">500</option>
-          </select>
-          <button id="enrichment-apply" class="secondary">Apply</button>
-          <button id="enrichment-process-pending" class="secondary">Process Pending</button>
-        </div>
-        <p id="enrichment-status-text" class="muted">Loading metadata enrichment queue...</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Type</th>
-              <th>IDs</th>
-              <th>Status</th>
-              <th>Metadata</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="enrichment-body"></tbody>
-        </table>
-        <p id="enrichment-detail-status" class="muted">Select a media item to inspect enrichment detail.</p>
-        <pre id="enrichment-detail" class="code-block"></pre>
-      </div>
-
-      <div id="detail-card" class="card hidden">
-        <h2 id="detail-title">Show Detail</h2>
-        <p id="detail-progress" class="muted"></p>
-        <p id="detail-status" class="muted">Select a show to load details.</p>
-        <ul id="episode-list"></ul>
+        <aside id="media-panel" class="side-panel hidden" aria-live="polite">
+          <div class="side-panel-header">
+            <div>
+              <p class="eyebrow">Media Detail</p>
+              <h3 id="media-panel-title">Media Detail</h3>
+            </div>
+            <button id="media-panel-close" class="secondary" type="button">Close</button>
+          </div>
+          <p id="media-panel-status" class="muted">Select a watch or episode to inspect richer media detail.</p>
+          <div id="media-panel-body" class="detail-stack"></div>
+        </aside>
       </div>
     </div>
-
     <script src="/web/app.js" defer></script>
   </body>
 </html>

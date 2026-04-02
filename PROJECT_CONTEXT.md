@@ -90,24 +90,23 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - integration tests in `tests/integration/`
 - Import integration coverage exists for upload dry-run path.
 - Frontend page (`/`) now includes:
-  - session login/logout and auth status
-  - ops strip (API health, auth mode, session state, last refresh)
-  - watch history table with pagination/filtering
-  - watch history detail/editor panel for safe corrections and restore
+  - dark-first sidebar shell with persisted theme toggle
+  - client-side section switching for Dashboard, History, Horrorfest, Shows, and Admin
+  - dashboard previews for stats, recent watches, unrated queue, and enrichment watchlist
+  - watch history title search plus pagination/filtering and client-side sorting for watched time, title, and rating
+  - watch history detail rendered as grouped metadata sections plus a sticky correction panel
   - watch history version/runtime override controls for per-watch movie cuts
   - recently watched, unrated queue with 1-10 rating actions
-  - Horrorfest year configuration and ordered entry operator panel
-  - compact stats section with summary cards, monthly rollups, and Horrorfest annual summaries
+  - shared media side panel fed by `/api/v1/media-items/{media_item_id}` for richer movie/episode drilldown
+  - Horrorfest yearly browsing with per-year summary cards plus separate curation/year-config area
+  - shows/progress view with a cleaner sticky detail panel and episode-level media drilldown
+  - Admin workspace split into Imports, Manual Add, Scrobbler, and Enrichment subviews
   - import runner (file upload + mode/dry-run/resume options)
-  - manual watch add form for off-Kodi viewing
   - cursor visibility (`cursor_before`, `cursor_after`, local last cursor)
   - import batch history with status filter (persisted)
-  - import batch detail panel
-  - import error drilldown + JSON export
-  - import batch detail JSON copy action
-  - “reuse settings” from prior import batches
+  - import batch detail panel + JSON copy/export actions
   - scrobble activity operator view
-  - metadata enrichment operator queue with process/retry actions
+  - metadata enrichment operator queue with chunked batch processing progress
 
 ## V1 Status
 - Klug Media is now at a personal-use v1 milestone.
@@ -132,7 +131,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
 
 ## What Is Not Implemented Yet (or only partial)
 - Production-grade frontend UI (current page is intentionally minimal).
-- Full watch-history browsing UX polish (sorting/search/column customization, richer metadata views).
+- Full watch-history browsing UX polish beyond title search/sorting (advanced filters, column customization, broader library browsing).
 - Planned external sync integrations (metadata/webhooks/automation connectors) are not fully implemented.
 - Metadata enrichment exists in a first operator-focused form, but there is not yet a polished end-user metadata UI.
 - Scrobbler pipeline is only partially implemented: Kodi/Node-RED ingestion now exists, but richer session/resume handling and additional playback sources still need work.

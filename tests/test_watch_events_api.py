@@ -94,7 +94,7 @@ def test_list_watch_events_forwards_filters(monkeypatch) -> None:
 
     client = TestClient(app)
     response = client.get(
-        f"/api/v1/watch-events?user_id={event.user_id}&media_type=episode&limit=10&offset=5&local_date_from=2026-01-01&local_date_to=2026-01-02"
+        f"/api/v1/watch-events?user_id={event.user_id}&media_type=episode&limit=10&offset=5&local_date_from=2026-01-01&local_date_to=2026-01-02&query=alien"
     )
 
     assert response.status_code == 200
@@ -102,6 +102,7 @@ def test_list_watch_events_forwards_filters(monkeypatch) -> None:
     assert called["media_type"] == "episode"
     assert str(called["local_date_from"]) == "2026-01-01"
     assert str(called["local_date_to"]) == "2026-01-02"
+    assert called["query"] == "alien"
     assert called["include_deleted"] is False
     assert called["limit"] == 10
     assert called["offset"] == 5
@@ -128,6 +129,12 @@ def test_list_watch_events_forwards_include_deleted(monkeypatch) -> None:
 def test_list_watch_events_invalid_media_type_returns_422() -> None:
     client = TestClient(app)
     response = client.get("/api/v1/watch-events?media_type=bad")
+    assert response.status_code == 422
+
+
+def test_list_watch_events_rejects_empty_query() -> None:
+    client = TestClient(app)
+    response = client.get("/api/v1/watch-events?query=")
     assert response.status_code == 422
 
 

@@ -3,7 +3,7 @@ from typing import Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import Select, and_, extract, func, select
+from sqlalchemy import Select, and_, extract, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db.models.entities import (
@@ -46,6 +46,7 @@ def list_watch_events(
     watched_before: datetime | None,
     local_date_from: date | None,
     local_date_to: date | None,
+    query: str | None,
     media_type: Literal["movie", "show", "episode"] | None,
     include_deleted: bool,
     deleted_only: bool,
@@ -117,6 +118,14 @@ def list_watch_events(
         statement = statement.where(local_watch_date >= local_date_from)
     if local_date_to is not None:
         statement = statement.where(local_watch_date <= local_date_to)
+    if query is not None:
+        pattern = f"%{query}%"
+        statement = statement.where(
+            or_(
+                MediaItem.title.ilike(pattern),
+                Show.title.ilike(pattern),
+            )
+        )
 
     statement = (
         statement.order_by(WatchEvent.watched_at.desc()).offset(offset).limit(limit)

@@ -54,6 +54,7 @@ const importCopyDetail = document.getElementById("import-copy-detail");
 const importDownloadErrors = document.getElementById("import-download-errors");
 const importDetail = document.getElementById("import-detail");
 const historyMediaType = document.getElementById("history-media-type");
+const historyQuery = document.getElementById("history-query");
 const historyLocalDateFrom = document.getElementById("history-local-date-from");
 const historyLocalDateTo = document.getElementById("history-local-date-to");
 const historyIncludeDeleted = document.getElementById("history-include-deleted");
@@ -75,6 +76,7 @@ const historyEditorRuntimeMinutes = document.getElementById("history-editor-runt
 const historyEditorCompleted = document.getElementById("history-editor-completed");
 const historyEditorRewatch = document.getElementById("history-editor-rewatch");
 const historySave = document.getElementById("history-save");
+const historyOpenMedia = document.getElementById("history-open-media");
 const historySaveVersion = document.getElementById("history-save-version");
 const historyClearVersion = document.getElementById("history-clear-version");
 const historyDelete = document.getElementById("history-delete");
@@ -133,12 +135,33 @@ const enrichmentStatusText = document.getElementById("enrichment-status-text");
 const enrichmentBody = document.getElementById("enrichment-body");
 const enrichmentDetailStatus = document.getElementById("enrichment-detail-status");
 const enrichmentDetail = document.getElementById("enrichment-detail");
+const dashboardHistoryStatus = document.getElementById("dashboard-history-status");
+const dashboardHistoryBody = document.getElementById("dashboard-history-body");
+const dashboardRatingsStatus = document.getElementById("dashboard-ratings-status");
+const dashboardRatingsBody = document.getElementById("dashboard-ratings-body");
+const dashboardEnrichmentStatus = document.getElementById("dashboard-enrichment-status");
+const dashboardEnrichmentBody = document.getElementById("dashboard-enrichment-body");
+const horrorfestYearSummary = document.getElementById("horrorfest-year-summary");
 const refreshData = document.getElementById("refresh-data");
 const logoutBtn = document.getElementById("logout-btn");
+const themeToggle = document.getElementById("theme-toggle");
 const detailTitle = document.getElementById("detail-title");
 const detailProgress = document.getElementById("detail-progress");
 const detailStatus = document.getElementById("detail-status");
+const detailSummary = document.getElementById("detail-summary");
 const episodeList = document.getElementById("episode-list");
+const mediaPanel = document.getElementById("media-panel");
+const mediaPanelTitle = document.getElementById("media-panel-title");
+const mediaPanelStatus = document.getElementById("media-panel-status");
+const mediaPanelBody = document.getElementById("media-panel-body");
+const mediaPanelClose = document.getElementById("media-panel-close");
+const horrorfestYearMetrics = document.getElementById("horrorfest-year-metrics");
+const navButtons = Array.from(document.querySelectorAll("[data-view-target]"));
+const viewPanels = Array.from(document.querySelectorAll(".view-panel[data-view]"));
+const adminNavButtons = Array.from(document.querySelectorAll("[data-admin-view-target]"));
+const adminPanels = Array.from(document.querySelectorAll(".admin-panel[data-admin-view]"));
+const jumpButtons = Array.from(document.querySelectorAll("[data-jump-view]"));
+const historySortButtons = Array.from(document.querySelectorAll("[data-history-sort]"));
 
 const IMPORT_PREF_KEYS = {
   userId: "klug.import_user_id",
@@ -153,6 +176,12 @@ const MANUAL_WATCH_PREF_KEYS = {
   playbackSource: "klug.manual_watch_playback_source",
   createdBy: "klug.manual_watch_created_by",
 };
+const UI_PREF_KEYS = {
+  theme: "klug.ui_theme",
+  activeView: "klug.active_view",
+  activeAdminView: "klug.active_admin_view",
+  historyQuery: "klug.history_query",
+};
 const IMPORT_UPLOAD_MAX_MB = 25;
 const IMPORT_UPLOAD_MAX_BYTES = IMPORT_UPLOAD_MAX_MB * 1024 * 1024;
 
@@ -160,6 +189,8 @@ let historyOffset = 0;
 let historyLimit = Number.parseInt(historyLimitSelect.value, 10);
 let historyRows = [];
 let selectedHistoryId = null;
+let historySortKey = "watched_at";
+let historySortDirection = "desc";
 let ratingsLimit = Number.parseInt(ratingsLimitSelect.value, 10);
 let ratingsRows = [];
 let selectedRatingWatchId = null;
@@ -175,6 +206,11 @@ const importHistoryById = new Map();
 let importHistoryRows = [];
 let selectedImportBatchId = null;
 let selectedImportBatchDetail = null;
+let statsSummaryData = null;
+let statsMonthlyRowsData = [];
+let statsHorrorfestRowsData = [];
+let selectedShowDetail = null;
+let selectedMediaItemId = null;
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -185,6 +221,92 @@ async function api(path, options = {}) {
   return response;
 }
 
+function renderStatusChip(label, tone = "neutral") {
+  return `<span class="status-chip status-${tone}">${label}</span>`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function formatRuntimeHours(runtimeSeconds) {
+  if (!runtimeSeconds) {
+    return "-";
+  }
+  return `${formatDecimalValue(Number(runtimeSeconds) / 3600)}h`;
+}
+
+function formatRuntimeMinutes(runtimeSeconds) {
+  if (!runtimeSeconds) {
+    return "-";
+  }
+  return `${Math.round(Number(runtimeSeconds) / 60)} min`;
+}
+
+function renderDetailItems(items) {
+  return items
+    .map(
+      ([label, value]) => `
+        <div class="detail-item">
+          <div class="detail-label">${escapeHtml(label)}</div>
+          <div class="detail-value">${value === null || value === undefined || value === "" ? "-" : value}</div>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function initializeTheme() {
+  const savedTheme = window.localStorage.getItem(UI_PREF_KEYS.theme) || "dark";
+  document.documentElement.dataset.theme = savedTheme;
+  themeToggle.textContent =
+    savedTheme === "dark" ? "Switch to Light" : "Switch to Dark";
+}
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.dataset.theme || "dark";
+  const nextTheme = currentTheme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = nextTheme;
+  window.localStorage.setItem(UI_PREF_KEYS.theme, nextTheme);
+  themeToggle.textContent =
+    nextTheme === "dark" ? "Switch to Light" : "Switch to Dark";
+}
+
+function setActiveAdminView(viewName) {
+  const targetView = viewName || "imports";
+  for (const button of adminNavButtons) {
+    button.classList.toggle("active", button.dataset.adminViewTarget === targetView);
+  }
+  for (const panel of adminPanels) {
+    panel.classList.toggle("hidden", panel.dataset.adminView !== targetView);
+  }
+  window.localStorage.setItem(UI_PREF_KEYS.activeAdminView, targetView);
+}
+
+function setActiveView(viewName) {
+  const targetView = viewName || "dashboard";
+  for (const button of navButtons) {
+    button.classList.toggle("active", button.dataset.viewTarget === targetView);
+  }
+  for (const panel of viewPanels) {
+    panel.classList.toggle("hidden", panel.dataset.view !== targetView);
+  }
+  window.localStorage.setItem(UI_PREF_KEYS.activeView, targetView);
+}
+
+function initializeUiShell() {
+  initializeTheme();
+  historyQuery.value = window.localStorage.getItem(UI_PREF_KEYS.historyQuery) || "";
+  setActiveView(window.localStorage.getItem(UI_PREF_KEYS.activeView) || "dashboard");
+  setActiveAdminView(window.localStorage.getItem(UI_PREF_KEYS.activeAdminView) || "imports");
+  syncHistorySortUi();
+}
+
 function setAuthenticatedUI(authenticated, message) {
   authStatus.textContent = message;
   loginCard.classList.toggle("hidden", authenticated);
@@ -192,6 +314,7 @@ function setAuthenticatedUI(authenticated, message) {
   opsSession.textContent = `Session: ${authenticated ? "authenticated" : "not authenticated"}`;
   if (authenticated) {
     loadImportPreferences();
+    initializeUiShell();
   }
 }
 
@@ -277,6 +400,7 @@ async function loadDashboardData() {
     loadShows(),
     loadProgress(),
     loadStats(),
+    loadDashboardPreviews(),
     loadHistory(),
     loadUnratedWatches(),
     loadHorrorfest(),
@@ -321,6 +445,147 @@ function renderStatsSummaryCards(summary) {
   }
 }
 
+function renderDashboardEmptyRow(body, colspan, message) {
+  body.innerHTML = "";
+  const tr = document.createElement("tr");
+  tr.innerHTML = `<td colspan="${colspan}">${message}</td>`;
+  body.appendChild(tr);
+}
+
+async function loadDashboardRecentHistoryPreview() {
+  dashboardHistoryStatus.textContent = "Loading recent watches...";
+  try {
+    const response = await api("/api/v1/watch-events?limit=5&offset=0");
+    if (!response.ok) {
+      dashboardHistoryStatus.textContent = "Failed to load recent watches";
+      renderDashboardEmptyRow(dashboardHistoryBody, 4, "Recent watch preview unavailable");
+      return;
+    }
+    const rows = await response.json();
+    dashboardHistoryBody.innerHTML = "";
+    if (!rows.length) {
+      dashboardHistoryStatus.textContent = "No watch history yet";
+      renderDashboardEmptyRow(dashboardHistoryBody, 4, "No watch history yet");
+      return;
+    }
+    for (const row of rows) {
+      const tr = document.createElement("tr");
+      const title = row.display_title || row.media_item_title || row.media_item_id;
+      const signals = [
+        row.rating_value ? renderStatusChip(`${row.rating_value}/10`, "info") : "",
+        row.rewatch ? renderStatusChip("rewatch", "warning") : "",
+        row.horrorfest_year ? renderStatusChip(`HF ${row.horrorfest_year}`, "danger") : "",
+        row.is_deleted ? renderStatusChip("deleted", "neutral") : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      tr.innerHTML = `
+        <td>${new Date(row.watched_at).toLocaleDateString()}</td>
+        <td>${title}</td>
+        <td>${row.playback_source}</td>
+        <td>${signals || renderStatusChip("active", "success")}</td>
+      `;
+      dashboardHistoryBody.appendChild(tr);
+    }
+    dashboardHistoryStatus.textContent = `Showing ${rows.length} recent watch(es)`;
+  } catch (_error) {
+    dashboardHistoryStatus.textContent = "Failed to load recent watches";
+    renderDashboardEmptyRow(dashboardHistoryBody, 4, "Recent watch preview unavailable");
+  }
+}
+
+async function loadDashboardUnratedPreview() {
+  dashboardRatingsStatus.textContent = "Loading unrated queue...";
+  try {
+    const response = await api("/api/v1/watch-events/unrated?limit=5");
+    if (!response.ok) {
+      dashboardRatingsStatus.textContent = "Failed to load unrated queue";
+      renderDashboardEmptyRow(dashboardRatingsBody, 3, "Unrated queue unavailable");
+      return;
+    }
+    const rows = await response.json();
+    dashboardRatingsBody.innerHTML = "";
+    if (!rows.length) {
+      dashboardRatingsStatus.textContent = "No unrated completed watches";
+      renderDashboardEmptyRow(dashboardRatingsBody, 3, "Nothing waiting on ratings");
+      return;
+    }
+    for (const row of rows) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${new Date(row.watched_at).toLocaleDateString()}</td>
+        <td>${row.display_title || row.media_item_title || row.media_item_id}</td>
+        <td>${row.playback_source}</td>
+      `;
+      dashboardRatingsBody.appendChild(tr);
+    }
+    dashboardRatingsStatus.textContent = `Showing ${rows.length} unrated watch(es)`;
+  } catch (_error) {
+    dashboardRatingsStatus.textContent = "Failed to load unrated queue";
+    renderDashboardEmptyRow(dashboardRatingsBody, 3, "Unrated queue unavailable");
+  }
+}
+
+async function loadDashboardEnrichmentPreview() {
+  dashboardEnrichmentStatus.textContent = "Loading enrichment watchlist...";
+  try {
+    let response = await api("/api/v1/metadata-enrichment/items?enrichment_status=failed&limit=5");
+    let previewLabel = "failed";
+    if (!response.ok) {
+      dashboardEnrichmentStatus.textContent = "Failed to load enrichment watchlist";
+      renderDashboardEmptyRow(dashboardEnrichmentBody, 4, "Enrichment preview unavailable");
+      return;
+    }
+    let rows = await response.json();
+    if (!rows.length) {
+      response = await api("/api/v1/metadata-enrichment/items?enrichment_status=pending&limit=5");
+      previewLabel = "pending";
+      if (!response.ok) {
+        dashboardEnrichmentStatus.textContent = "Failed to load enrichment watchlist";
+        renderDashboardEmptyRow(dashboardEnrichmentBody, 4, "Enrichment preview unavailable");
+        return;
+      }
+      rows = await response.json();
+    }
+
+    dashboardEnrichmentBody.innerHTML = "";
+    if (!rows.length) {
+      dashboardEnrichmentStatus.textContent = "No pending or failed enrichment rows";
+      renderDashboardEmptyRow(dashboardEnrichmentBody, 4, "Enrichment queue is clear");
+      return;
+    }
+
+    for (const row of rows) {
+      const tr = document.createElement("tr");
+      const tone =
+        row.enrichment_status === "failed"
+          ? "danger"
+          : row.enrichment_status === "pending"
+            ? "warning"
+            : "info";
+      tr.innerHTML = `
+        <td>${row.title}</td>
+        <td>${row.type}</td>
+        <td>${renderStatusChip(row.enrichment_status, tone)}</td>
+        <td>${row.next_action || "-"}</td>
+      `;
+      dashboardEnrichmentBody.appendChild(tr);
+    }
+    dashboardEnrichmentStatus.textContent = `Showing ${previewLabel} enrichment rows`;
+  } catch (_error) {
+    dashboardEnrichmentStatus.textContent = "Failed to load enrichment watchlist";
+    renderDashboardEmptyRow(dashboardEnrichmentBody, 4, "Enrichment preview unavailable");
+  }
+}
+
+async function loadDashboardPreviews() {
+  await Promise.all([
+    loadDashboardRecentHistoryPreview(),
+    loadDashboardUnratedPreview(),
+    loadDashboardEnrichmentPreview(),
+  ]);
+}
+
 async function loadStats() {
   statsStatus.textContent = "Loading stats...";
   statsSummaryCards.innerHTML = "";
@@ -341,6 +606,9 @@ async function loadStats() {
       monthlyResponse.json(),
       horrorfestResponse.json(),
     ]);
+    statsSummaryData = summary;
+    statsMonthlyRowsData = monthlyRows;
+    statsHorrorfestRowsData = horrorfestRows;
 
     renderStatsSummaryCards(summary);
 
@@ -395,6 +663,8 @@ async function loadStats() {
 async function loadShows() {
   showsStatus.textContent = "Loading shows...";
   showList.innerHTML = "";
+  selectedShowDetail = null;
+  detailCard.classList.add("hidden");
   try {
     const response = await api("/api/v1/shows");
     if (!response.ok) {
@@ -411,7 +681,10 @@ async function loadShows() {
       const li = document.createElement("li");
       const button = document.createElement("button");
       button.className = "secondary";
-      button.textContent = `${show.title} (${show.year || "n/a"})`;
+      button.innerHTML = `
+        <span>${escapeHtml(show.title)}</span>
+        <span class="muted">${escapeHtml(show.year || "n/a")}</span>
+      `;
       button.onclick = () => loadShowDetail(show.show_id);
       li.appendChild(button);
       showList.appendChild(li);
@@ -455,6 +728,7 @@ async function loadShowDetail(showId) {
   detailStatus.textContent = "Loading detail...";
   detailCard.classList.remove("hidden");
   episodeList.innerHTML = "";
+  detailSummary.innerHTML = "";
   try {
     const response = await api(`/api/v1/shows/${showId}`);
     if (!response.ok) {
@@ -462,11 +736,25 @@ async function loadShowDetail(showId) {
       return;
     }
     const detail = await response.json();
+    selectedShowDetail = detail;
     detailTitle.textContent = detail.show.title;
     const progress = detail.progress[0];
     detailProgress.textContent = progress
       ? `Progress: ${progress.watched_episodes}/${progress.total_episodes} (${progress.watched_percent}%)`
       : "Progress: no watched data yet";
+    detailSummary.innerHTML = `
+      <section class="detail-section">
+        <h4>Show Snapshot</h4>
+        <div class="detail-grid">
+          ${renderDetailItems([
+            ["TMDB", escapeHtml(detail.show.tmdb_id)],
+            ["TVDB", escapeHtml(detail.show.tvdb_id || "-")],
+            ["IMDB", escapeHtml(detail.show.imdb_id || "-")],
+            ["Year", escapeHtml(detail.show.year || "-")],
+          ])}
+        </div>
+      </section>
+    `;
 
     for (const ep of detail.episodes) {
       const li = document.createElement("li");
@@ -476,12 +764,126 @@ async function loadShowDetail(showId) {
           : ep.watched_by_user
             ? "watched"
             : "not watched";
-      li.textContent = `S${ep.season_number ?? "?"}E${ep.episode_number ?? "?"} - ${ep.title} (${watchedLabel})`;
+      li.innerHTML = `
+        <div class="episode-row">
+          <div>
+            <div class="history-title-main">${escapeHtml(`S${ep.season_number ?? "?"}E${ep.episode_number ?? "?"} - ${ep.title}`)}</div>
+            <div class="history-badges">${ep.watched_by_user ? renderStatusChip("watched", "success") : renderStatusChip(watchedLabel, ep.watched_count ? "warning" : "neutral")}</div>
+          </div>
+          <button class="secondary episode-detail-button" data-media-item-detail-id="${ep.media_item_id}" type="button">Open Media</button>
+        </div>
+      `;
       episodeList.appendChild(li);
     }
     detailStatus.textContent = `Loaded ${detail.episodes.length} episode(s)`;
   } catch (_error) {
     detailStatus.textContent = "Failed to load show detail";
+  }
+}
+
+function closeMediaPanel() {
+  mediaPanel.classList.add("hidden");
+  mediaPanelStatus.textContent = "Select a watch or episode to inspect richer media detail.";
+  mediaPanelBody.innerHTML = "";
+  selectedMediaItemId = null;
+}
+
+function renderMediaRecentWatch(row) {
+  const signals = [
+    row.rating_value ? renderStatusChip(`${row.rating_value}/10`, "info") : "",
+    row.rewatch ? renderStatusChip("rewatch", "warning") : "",
+    row.is_horrorfest_watch ? renderStatusChip(`HF ${row.horrorfest_year}`, "danger") : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return `
+    <li>
+      <div class="history-title-cell">
+        <div class="history-title-main">${escapeHtml(new Date(row.watched_at_local || row.watched_at).toLocaleString())}</div>
+        <div class="history-meta-row">
+          ${renderStatusChip(escapeHtml(row.playback_source), "info")}
+          ${row.completed ? renderStatusChip("completed", "success") : renderStatusChip("partial", "warning")}
+          ${signals}
+        </div>
+        <div class="muted">${escapeHtml(row.watch_version_name || formatRuntimeMinutes(row.effective_runtime_seconds))}</div>
+      </div>
+    </li>
+  `;
+}
+
+async function openMediaDetail(mediaItemId) {
+  if (!mediaItemId) {
+    return;
+  }
+  selectedMediaItemId = mediaItemId;
+  mediaPanel.classList.remove("hidden");
+  mediaPanelTitle.textContent = "Loading media detail...";
+  mediaPanelStatus.textContent = `Loading media item ${mediaItemId}...`;
+  mediaPanelBody.innerHTML = "";
+  try {
+    const response = await api(`/api/v1/media-items/${mediaItemId}`);
+    if (!response.ok) {
+      mediaPanelTitle.textContent = "Media detail unavailable";
+      mediaPanelStatus.textContent = "Failed to load media detail.";
+      return;
+    }
+    const detail = await response.json();
+    mediaPanelTitle.textContent = detail.title;
+    mediaPanelStatus.textContent = `${detail.type} · ${detail.enrichment_status}`;
+    const recentWatches = detail.recent_watches.length
+      ? `<ul class="recent-watch-list">${detail.recent_watches.map((row) => renderMediaRecentWatch(row)).join("")}</ul>`
+      : `<p class="muted">No watch history yet for this media item.</p>`;
+    mediaPanelBody.innerHTML = `
+      <section class="detail-section">
+        <h4>Core Metadata</h4>
+        <div class="detail-grid">
+          ${renderDetailItems([
+            ["Type", renderStatusChip(escapeHtml(detail.type), "neutral")],
+            ["Year", escapeHtml(detail.year || "-")],
+            ["Runtime", escapeHtml(formatRuntimeMinutes(detail.base_runtime_seconds))],
+            ["Latest Rating", escapeHtml(detail.latest_rating_value ? `${detail.latest_rating_value}/${detail.latest_rating_scale || ""}` : "-")],
+            ["TMDB", escapeHtml(detail.tmdb_id || "-")],
+            ["IMDB", escapeHtml(detail.imdb_id || "-")],
+            ["TVDB", escapeHtml(detail.tvdb_id || "-")],
+            ["Watch Count", escapeHtml(detail.watch_count)],
+          ])}
+        </div>
+      </section>
+      ${
+        detail.show
+          ? `<section class="detail-section">
+              <h4>Show Linkage</h4>
+              <div class="detail-grid">
+                ${renderDetailItems([
+                  ["Show", escapeHtml(detail.show.title)],
+                  ["Show TMDB", escapeHtml(detail.show.tmdb_id)],
+                  ["Season", escapeHtml(detail.season_number || "-")],
+                  ["Episode", escapeHtml(detail.episode_number || "-")],
+                ])}
+              </div>
+            </section>`
+          : ""
+      }
+      <section class="detail-section">
+        <h4>Enrichment</h4>
+        <div class="detail-grid">
+          ${renderDetailItems([
+            ["Status", renderStatusChip(escapeHtml(detail.enrichment_status), detail.enrichment_status === "enriched" ? "success" : detail.enrichment_status === "failed" ? "danger" : "warning")],
+            ["Source", escapeHtml(detail.metadata_source || "-")],
+            ["Updated", escapeHtml(detail.metadata_updated_at ? new Date(detail.metadata_updated_at).toLocaleString() : "-")],
+            ["Error", escapeHtml(detail.enrichment_error || "-")],
+          ])}
+        </div>
+        ${detail.summary ? `<p>${escapeHtml(detail.summary)}</p>` : ""}
+      </section>
+      <section class="detail-section">
+        <h4>Recent Watches</h4>
+        ${recentWatches}
+      </section>
+    `;
+  } catch (_error) {
+    mediaPanelTitle.textContent = "Media detail unavailable";
+    mediaPanelStatus.textContent = "Failed to load media detail.";
   }
 }
 
@@ -931,7 +1333,7 @@ async function runImport(event) {
 
 function setHistoryPagination(rowsLoaded) {
   const page = Math.floor(historyOffset / historyLimit) + 1;
-  historyPage.textContent = `Page ${page}`;
+  historyPage.textContent = `Page ${page} · showing ${rowsLoaded} row(s) · offset ${historyOffset}`;
   historyPrev.disabled = historyOffset === 0;
   historyNext.disabled = rowsLoaded < historyLimit;
 }
@@ -992,7 +1394,7 @@ async function loadUnratedWatches() {
         <td>${new Date(row.watched_at).toLocaleString()}</td>
         <td>${row.display_title || row.media_item_title || row.media_item_id}</td>
         <td>${row.playback_source}</td>
-        <td>Awaiting rating</td>
+        <td>${renderStatusChip("awaiting rating", "warning")}</td>
       `;
       ratingsBody.appendChild(tr);
     }
@@ -1065,6 +1467,42 @@ function formatHorrorfestDetail(row) {
   ].join("\n");
 }
 
+function renderHorrorfestYearMetrics(selectedYear, rows) {
+  const activeRows = rows.filter((row) => !row.is_removed);
+  const ratedRows = activeRows.filter((row) => row.rating_value !== null);
+  const totalRuntimeSeconds = activeRows.reduce(
+    (total, row) => total + Number(row.effective_runtime_seconds || 0),
+    0
+  );
+  const averageRating =
+    ratedRows.length > 0
+      ? ratedRows.reduce((total, row) => total + Number(row.rating_value || 0), 0) / ratedRows.length
+      : null;
+  const firstWatch = activeRows[0]?.watched_at || null;
+  const latestWatch = activeRows[activeRows.length - 1]?.watched_at || null;
+  const cards = [
+    ["Entries", activeRows.length],
+    ["Runtime", formatRuntimeHours(totalRuntimeSeconds)],
+    ["Avg Rating", averageRating ? formatDecimalValue(averageRating) : "-"],
+    ["First Watch", firstWatch ? new Date(firstWatch).toLocaleDateString() : "-"],
+    ["Latest Watch", latestWatch ? new Date(latestWatch).toLocaleDateString() : "-"],
+  ];
+  horrorfestYearMetrics.innerHTML = cards
+    .map(
+      ([label, value]) => `
+        <div class="stats-card">
+          <div class="stats-card-label">${escapeHtml(label)}</div>
+          <div class="stats-card-value">${escapeHtml(value)}</div>
+        </div>
+      `
+    )
+    .join("");
+  horrorfestYearSummary.textContent =
+    `${selectedYear.horrorfest_year}: ${activeRows.length} active entr${activeRows.length === 1 ? "y" : "ies"} ` +
+    `from ${new Date(selectedYear.window_start_at).toLocaleDateString()} to ` +
+    `${new Date(selectedYear.window_end_at).toLocaleDateString()}.`;
+}
+
 function populateHorrorfestYearConfig(yearRow) {
   if (!yearRow) {
     horrorfestConfigYear.value = "";
@@ -1132,6 +1570,8 @@ async function loadHorrorfestYears(preferredYear = null) {
 
 async function loadHorrorfest(preferredYear = null) {
   horrorfestStatus.textContent = "Loading Horrorfest years...";
+  horrorfestYearSummary.textContent = "Select a year to inspect its ordered challenge log.";
+  horrorfestYearMetrics.innerHTML = "";
   horrorfestBody.innerHTML = "";
   horrorfestRows = [];
   selectedHorrorfestEntryId = null;
@@ -1139,6 +1579,7 @@ async function loadHorrorfest(preferredYear = null) {
     const selectedYear = await loadHorrorfestYears(preferredYear);
     if (!selectedYear) {
       horrorfestStatus.textContent = "No Horrorfest years configured yet";
+      horrorfestYearSummary.textContent = "Configure a year to begin using Horrorfest.";
       horrorfestDetailStatus.textContent = "Configure a year to begin using Horrorfest.";
       horrorfestDetail.textContent = "";
       return;
@@ -1153,19 +1594,34 @@ async function loadHorrorfest(preferredYear = null) {
     horrorfestRows = await response.json();
     if (!horrorfestRows.length) {
       horrorfestStatus.textContent = `Year ${selectedYear.horrorfest_year} is configured with no matching entries yet`;
+      horrorfestYearSummary.textContent =
+        `${selectedYear.horrorfest_year}: no active entries in the current filter.`;
       horrorfestDetailStatus.textContent = "Select a Horrorfest row to inspect or correct.";
       horrorfestDetail.textContent = "";
       return;
     }
+    renderHorrorfestYearMetrics(selectedYear, horrorfestRows);
     for (const row of horrorfestRows) {
       const tr = document.createElement("tr");
+      const signals = [
+        row.rating_value ? renderStatusChip(`${row.rating_value}/10`, "info") : "",
+        row.rewatch ? renderStatusChip("rewatch", "warning") : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
       tr.dataset.horrorfestEntryId = row.horrorfest_entry_id;
       tr.innerHTML = `
         <td>${row.watch_order ?? "-"}</td>
+        <td>
+          <div class="horrorfest-title-cell">
+            <div class="horrorfest-title-main">${escapeHtml(row.display_title)}</div>
+            <div class="muted">${escapeHtml(row.source_kind)}</div>
+          </div>
+        </td>
         <td>${new Date(row.watched_at).toLocaleString()}</td>
-        <td>${row.display_title}</td>
-        <td>${row.rating_value ?? "-"}</td>
-        <td>${row.is_removed ? "Removed" : "Active"}</td>
+        <td><div class="horrorfest-signals">${signals || renderStatusChip("unrated", "neutral")}</div></td>
+        <td>${formatRuntimeMinutes(row.effective_runtime_seconds)}</td>
+        <td>${row.is_removed ? renderStatusChip("removed", "neutral") : renderStatusChip("active", "success")}</td>
       `;
       horrorfestBody.appendChild(tr);
     }
@@ -1269,6 +1725,9 @@ function buildHistoryQuery() {
   const params = new URLSearchParams();
   params.set("limit", String(historyLimit));
   params.set("offset", String(historyOffset));
+  if (historyQuery.value.trim()) {
+    params.set("query", historyQuery.value.trim());
+  }
   if (historyMediaType.value) {
     params.set("media_type", historyMediaType.value);
   }
@@ -1282,6 +1741,43 @@ function buildHistoryQuery() {
     params.set("include_deleted", "true");
   }
   return params.toString();
+}
+
+function syncHistorySortUi() {
+  for (const button of historySortButtons) {
+    const isActive = button.dataset.historySort === historySortKey;
+    button.classList.toggle("active", isActive);
+    if (isActive) {
+      button.dataset.sortDirection = historySortDirection;
+    } else {
+      delete button.dataset.sortDirection;
+    }
+  }
+}
+
+function sortHistoryRows(rows) {
+  const decorated = rows.map((row, index) => ({ row, index }));
+  decorated.sort((left, right) => {
+    let comparison = 0;
+    if (historySortKey === "title") {
+      const leftTitle = (left.row.display_title || left.row.media_item_title || "").toLowerCase();
+      const rightTitle = (right.row.display_title || right.row.media_item_title || "").toLowerCase();
+      comparison = leftTitle.localeCompare(rightTitle);
+    } else if (historySortKey === "rating") {
+      const leftRating = Number(left.row.rating_value || 0);
+      const rightRating = Number(right.row.rating_value || 0);
+      comparison = leftRating - rightRating;
+    } else {
+      comparison =
+        new Date(left.row.watched_at).getTime() - new Date(right.row.watched_at).getTime();
+    }
+
+    if (comparison === 0) {
+      comparison = left.index - right.index;
+    }
+    return historySortDirection === "asc" ? comparison : comparison * -1;
+  });
+  return decorated.map((item) => item.row);
 }
 
 function syncSelectedHistoryRow() {
@@ -1301,37 +1797,63 @@ function toDateTimeLocalValue(value) {
 }
 
 function formatHistoryDetail(row) {
-  return [
-    `watch_id: ${row.watch_id}`,
-    `display_title: ${row.display_title || row.media_item_title || row.media_item_id}`,
-    `watched_at_utc: ${row.watched_at}`,
-    `watched_at_local: ${row.watched_at_local || "n/a"}`,
-    `user_timezone: ${row.user_timezone || "n/a"}`,
-    `media_item_id: ${row.media_item_id}`,
-    `media_item_type: ${row.media_item_type || "n/a"}`,
-    `playback_source: ${row.playback_source}`,
-    `watch_version_name: ${row.watch_version_name || "n/a"}`,
-    `watch_runtime_seconds: ${row.watch_runtime_seconds ?? "n/a"}`,
-    `effective_runtime_seconds: ${row.effective_runtime_seconds ?? "n/a"}`,
-    `horrorfest_year: ${row.horrorfest_year ?? "n/a"}`,
-    `horrorfest_watch_order: ${row.horrorfest_watch_order ?? "n/a"}`,
-    `completed: ${row.completed}`,
-    `rewatch: ${row.rewatch}`,
-    `is_deleted: ${row.is_deleted}`,
-    `updated_at: ${row.updated_at || "n/a"}`,
-    `updated_by: ${row.updated_by || "n/a"}`,
-    `update_reason: ${row.update_reason || "n/a"}`,
-    `deleted_at: ${row.deleted_at || "n/a"}`,
-    `deleted_by: ${row.deleted_by || "n/a"}`,
-    `deleted_reason: ${row.deleted_reason || "n/a"}`,
-  ].join("\n");
+  const title = row.display_title || row.media_item_title || row.media_item_id;
+  const signals = [
+    row.rating_value ? renderStatusChip(`${row.rating_value}/10`, "info") : renderStatusChip("unrated", "neutral"),
+    row.rewatch ? renderStatusChip("rewatch", "warning") : renderStatusChip("first watch", "success"),
+    row.horrorfest_year ? renderStatusChip(`HF ${row.horrorfest_year} #${row.horrorfest_watch_order ?? "?"}`, "danger") : "",
+    row.is_deleted ? renderStatusChip("deleted", "neutral") : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return `
+    <section class="detail-section">
+      <h4>${escapeHtml(title)}</h4>
+      <div class="history-badges">${signals}</div>
+      <div class="detail-grid">
+        ${renderDetailItems([
+          ["Watched (Local)", escapeHtml(row.watched_at_local ? new Date(row.watched_at_local).toLocaleString() : "n/a")],
+          ["Watched (UTC)", escapeHtml(new Date(row.watched_at).toISOString())],
+          ["Playback Source", renderStatusChip(escapeHtml(row.playback_source), "info")],
+          ["Media Type", renderStatusChip(escapeHtml(row.media_item_type || "unknown"), "neutral")],
+          ["Rating", escapeHtml(row.rating_value ? `${row.rating_value}/10` : "-")],
+          ["Runtime", escapeHtml(formatRuntimeMinutes(row.effective_runtime_seconds))],
+        ])}
+      </div>
+    </section>
+    <section class="detail-section">
+      <h4>Identifiers</h4>
+      <div class="detail-grid">
+        ${renderDetailItems([
+          ["Watch ID", escapeHtml(row.watch_id)],
+          ["Media Item ID", escapeHtml(row.media_item_id)],
+          ["Timezone", escapeHtml(row.user_timezone || "n/a")],
+          ["Source Event", escapeHtml(row.source_event_id || "n/a")],
+        ])}
+      </div>
+    </section>
+    <section class="detail-section">
+      <h4>Correction State</h4>
+      <div class="detail-grid">
+        ${renderDetailItems([
+          ["Completed", escapeHtml(row.completed ? "yes" : "no")],
+          ["Deleted", escapeHtml(row.is_deleted ? "yes" : "no")],
+          ["Version Override", escapeHtml(row.watch_version_name || "default")],
+          ["Updated By", escapeHtml(row.updated_by || "n/a")],
+          ["Update Reason", escapeHtml(row.update_reason || "n/a")],
+          ["Deleted Reason", escapeHtml(row.deleted_reason || "n/a")],
+        ])}
+      </div>
+    </section>
+  `;
 }
 
 function populateHistoryEditor(row) {
   selectedHistoryId = row.watch_id;
   syncSelectedHistoryRow();
-  historyDetailStatus.textContent = `Showing correction detail for ${row.display_title || row.media_item_title || row.watch_id}`;
-  historyDetail.textContent = formatHistoryDetail(row);
+  historyDetailStatus.textContent = `Selected ${row.display_title || row.media_item_title || row.watch_id}`;
+  historyDetail.innerHTML = formatHistoryDetail(row);
   historyEditorWatchedAt.value = toDateTimeLocalValue(row.watched_at);
   historyEditorMediaItemId.value = row.media_item_id || "";
   historyEditorVersionName.value = row.watch_version_name || "";
@@ -1341,6 +1863,44 @@ function populateHistoryEditor(row) {
   historyEditorRewatch.checked = Boolean(row.rewatch);
   historyDelete.disabled = row.is_deleted;
   historyRestore.disabled = !row.is_deleted;
+  historyOpenMedia.disabled = !row.media_item_id;
+}
+
+function renderHistoryRows() {
+  historyBody.innerHTML = "";
+  const rows = sortHistoryRows(historyRows);
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+    const watchedAt = new Date(row.watched_at).toLocaleString();
+    const title = row.display_title || row.media_item_title || row.media_item_id;
+    const badges = [
+      row.horrorfest_year ? renderStatusChip(`HF ${row.horrorfest_year}`, "danger") : "",
+      row.rewatch ? renderStatusChip("rewatch", "warning") : "",
+      row.is_deleted ? renderStatusChip("deleted", "neutral") : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const statusBadges = [
+      row.completed ? renderStatusChip("completed", "success") : renderStatusChip("partial", "warning"),
+      renderStatusChip(row.playback_source, "info"),
+    ].join(" ");
+    tr.dataset.watchId = row.watch_id;
+    tr.innerHTML = `
+      <td>${watchedAt}</td>
+      <td>
+        <div class="history-title-cell">
+          <div class="history-title-main">${escapeHtml(title)}</div>
+          <div class="history-badges">${badges}</div>
+        </div>
+      </td>
+      <td>${row.rating_value ? renderStatusChip(`${row.rating_value}/10`, "info") : renderStatusChip("unrated", "neutral")}</td>
+      <td>${renderStatusChip(escapeHtml(row.media_item_type || "-"), "neutral")}</td>
+      <td>${escapeHtml(row.playback_source)}</td>
+      <td><div class="signal-stack">${statusBadges}</div></td>
+    `;
+    historyBody.appendChild(tr);
+  }
+  syncSelectedHistoryRow();
 }
 
 async function loadHistory() {
@@ -1348,13 +1908,14 @@ async function loadHistory() {
   historyBody.innerHTML = "";
   historyRows = [];
   selectedHistoryId = null;
+  historyOpenMedia.disabled = true;
   try {
     const response = await api(`/api/v1/watch-events?${buildHistoryQuery()}`);
     if (!response.ok) {
       historyStatus.textContent = "Failed to load history";
       setHistoryPagination(0);
       historyDetailStatus.textContent = "Select a watch event to inspect or correct.";
-      historyDetail.textContent = "";
+      historyDetail.innerHTML = "";
       return;
     }
     const rows = await response.json();
@@ -1363,36 +1924,19 @@ async function loadHistory() {
       historyStatus.textContent = "No events for current filter/page";
       setHistoryPagination(0);
       historyDetailStatus.textContent = "Select a watch event to inspect or correct.";
-      historyDetail.textContent = "";
+      historyDetail.innerHTML = "";
       return;
     }
-    for (const row of rows) {
-      const tr = document.createElement("tr");
-      const watchedAt = new Date(row.watched_at).toLocaleString();
-      const completed = row.completed ? "yes" : "no";
-      const progress = row.progress_percent === null ? "-" : `${row.progress_percent}%`;
-      const title = row.display_title || row.media_item_title || row.media_item_id;
-      const type = row.media_item_type || "-";
-      const deletedBadge = row.is_deleted ? " [deleted]" : "";
-      tr.dataset.watchId = row.watch_id;
-      tr.innerHTML = `
-        <td>${watchedAt}</td>
-        <td>${title}${deletedBadge}</td>
-        <td>${type}</td>
-        <td>${row.playback_source}</td>
-        <td>${completed}</td>
-        <td>${progress}</td>
-      `;
-      historyBody.appendChild(tr);
-    }
-    historyStatus.textContent = `Loaded ${rows.length} event(s)`;
+    renderHistoryRows();
+    historyStatus.textContent = `Loaded ${rows.length} event(s) for the current page`;
     setHistoryPagination(rows.length);
-    populateHistoryEditor(rows[0]);
+    populateHistoryEditor(sortHistoryRows(rows)[0]);
   } catch (_error) {
     historyStatus.textContent = "Failed to load history";
     setHistoryPagination(0);
     historyDetailStatus.textContent = "Select a watch event to inspect or correct.";
-    historyDetail.textContent = "";
+    historyDetail.innerHTML = "";
+    historyOpenMedia.disabled = true;
   }
 }
 
@@ -1519,10 +2063,16 @@ function syncSelectedActivityRow() {
 }
 
 function formatActivityResult(row) {
-  if (row.result_label) {
-    return row.result_label;
-  }
-  return row.decision_status || "unknown";
+  const label = row.result_label || row.decision_status || "unknown";
+  const tone =
+    row.decision_status === "watch_event_created"
+      ? "success"
+      : row.decision_status === "duplicate_watch_event_skipped"
+        ? "warning"
+        : row.decision_status === "recorded_only"
+          ? "neutral"
+          : "info";
+  return renderStatusChip(label, tone);
 }
 
 function formatActivityTitle(row) {
@@ -1577,13 +2127,21 @@ function formatEnrichmentIds(row) {
 }
 
 function formatEnrichmentStatus(row) {
+  const tone =
+    row.enrichment_status === "enriched"
+      ? "success"
+      : row.enrichment_status === "failed"
+        ? "danger"
+        : row.enrichment_status === "skipped"
+          ? "neutral"
+          : "warning";
   if (row.enrichment_status === "failed" && row.failure_code) {
-    return `failed (${row.failure_code})`;
+    return renderStatusChip(`failed: ${row.failure_code}`, tone);
   }
   if (row.enrichment_status === "skipped" && row.failure_code) {
-    return `skipped (${row.failure_code})`;
+    return renderStatusChip(`skipped: ${row.failure_code}`, tone);
   }
-  return row.enrichment_status;
+  return renderStatusChip(row.enrichment_status, tone);
 }
 
 function formatEnrichmentMetadata(row) {
@@ -1818,6 +2376,22 @@ refreshData.addEventListener("click", async () => {
 historyApply.addEventListener("click", async () => {
   historyLimit = Number.parseInt(historyLimitSelect.value, 10);
   historyOffset = 0;
+  window.localStorage.setItem(UI_PREF_KEYS.historyQuery, historyQuery.value.trim());
+  await loadHistory();
+});
+
+historyQuery.addEventListener("change", () => {
+  window.localStorage.setItem(UI_PREF_KEYS.historyQuery, historyQuery.value.trim());
+});
+
+historyQuery.addEventListener("keydown", async (event) => {
+  if (event.key !== "Enter") {
+    return;
+  }
+  event.preventDefault();
+  historyLimit = Number.parseInt(historyLimitSelect.value, 10);
+  historyOffset = 0;
+  window.localStorage.setItem(UI_PREF_KEYS.historyQuery, historyQuery.value.trim());
   await loadHistory();
 });
 
@@ -1866,6 +2440,31 @@ historyBody.addEventListener("click", async (event) => {
   }
   populateHistoryEditor(selectedRow);
 });
+
+for (const button of historySortButtons) {
+  button.addEventListener("click", () => {
+    const sortKey = button.dataset.historySort;
+    if (!sortKey) {
+      return;
+    }
+    if (historySortKey === sortKey) {
+      historySortDirection = historySortDirection === "asc" ? "desc" : "asc";
+    } else {
+      historySortKey = sortKey;
+      historySortDirection = sortKey === "title" ? "asc" : "desc";
+    }
+    syncHistorySortUi();
+    if (historyRows.length) {
+      renderHistoryRows();
+      const selectedRow =
+        historyRows.find((item) => item.watch_id === selectedHistoryId) ||
+        sortHistoryRows(historyRows)[0];
+      if (selectedRow) {
+        populateHistoryEditor(selectedRow);
+      }
+    }
+  });
+}
 
 ratingsApply.addEventListener("click", async () => {
   ratingsLimit = Number.parseInt(ratingsLimitSelect.value, 10);
@@ -1925,6 +2524,35 @@ horrorfestBody.addEventListener("click", async (event) => {
     return;
   }
   populateHorrorfestDetail(selectedRow);
+});
+
+historyOpenMedia.addEventListener("click", async () => {
+  const selectedRow = historyRows.find((item) => item.watch_id === selectedHistoryId);
+  if (!selectedRow?.media_item_id) {
+    historyDetailStatus.textContent = "Select a watch with a media item first.";
+    return;
+  }
+  await openMediaDetail(selectedRow.media_item_id);
+});
+
+mediaPanelClose.addEventListener("click", () => {
+  closeMediaPanel();
+});
+
+episodeList.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const button = target.closest("button[data-media-item-detail-id]");
+  if (!(button instanceof HTMLButtonElement)) {
+    return;
+  }
+  const mediaItemId = button.dataset.mediaItemDetailId;
+  if (!mediaItemId) {
+    return;
+  }
+  await openMediaDetail(mediaItemId);
 });
 
 horrorfestConfigSave.addEventListener("click", async () => {
@@ -2092,6 +2720,76 @@ enrichmentBody.addEventListener("click", async (event) => {
   enrichmentDetail.textContent = formatEnrichmentDetail(selectedRow);
 });
 
+themeToggle.addEventListener("click", () => {
+  toggleTheme();
+});
+
+for (const button of navButtons) {
+  button.addEventListener("click", async () => {
+    const targetView = button.dataset.viewTarget;
+    setActiveView(targetView);
+    if (targetView === "dashboard") {
+      await Promise.all([loadStats(), loadDashboardPreviews()]);
+    } else if (targetView === "history") {
+      await Promise.all([loadHistory(), loadUnratedWatches()]);
+    } else if (targetView === "horrorfest") {
+      await loadHorrorfest();
+    } else if (targetView === "shows") {
+      await Promise.all([loadShows(), loadProgress()]);
+    } else if (targetView === "admin") {
+      const activeAdminView =
+        window.localStorage.getItem(UI_PREF_KEYS.activeAdminView) || "imports";
+      if (activeAdminView === "imports") {
+        await loadImportHistory();
+      } else if (activeAdminView === "scrobbler") {
+        await loadScrobbleActivity();
+      } else if (activeAdminView === "enrichment") {
+        await loadMetadataEnrichment();
+      }
+    }
+  });
+}
+
+for (const button of adminNavButtons) {
+  button.addEventListener("click", async () => {
+    const targetAdminView = button.dataset.adminViewTarget;
+    setActiveAdminView(targetAdminView);
+    if (targetAdminView === "imports") {
+      await loadImportHistory();
+    } else if (targetAdminView === "scrobbler") {
+      await loadScrobbleActivity();
+    } else if (targetAdminView === "enrichment") {
+      await loadMetadataEnrichment();
+    }
+  });
+}
+
+for (const button of jumpButtons) {
+  button.addEventListener("click", async () => {
+    const targetView = button.dataset.jumpView;
+    if (targetView) {
+      setActiveView(targetView);
+    }
+    if (button.dataset.jumpAdmin) {
+      setActiveAdminView(button.dataset.jumpAdmin);
+    }
+    if (targetView === "history") {
+      await Promise.all([loadHistory(), loadUnratedWatches()]);
+    } else if (targetView === "horrorfest") {
+      await loadHorrorfest();
+    } else if (targetView === "admin") {
+      const targetAdminView = button.dataset.jumpAdmin || "imports";
+      if (targetAdminView === "imports") {
+        await loadImportHistory();
+      } else if (targetAdminView === "scrobbler") {
+        await loadScrobbleActivity();
+      } else if (targetAdminView === "enrichment") {
+        await loadMetadataEnrichment();
+      }
+    }
+  });
+}
+
 importForm.addEventListener("submit", runImport);
 
 manualWatchForm.addEventListener("submit", async (event) => {
@@ -2256,4 +2954,5 @@ logoutBtn.addEventListener("click", async () => {
   await checkSession();
 });
 
+initializeUiShell();
 checkSession();
