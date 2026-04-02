@@ -1,7 +1,7 @@
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import case, cast, func, select
+from sqlalchemy import Integer, case, cast, func, select
 from sqlalchemy.orm import Session
 
 from app.db.models.entities import HorrorfestEntry, MediaItem, MediaVersion, User, WatchEvent
@@ -77,8 +77,8 @@ def list_monthly_stats(
 ) -> list[dict[str, object]]:
     effective_runtime_seconds = _effective_runtime_seconds_expr()
     local_ts = func.timezone(User.timezone, WatchEvent.watched_at)
-    local_year = cast(func.extract("year", local_ts), int)
-    local_month = cast(func.extract("month", local_ts), int)
+    local_year = cast(func.extract("year", local_ts), Integer)
+    local_month = cast(func.extract("month", local_ts), Integer)
     statement = (
         select(
             local_year.label("year"),
