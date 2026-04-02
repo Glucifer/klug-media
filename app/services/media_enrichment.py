@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
+import logging
 from typing import Literal
 from uuid import UUID
 
@@ -19,6 +20,9 @@ from app.services.tmdb import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
 @dataclass(frozen=True)
 class MediaEnrichmentResult:
     media_item: MediaItem
@@ -29,6 +33,14 @@ class MediaEnrichmentResult:
 
 
 class MediaEnrichmentService:
+    @staticmethod
+    def count_pending_items(session: Session) -> int:
+        return MediaItemService.count_media_items_for_enrichment(
+            session,
+            enrichment_status="pending",
+            missing_ids_only=False,
+        )
+
     @staticmethod
     def list_queue(
         session: Session,
@@ -59,13 +71,27 @@ class MediaEnrichmentService:
             limit=limit,
             offset=0,
         )
-        return [
+        results = [
             MediaEnrichmentService.enrich_media_item(
                 session,
                 media_item_id=item.media_item_id,
             )
             for item in items
         ]
+        if results:
+            enriched_count = sum(1 for result in results if result.action == "enriched")
+            failed_count = sum(1 for result in results if result.action == "failed")
+            skipped_count = sum(1 for result in results if result.action == "skipped")
+            logger.info(
+                "Processed metadata enrichment batch: processed=%s enriched=%s failed=%s skipped=%s",
+                len(results),
+                enriched_count,
+                failed_count,
+                skipped_count,
+            )
+        else:
+            logger.info("Processed metadata enrichment batch: processed=0")
+        return results
 
     @staticmethod
     def retry_media_item(

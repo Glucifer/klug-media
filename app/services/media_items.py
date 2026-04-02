@@ -133,6 +133,19 @@ class MediaItemService:
         )
 
     @staticmethod
+    def count_media_items_for_enrichment(
+        session: Session,
+        *,
+        enrichment_status: str | None,
+        missing_ids_only: bool,
+    ) -> int:
+        return media_item_repository.count_media_items_for_enrichment(
+            session,
+            enrichment_status=enrichment_status,
+            missing_ids_only=missing_ids_only,
+        )
+
+    @staticmethod
     def update_media_item_metadata(
         session: Session,
         *,

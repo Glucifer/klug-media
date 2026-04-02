@@ -68,13 +68,14 @@ def test_process_pending_metadata_items_returns_batch(monkeypatch) -> None:
 
     def fake_process_pending(_session, *, limit):
         assert limit == 5
-        return [type("Result", (), {"media_item": item})()]
+        return [type("Result", (), {"media_item": item, "action": "enriched"})()]
 
     monkeypatch.setattr(
         MediaEnrichmentService,
         "process_pending_items",
         fake_process_pending,
     )
+    monkeypatch.setattr(MediaEnrichmentService, "count_pending_items", lambda *_args, **_kwargs: 12)
 
     client = TestClient(app)
     response = client.post("/api/v1/metadata-enrichment/process-pending?limit=5")
@@ -82,6 +83,10 @@ def test_process_pending_metadata_items_returns_batch(monkeypatch) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["processed_count"] == 1
+    assert payload["enriched_count"] == 1
+    assert payload["failed_count"] == 0
+    assert payload["skipped_count"] == 0
+    assert payload["remaining_pending_count"] == 12
     assert payload["items"][0]["tmdb_id"] == 348
     assert payload["items"][0]["next_action"] is None
 

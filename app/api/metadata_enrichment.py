@@ -42,12 +42,23 @@ def list_metadata_enrichment_items(
     status_code=status.HTTP_200_OK,
 )
 def process_pending_metadata_items(
-    limit: int = Query(default=10, ge=1, le=100),
+    limit: int = Query(default=25, ge=1, le=500),
     session: Session = Depends(get_db_session),
 ) -> MetadataEnrichmentBatchResult:
     results = MediaEnrichmentService.process_pending_items(session, limit=limit)
     items = [MediaEnrichmentService.build_queue_item(result.media_item) for result in results]
-    return MetadataEnrichmentBatchResult(processed_count=len(items), items=items)
+    enriched_count = sum(1 for result in results if result.action == "enriched")
+    failed_count = sum(1 for result in results if result.action == "failed")
+    skipped_count = sum(1 for result in results if result.action == "skipped")
+    remaining_pending_count = MediaEnrichmentService.count_pending_items(session)
+    return MetadataEnrichmentBatchResult(
+        processed_count=len(items),
+        enriched_count=enriched_count,
+        failed_count=failed_count,
+        skipped_count=skipped_count,
+        remaining_pending_count=remaining_pending_count,
+        items=items,
+    )
 
 
 @router.post(

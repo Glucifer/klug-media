@@ -1681,18 +1681,55 @@ async function retryMetadataEnrichment(mediaItemId) {
 }
 
 async function processPendingMetadataEnrichment() {
-  enrichmentStatusText.textContent = "Processing pending metadata enrichment...";
-  const response = await api(
-    `/api/v1/metadata-enrichment/process-pending?limit=${enrichmentLimit}`,
-    { method: "POST" }
-  );
-  if (!response.ok) {
-    enrichmentStatusText.textContent = "Failed to process pending metadata enrichment";
-    return;
+  const batchLimit = Number.parseInt(enrichmentLimitSelect.value, 10);
+  enrichmentLimit = batchLimit;
+  enrichmentProcessPending.disabled = true;
+  enrichmentApply.disabled = true;
+  let totalProcessed = 0;
+  let totalEnriched = 0;
+  let totalFailed = 0;
+  let totalSkipped = 0;
+  let batchNumber = 0;
+
+  try {
+    while (true) {
+      batchNumber += 1;
+      enrichmentStatusText.textContent =
+        `Processing metadata enrichment batch ${batchNumber} ` +
+        `(chunk size ${batchLimit})...`;
+      const response = await api(
+        `/api/v1/metadata-enrichment/process-pending?limit=${batchLimit}`,
+        { method: "POST" }
+      );
+      if (!response.ok) {
+        enrichmentStatusText.textContent =
+          `Failed during metadata enrichment batch ${batchNumber}`;
+        return;
+      }
+      const payload = await response.json();
+      totalProcessed += payload.processed_count || 0;
+      totalEnriched += payload.enriched_count || 0;
+      totalFailed += payload.failed_count || 0;
+      totalSkipped += payload.skipped_count || 0;
+      enrichmentStatusText.textContent =
+        `Processed ${totalProcessed} pending item(s) so far ` +
+        `(${totalEnriched} enriched, ${totalFailed} failed, ${totalSkipped} skipped). ` +
+        `${payload.remaining_pending_count} pending remain.`;
+
+      if ((payload.processed_count || 0) === 0 || (payload.remaining_pending_count || 0) === 0) {
+        break;
+      }
+    }
+
+    await loadMetadataEnrichment();
+    enrichmentStatusText.textContent =
+      `Finished processing pending metadata enrichment: ` +
+      `${totalProcessed} processed, ${totalEnriched} enriched, ` +
+      `${totalFailed} failed, ${totalSkipped} skipped.`;
+  } finally {
+    enrichmentProcessPending.disabled = false;
+    enrichmentApply.disabled = false;
   }
-  const payload = await response.json();
-  enrichmentStatusText.textContent = `Processed ${payload.processed_count} pending media item(s)`;
-  await loadMetadataEnrichment();
 }
 
 async function loadScrobbleActivityDetail(playbackEventId) {

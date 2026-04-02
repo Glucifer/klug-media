@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db.models.entities import MediaItem
@@ -165,6 +165,23 @@ def list_media_items_for_enrichment(
         )
     statement = statement.order_by(MediaItem.created_at.desc()).limit(limit).offset(offset)
     return list(session.scalars(statement))
+
+
+def count_media_items_for_enrichment(
+    session: Session,
+    *,
+    enrichment_status: str | None,
+    missing_ids_only: bool,
+) -> int:
+    statement = select(func.count(MediaItem.media_item_id))
+    if enrichment_status:
+        statement = statement.where(MediaItem.enrichment_status == enrichment_status)
+    if missing_ids_only:
+        statement = statement.where(
+            MediaItem.tmdb_id.is_(None),
+            or_(MediaItem.imdb_id.is_(None), MediaItem.tvdb_id.is_(None)),
+        )
+    return int(session.scalar(statement) or 0)
 
 
 def update_media_item(

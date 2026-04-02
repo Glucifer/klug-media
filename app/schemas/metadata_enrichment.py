@@ -33,4 +33,8 @@ class MetadataEnrichmentItemRead(KlugORMModel):
 
 class MetadataEnrichmentBatchResult(KlugORMModel):
     processed_count: int
+    enriched_count: int = 0
+    failed_count: int = 0
+    skipped_count: int = 0
+    remaining_pending_count: int = 0
     items: list[MetadataEnrichmentItemRead]
