@@ -16,6 +16,8 @@ class DummyShow:
         self.imdb_id = "tt21056886"
         self.title = "Scavengers Reign"
         self.year = 2023
+        self.watched_episode_count = 6
+        self.latest_watched_at = datetime.now(UTC)
         self.created_at = datetime.now(UTC)
         self.updated_at = datetime.now(UTC)
 
@@ -34,6 +36,8 @@ def test_list_shows_returns_rows(monkeypatch) -> None:
     payload = response.json()
     assert len(payload) == 1
     assert payload[0]["title"] == "Scavengers Reign"
+    assert payload[0]["watched_episode_count"] == 6
+    assert payload[0]["latest_watched_at"] is not None
 
 
 def test_list_show_progress_returns_rows(monkeypatch) -> None:
@@ -101,6 +105,7 @@ def test_get_show_detail_returns_payload(monkeypatch) -> None:
                     "episode_number": 8,
                     "watched_count": 1,
                     "watched_by_user": True,
+                    "latest_watched_at": datetime.now(UTC),
                 }
             ],
         },
@@ -114,6 +119,7 @@ def test_get_show_detail_returns_payload(monkeypatch) -> None:
     assert payload["show"]["title"] == "Scavengers Reign"
     assert payload["progress"][0]["watched_percent"] == "50.00"
     assert payload["episodes"][0]["title"] == "The Nest"
+    assert payload["episodes"][0]["latest_watched_at"] is not None
 
 
 def test_get_show_detail_not_found_returns_404(monkeypatch) -> None:

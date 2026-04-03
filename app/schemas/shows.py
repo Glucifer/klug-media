@@ -12,6 +12,8 @@ class ShowRead(KlugORMModel):
     imdb_id: str | None
     title: str
     year: int | None
+    watched_episode_count: int = 0
+    latest_watched_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -33,6 +35,7 @@ class ShowEpisodeRead(KlugBaseModel):
     episode_number: int | None
     watched_count: int
     watched_by_user: bool | None
+    latest_watched_at: datetime | None = None
 
 
 class ShowDetailRead(KlugBaseModel):

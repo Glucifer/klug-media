@@ -80,8 +80,42 @@ def update_show(
 
 
 def list_shows(session: Session) -> list[Show]:
-    statement = select(Show).order_by(Show.title.asc(), Show.created_at.asc())
-    return list(session.scalars(statement))
+    statement = text("""
+        SELECT
+            s.show_id,
+            s.tmdb_id,
+            s.tvdb_id,
+            s.imdb_id,
+            s.title,
+            s.year,
+            s.created_at,
+            s.updated_at,
+            COUNT(DISTINCT mi.media_item_id) FILTER (
+                WHERE we.completed = TRUE
+            ) AS watched_episode_count,
+            MAX(we.watched_at) FILTER (
+                WHERE we.completed = TRUE
+            ) AS latest_watched_at
+        FROM app.shows AS s
+        LEFT JOIN app.media_item AS mi
+          ON mi.show_id = s.show_id
+         AND mi.type = 'episode'::public.media_type
+        LEFT JOIN app.watch_event AS we
+          ON we.media_item_id = mi.media_item_id
+         AND COALESCE(we.is_deleted, FALSE) = FALSE
+        GROUP BY
+            s.show_id,
+            s.tmdb_id,
+            s.tvdb_id,
+            s.imdb_id,
+            s.title,
+            s.year,
+            s.created_at,
+            s.updated_at
+        ORDER BY s.title ASC, s.created_at ASC
+    """)
+    rows = session.execute(statement).mappings().all()
+    return [dict(row) for row in rows]
 
 
 def find_show_by_id(session: Session, *, show_id: UUID) -> Show | None:
@@ -150,13 +184,15 @@ def list_show_episodes(
     if user_id is None:
         statement = (
             base_select
-            + "            NULL::boolean AS watched_by_user\n"
+            + "            NULL::boolean AS watched_by_user,\n"
+            + "            MAX(we.watched_at) FILTER (WHERE we.completed = TRUE) AS latest_watched_at\n"
             + from_clause
         )
     else:
         statement = (
             base_select
-            + "            BOOL_OR(we.user_id = :user_id AND we.completed = TRUE) AS watched_by_user\n"
+            + "            BOOL_OR(we.user_id = :user_id AND we.completed = TRUE) AS watched_by_user,\n"
+            + "            MAX(we.watched_at) FILTER (WHERE we.user_id = :user_id AND we.completed = TRUE) AS latest_watched_at\n"
             + from_clause
         )
         params["user_id"] = user_id

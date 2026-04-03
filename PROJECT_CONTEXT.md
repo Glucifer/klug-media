@@ -93,7 +93,9 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - dark-first sidebar shell with persisted theme toggle
   - client-side section switching for Dashboard, Library, History, Horrorfest, Shows, and Admin
   - dashboard previews for stats, recent watches, unrated queue, and enrichment watchlist
+  - Dashboard is evolving into an action-first launch surface with a Needs Attention strip plus context-aware jumps into filtered History, Horrorfest, and Admin views
   - watched-media `Library` section for browse-first Movies / Episodes / Shows views distinct from future owned-media collection support
+  - Phase 5 cross-linking between `Library`/media detail and `History`, including linked browse context, return-to-library flow, and one-click history-open actions
   - watch history title search plus pagination/filtering and client-side sorting for watched time, title, and rating
   - history quick-jump date presets plus active filter summary chips
   - watch history detail rendered as grouped metadata sections plus a sticky correction panel
@@ -102,7 +104,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - shared media side panel fed by `/api/v1/media-items/{media_item_id}` for poster-first movie/episode drilldown
   - one-click media-detail open actions from dashboard previews, history, Horrorfest, and show episodes
   - Horrorfest yearly browsing with per-year summary cards plus separate curation/year-config area
-  - shows/progress view with a cleaner sticky detail panel, season-grouped episode browsing, and episode-level media drilldown
+  - Shows is now evolving toward browsing-first TV navigation: richer show rows, linked History jumps, season collapse/expand, and episode-level media/history drilldown while completion percentages are intentionally de-emphasized until a future Collection feature exists
   - Admin workspace split into Imports, Manual Add, Scrobbler, and Enrichment subviews
   - import runner (file upload + mode/dry-run/resume options)
   - cursor visibility (`cursor_before`, `cursor_after`, local last cursor)

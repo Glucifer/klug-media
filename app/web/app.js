@@ -10,8 +10,6 @@ const opsSession = document.getElementById("ops-session");
 const opsLastRefresh = document.getElementById("ops-last-refresh");
 const showList = document.getElementById("show-list");
 const showsStatus = document.getElementById("shows-status");
-const progressStatus = document.getElementById("progress-status");
-const progressBody = document.getElementById("progress-body");
 const statsStatus = document.getElementById("stats-status");
 const statsSummaryCards = document.getElementById("stats-summary-cards");
 const statsMonthlyBody = document.getElementById("stats-monthly-body");
@@ -75,6 +73,10 @@ const historyIncludeDeleted = document.getElementById("history-include-deleted")
 const historyLimitSelect = document.getElementById("history-limit");
 const historyApply = document.getElementById("history-apply");
 const historyStatus = document.getElementById("history-status");
+const historyContextBanner = document.getElementById("history-context-banner");
+const historyContextText = document.getElementById("history-context-text");
+const historyContextReturn = document.getElementById("history-context-return");
+const historyContextClear = document.getElementById("history-context-clear");
 const historyBody = document.getElementById("history-body");
 const historyFilterSummary = document.getElementById("history-filter-summary");
 const historyPrev = document.getElementById("history-prev");
@@ -157,6 +159,9 @@ const dashboardRatingsStatus = document.getElementById("dashboard-ratings-status
 const dashboardRatingsBody = document.getElementById("dashboard-ratings-body");
 const dashboardEnrichmentStatus = document.getElementById("dashboard-enrichment-status");
 const dashboardEnrichmentBody = document.getElementById("dashboard-enrichment-body");
+const dashboardAttentionGrid = document.getElementById("dashboard-attention-grid");
+const dashboardUnratedOpen = document.getElementById("dashboard-unrated-open");
+const dashboardEnrichmentOpen = document.getElementById("dashboard-enrichment-open");
 const horrorfestYearSummary = document.getElementById("horrorfest-year-summary");
 const refreshData = document.getElementById("refresh-data");
 const logoutBtn = document.getElementById("logout-btn");
@@ -169,9 +174,18 @@ const episodeList = document.getElementById("episode-list");
 const mediaPanel = document.getElementById("media-panel");
 const mediaPanelTitle = document.getElementById("media-panel-title");
 const mediaPanelStatus = document.getElementById("media-panel-status");
+const mediaPanelOpenHistory = document.getElementById("media-panel-open-history");
 const mediaPanelBody = document.getElementById("media-panel-body");
 const mediaPanelClose = document.getElementById("media-panel-close");
 const horrorfestYearMetrics = document.getElementById("horrorfest-year-metrics");
+const horrorfestContextBanner = document.getElementById("horrorfest-context-banner");
+const horrorfestContextText = document.getElementById("horrorfest-context-text");
+const horrorfestContextReturn = document.getElementById("horrorfest-context-return");
+const horrorfestContextClear = document.getElementById("horrorfest-context-clear");
+const adminContextBanner = document.getElementById("admin-context-banner");
+const adminContextText = document.getElementById("admin-context-text");
+const adminContextReturn = document.getElementById("admin-context-return");
+const adminContextClear = document.getElementById("admin-context-clear");
 const navButtons = Array.from(document.querySelectorAll("[data-view-target]"));
 const viewPanels = Array.from(document.querySelectorAll(".view-panel[data-view]"));
 const adminNavButtons = Array.from(document.querySelectorAll("[data-admin-view-target]"));
@@ -203,6 +217,12 @@ const UI_PREF_KEYS = {
   libraryQuery: "klug.library_query",
   libraryShowQuery: "klug.library_show_query",
   libraryYear: "klug.library_year",
+  libraryEnrichmentStatus: "klug.library_enrichment_status",
+  libraryWatched: "klug.library_watched",
+  libraryLimit: "klug.library_limit",
+  historyLinkedContext: "klug.history_linked_context",
+  dashboardAdminContext: "klug.dashboard_admin_context",
+  dashboardHorrorfestContext: "klug.dashboard_horrorfest_context",
 };
 const IMPORT_UPLOAD_MAX_MB = 25;
 const IMPORT_UPLOAD_MAX_BYTES = IMPORT_UPLOAD_MAX_MB * 1024 * 1024;
@@ -235,8 +255,14 @@ let statsSummaryData = null;
 let statsMonthlyRowsData = [];
 let statsHorrorfestRowsData = [];
 let libraryRows = [];
+let linkedHistoryContext = null;
 let selectedShowDetail = null;
 let selectedMediaItemId = null;
+let selectedMediaDetail = null;
+const showSeasonExpandState = new Map();
+let dashboardAdminContext = null;
+let dashboardHorrorfestContext = null;
+let dashboardEnrichmentPreviewStatus = "";
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -334,12 +360,200 @@ function setHistoryDatePreset(preset) {
     historyLocalDateTo.value = "";
     historyIncludeDeleted.checked = false;
     window.localStorage.setItem(UI_PREF_KEYS.historyQuery, "");
+    clearLinkedHistoryContext({ clearQuery: false });
   }
+}
+
+function loadPersistedLinkedHistoryContext() {
+  const raw = window.localStorage.getItem(UI_PREF_KEYS.historyLinkedContext);
+  if (!raw) {
+    linkedHistoryContext = null;
+    return;
+  }
+  try {
+    linkedHistoryContext = JSON.parse(raw);
+  } catch (_error) {
+    linkedHistoryContext = null;
+    window.localStorage.removeItem(UI_PREF_KEYS.historyLinkedContext);
+  }
+}
+
+function persistLinkedHistoryContext() {
+  if (linkedHistoryContext) {
+    window.localStorage.setItem(
+      UI_PREF_KEYS.historyLinkedContext,
+      JSON.stringify(linkedHistoryContext)
+    );
+  } else {
+    window.localStorage.removeItem(UI_PREF_KEYS.historyLinkedContext);
+  }
+}
+
+function loadPersistedDashboardContexts() {
+  const adminRaw = window.localStorage.getItem(UI_PREF_KEYS.dashboardAdminContext);
+  const horrorfestRaw = window.localStorage.getItem(UI_PREF_KEYS.dashboardHorrorfestContext);
+  try {
+    dashboardAdminContext = adminRaw ? JSON.parse(adminRaw) : null;
+  } catch (_error) {
+    dashboardAdminContext = null;
+    window.localStorage.removeItem(UI_PREF_KEYS.dashboardAdminContext);
+  }
+  try {
+    dashboardHorrorfestContext = horrorfestRaw ? JSON.parse(horrorfestRaw) : null;
+  } catch (_error) {
+    dashboardHorrorfestContext = null;
+    window.localStorage.removeItem(UI_PREF_KEYS.dashboardHorrorfestContext);
+  }
+}
+
+function persistDashboardAdminContext() {
+  if (dashboardAdminContext) {
+    window.localStorage.setItem(
+      UI_PREF_KEYS.dashboardAdminContext,
+      JSON.stringify(dashboardAdminContext)
+    );
+  } else {
+    window.localStorage.removeItem(UI_PREF_KEYS.dashboardAdminContext);
+  }
+}
+
+function persistDashboardHorrorfestContext() {
+  if (dashboardHorrorfestContext) {
+    window.localStorage.setItem(
+      UI_PREF_KEYS.dashboardHorrorfestContext,
+      JSON.stringify(dashboardHorrorfestContext)
+    );
+  } else {
+    window.localStorage.removeItem(UI_PREF_KEYS.dashboardHorrorfestContext);
+  }
+}
+
+function renderHistoryContextBanner() {
+  if (!linkedHistoryContext) {
+    historyContextBanner.classList.add("hidden");
+    historyContextText.textContent =
+      "History is currently linked to another browse surface.";
+    return;
+  }
+  historyContextBanner.classList.remove("hidden");
+  const sourceLabel =
+    linkedHistoryContext.sourceView === "media-panel"
+      ? "Media detail"
+      : linkedHistoryContext.sourceView === "library"
+        ? "Library"
+        : linkedHistoryContext.sourceView === "shows"
+          ? "Shows"
+          : linkedHistoryContext.sourceView === "dashboard"
+            ? "Dashboard"
+        : "browse";
+  const linkLabel = linkedHistoryContext.label || "selected media";
+  let filterLabel = `linked context for ${linkLabel}`;
+  if (linkedHistoryContext.mediaItemId) {
+    filterLabel = `media item filter for ${linkLabel}`;
+  } else if (linkedHistoryContext.appliesQuery) {
+    filterLabel = `title filter for ${linkLabel}`;
+  } else if (linkedHistoryContext.type === "month_range") {
+    filterLabel = `month drilldown for ${linkLabel}`;
+  } else if (linkedHistoryContext.type === "unrated_queue") {
+    filterLabel = `unrated queue context`;
+  } else if (linkedHistoryContext.type === "horrorfest_year_window") {
+    filterLabel = `Horrorfest history slice for ${linkLabel}`;
+  }
+  historyContextText.textContent = `Opened from ${sourceLabel}. History is currently using a linked ${filterLabel}.`;
+  historyContextReturn.textContent =
+    linkedHistoryContext.sourceView === "library"
+      ? "Back to Library"
+      : linkedHistoryContext.sourceView === "shows"
+        ? "Back to Shows"
+        : linkedHistoryContext.sourceView === "dashboard"
+          ? "Back to Dashboard"
+        : "Close Link";
+}
+
+function clearLinkedHistoryContext({ clearQuery = true } = {}) {
+  const shouldClearQuery = Boolean(linkedHistoryContext?.appliesQuery) && clearQuery;
+  linkedHistoryContext = null;
+  persistLinkedHistoryContext();
+  if (shouldClearQuery) {
+    historyQuery.value = "";
+    window.localStorage.setItem(UI_PREF_KEYS.historyQuery, "");
+  }
+  renderHistoryContextBanner();
+  renderHistoryFilterSummary();
+}
+
+function setLinkedHistoryContext(context) {
+  linkedHistoryContext = context;
+  persistLinkedHistoryContext();
+  renderHistoryContextBanner();
+  renderHistoryFilterSummary();
+}
+
+function renderAdminContextBanner() {
+  if (!dashboardAdminContext || dashboardAdminContext.adminView !== "enrichment") {
+    adminContextBanner.classList.add("hidden");
+    adminContextText.textContent = "Enrichment was opened from the dashboard.";
+    return;
+  }
+  adminContextBanner.classList.remove("hidden");
+  adminContextText.textContent = `Opened from Dashboard. Enrichment is currently filtered to ${dashboardAdminContext.label || dashboardAdminContext.enrichmentStatus || "selected rows"}.`;
+}
+
+function clearAdminContext({ clearFilter = false } = {}) {
+  if (clearFilter) {
+    enrichmentStatusFilter.value = "";
+  }
+  dashboardAdminContext = null;
+  persistDashboardAdminContext();
+  renderAdminContextBanner();
+}
+
+function setAdminContext(context) {
+  dashboardAdminContext = context;
+  persistDashboardAdminContext();
+  renderAdminContextBanner();
+}
+
+function renderHorrorfestContextBanner() {
+  if (!dashboardHorrorfestContext) {
+    horrorfestContextBanner.classList.add("hidden");
+    horrorfestContextText.textContent = "Horrorfest was opened from the dashboard.";
+    return;
+  }
+  horrorfestContextBanner.classList.remove("hidden");
+  horrorfestContextText.textContent = `Opened from Dashboard. Showing ${dashboardHorrorfestContext.label || `Horrorfest ${dashboardHorrorfestContext.year}`}.`;
+}
+
+function clearHorrorfestContext() {
+  dashboardHorrorfestContext = null;
+  persistDashboardHorrorfestContext();
+  renderHorrorfestContextBanner();
+}
+
+function setHorrorfestContext(context) {
+  dashboardHorrorfestContext = context;
+  persistDashboardHorrorfestContext();
+  renderHorrorfestContextBanner();
 }
 
 function renderHistoryFilterSummary() {
   const chips = [];
-  if (historyQuery.value.trim()) {
+  if (linkedHistoryContext?.mediaItemId) {
+    chips.push(
+      renderStatusChip(`linked media: ${escapeHtml(linkedHistoryContext.label || "selected media")}`, "success")
+    );
+  } else if (linkedHistoryContext?.appliesQuery) {
+    chips.push(
+      renderStatusChip(`linked title: ${escapeHtml(linkedHistoryContext.label || historyQuery.value.trim())}`, "success")
+    );
+  } else if (linkedHistoryContext?.label) {
+    chips.push(renderStatusChip(`context: ${escapeHtml(linkedHistoryContext.label)}`, "success"));
+  }
+  if (
+    historyQuery.value.trim() &&
+    (!linkedHistoryContext?.appliesQuery ||
+      historyQuery.value.trim() !== (linkedHistoryContext.query || "").trim())
+  ) {
     chips.push(renderStatusChip(`title: ${escapeHtml(historyQuery.value.trim())}`, "info"));
   }
   if (historyMediaType.value) {
@@ -410,10 +624,21 @@ function initializeUiShell() {
   libraryQuery.value = window.localStorage.getItem(UI_PREF_KEYS.libraryQuery) || "";
   libraryShowQuery.value = window.localStorage.getItem(UI_PREF_KEYS.libraryShowQuery) || "";
   libraryYear.value = window.localStorage.getItem(UI_PREF_KEYS.libraryYear) || "";
+  libraryEnrichmentStatus.value =
+    window.localStorage.getItem(UI_PREF_KEYS.libraryEnrichmentStatus) || "";
+  libraryWatched.value = window.localStorage.getItem(UI_PREF_KEYS.libraryWatched) || "";
+  libraryLimitSelect.value =
+    window.localStorage.getItem(UI_PREF_KEYS.libraryLimit) || libraryLimitSelect.value;
+  libraryLimit = Number.parseInt(libraryLimitSelect.value, 10);
+  loadPersistedLinkedHistoryContext();
+  loadPersistedDashboardContexts();
   setActiveView(window.localStorage.getItem(UI_PREF_KEYS.activeView) || "dashboard");
   setActiveAdminView(window.localStorage.getItem(UI_PREF_KEYS.activeAdminView) || "imports");
   setLibraryMode(window.localStorage.getItem(UI_PREF_KEYS.libraryMode) || "movies");
   syncHistorySortUi();
+  renderHistoryContextBanner();
+  renderAdminContextBanner();
+  renderHorrorfestContextBanner();
   renderHistoryFilterSummary();
   renderLibraryFilterSummary();
 }
@@ -510,7 +735,6 @@ async function loadDashboardData() {
   await Promise.all([
     loadLibrary(),
     loadShows(),
-    loadProgress(),
     loadStats(),
     loadDashboardPreviews(),
     loadHistory(),
@@ -520,6 +744,7 @@ async function loadDashboardData() {
     loadScrobbleActivity(),
     loadMetadataEnrichment(),
   ]);
+  await loadDashboardNeedsAttention();
   setLastRefreshNow();
 }
 
@@ -562,6 +787,209 @@ function renderDashboardEmptyRow(body, colspan, message) {
   const tr = document.createElement("tr");
   tr.innerHTML = `<td colspan="${colspan}">${message}</td>`;
   body.appendChild(tr);
+}
+
+async function openHistoryForMedia({
+  mediaItemId,
+  label,
+  mediaType = "",
+  sourceView = "library",
+  libraryModeValue = libraryMode,
+  showId = null,
+}) {
+  if (!mediaItemId) {
+    return;
+  }
+  historyOffset = 0;
+  historyQuery.value = "";
+  historyMediaType.value = mediaType || "";
+  historyLocalDateFrom.value = "";
+  historyLocalDateTo.value = "";
+  historyIncludeDeleted.checked = false;
+  window.localStorage.setItem(UI_PREF_KEYS.historyQuery, "");
+  setLinkedHistoryContext({
+    type: "media_item",
+    mediaItemId,
+    label,
+    mediaType: mediaType || "",
+    sourceView,
+    libraryMode: libraryModeValue || libraryMode,
+    showId,
+    appliesQuery: false,
+  });
+  setActiveView("history");
+  await loadHistory();
+}
+
+async function openHistoryForShow({
+  title,
+  label = title,
+  sourceView = "library",
+  libraryModeValue = libraryMode,
+  showId = null,
+}) {
+  if (!title) {
+    return;
+  }
+  historyOffset = 0;
+  historyQuery.value = title;
+  historyMediaType.value = "episode";
+  historyLocalDateFrom.value = "";
+  historyLocalDateTo.value = "";
+  historyIncludeDeleted.checked = false;
+  window.localStorage.setItem(UI_PREF_KEYS.historyQuery, title);
+  setLinkedHistoryContext({
+    type: "show_title",
+    query: title,
+    label,
+    sourceView,
+    libraryMode: libraryModeValue || libraryMode,
+    showId,
+    appliesQuery: true,
+  });
+  setActiveView("history");
+  await loadHistory();
+}
+
+async function returnHistoryContextToSource() {
+  if (!linkedHistoryContext) {
+    return;
+  }
+  if (linkedHistoryContext.sourceView === "library") {
+    if (linkedHistoryContext.libraryMode) {
+      setLibraryMode(linkedHistoryContext.libraryMode);
+    }
+    setActiveView("library");
+    await loadLibrary();
+    return;
+  }
+  if (linkedHistoryContext.sourceView === "shows") {
+    const selectedShowId = linkedHistoryContext.showId || null;
+    setActiveView("shows");
+    await loadShows();
+    if (selectedShowId) {
+      await loadShowDetail(selectedShowId);
+    }
+    return;
+  }
+  if (linkedHistoryContext.sourceView === "dashboard") {
+    setActiveView("dashboard");
+    await loadDashboardData();
+    return;
+  }
+  clearLinkedHistoryContext();
+  await loadHistory();
+}
+
+function toDateInputValueFromIso(value) {
+  if (!value) {
+    return "";
+  }
+  return toDateTimeLocalValue(value).slice(0, 10);
+}
+
+async function openHistoryForMonth({ year, month }) {
+  historyOffset = 0;
+  historyQuery.value = "";
+  historyMediaType.value = "";
+  historyIncludeDeleted.checked = false;
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd = new Date(year, month, 0);
+  historyLocalDateFrom.value = formatDateInputValue(monthStart);
+  historyLocalDateTo.value = formatDateInputValue(monthEnd);
+  window.localStorage.setItem(UI_PREF_KEYS.historyQuery, "");
+  setLinkedHistoryContext({
+    type: "month_range",
+    label: `${year}-${String(month).padStart(2, "0")}`,
+    sourceView: "dashboard",
+    appliesQuery: false,
+  });
+  setActiveView("history");
+  await loadHistory();
+}
+
+async function openHistoryForUnratedQueue() {
+  historyOffset = 0;
+  historyQuery.value = "";
+  historyMediaType.value = "";
+  historyLocalDateFrom.value = "";
+  historyLocalDateTo.value = "";
+  historyIncludeDeleted.checked = false;
+  window.localStorage.setItem(UI_PREF_KEYS.historyQuery, "");
+  setLinkedHistoryContext({
+    type: "unrated_queue",
+    label: "Unrated Queue",
+    sourceView: "dashboard",
+    appliesQuery: false,
+  });
+  setActiveView("history");
+  await Promise.all([loadHistory(), loadUnratedWatches()]);
+}
+
+async function openHistoryForHorrorfestYear(selectedYear) {
+  historyOffset = 0;
+  historyQuery.value = "";
+  historyMediaType.value = "movie";
+  historyLocalDateFrom.value = toDateInputValueFromIso(selectedYear.window_start_at);
+  historyLocalDateTo.value = toDateInputValueFromIso(selectedYear.window_end_at);
+  historyIncludeDeleted.checked = false;
+  window.localStorage.setItem(UI_PREF_KEYS.historyQuery, "");
+  setLinkedHistoryContext({
+    type: "horrorfest_year_window",
+    label: `Horrorfest ${selectedYear.horrorfest_year}`,
+    sourceView: "dashboard",
+    appliesQuery: false,
+  });
+  setActiveView("history");
+  await loadHistory();
+}
+
+function getCurrentHorrorfestYearSummary() {
+  if (!horrorfestYears.length) {
+    return null;
+  }
+  const activeYear =
+    horrorfestYears.find((row) => row.is_active) ||
+    [...horrorfestYears].sort((left, right) => right.horrorfest_year - left.horrorfest_year)[0];
+  if (!activeYear) {
+    return null;
+  }
+  const statsRow =
+    statsHorrorfestRowsData.find(
+      (row) => row.horrorfest_year === activeYear.horrorfest_year
+    ) || null;
+  return {
+    year: activeYear.horrorfest_year,
+    label: activeYear.label || `Horrorfest ${activeYear.horrorfest_year}`,
+    windowStartAt: activeYear.window_start_at,
+    windowEndAt: activeYear.window_end_at,
+    entryCount: statsRow?.entry_count ?? activeYear.entry_count ?? 0,
+    averageRatingValue: statsRow?.average_rating_value ?? null,
+    latestWatchAt: statsRow?.latest_watch_at ?? null,
+  };
+}
+
+async function openDashboardHorrorfestYear(year, label = null) {
+  setHorrorfestContext({
+    year,
+    label: label || `Horrorfest ${year}`,
+    sourceView: "dashboard",
+  });
+  setActiveView("horrorfest");
+  await loadHorrorfest(String(year));
+}
+
+async function openDashboardEnrichment(status, label = null) {
+  setAdminContext({
+    adminView: "enrichment",
+    enrichmentStatus: status || "",
+    label: label || status || "selected enrichment rows",
+    sourceView: "dashboard",
+  });
+  setActiveView("admin");
+  setActiveAdminView("enrichment");
+  enrichmentStatusFilter.value = status || "";
+  await loadMetadataEnrichment();
 }
 
 function setLibraryMode(mode) {
@@ -633,22 +1061,21 @@ function buildLibraryQuery() {
 function renderLibraryHeader() {
   if (libraryMode === "movies") {
     libraryHead.innerHTML =
-      "<th>Title</th><th>Year</th><th>Watches</th><th>Latest Rating</th><th>Enrichment</th>";
+      "<th>Title</th><th>Latest Watch</th><th>Watches</th><th>Latest Rating</th><th>Signals</th><th>Actions</th>";
     return;
   }
   if (libraryMode === "episodes") {
     libraryHead.innerHTML =
-      "<th>Episode</th><th>Show</th><th>Season/Episode</th><th>Watches</th><th>Enrichment</th>";
+      "<th>Episode</th><th>Show</th><th>Latest Watch</th><th>Watches</th><th>Signals</th><th>Actions</th>";
     return;
   }
-  libraryHead.innerHTML =
-    "<th>Show</th><th>Year</th><th>Watched Episodes</th><th>Total Episodes</th><th>Percent</th><th>Actions</th>";
+  libraryHead.innerHTML = "<th>Show</th><th>Year</th><th>Progress</th><th>Signals</th><th>Actions</th>";
 }
 
 function renderLibraryEmpty(message) {
   libraryBody.innerHTML = "";
   const tr = document.createElement("tr");
-  const columnCount = libraryMode === "shows" ? 6 : 5;
+  const columnCount = libraryMode === "shows" ? 5 : 6;
   tr.innerHTML = `<td colspan="${columnCount}">${message}</td>`;
   libraryBody.appendChild(tr);
 }
@@ -663,48 +1090,106 @@ function renderLibraryRows() {
     const tr = document.createElement("tr");
     tr.classList.add("history-row-clickable");
     if (libraryMode === "movies") {
+      const signals = [
+        row.horrorfest_year
+          ? renderStatusChip(`HF ${row.horrorfest_year}`, "danger")
+          : "",
+        renderStatusChip(
+          escapeHtml(row.enrichment_status),
+          row.enrichment_status === "enriched"
+            ? "success"
+            : row.enrichment_status === "failed"
+              ? "danger"
+              : "warning"
+        ),
+      ]
+        .filter(Boolean)
+        .join(" ");
       tr.innerHTML = `
         <td>
-          ${
-            row.media_item_id
-              ? `<button class="media-link-button" data-media-item-open="${row.media_item_id}" type="button">${escapeHtml(row.title)}</button>`
-              : escapeHtml(row.title)
-          }
+          <div class="library-title-cell">
+            ${
+              row.media_item_id
+                ? `<button class="media-link-button" data-media-item-open="${row.media_item_id}" type="button">${escapeHtml(row.title)}</button>`
+                : escapeHtml(row.title)
+            }
+            <div class="muted">${escapeHtml(row.year || "-")}</div>
+          </div>
         </td>
-        <td>${escapeHtml(row.year || "-")}</td>
+        <td>${row.latest_watched_at ? new Date(row.latest_watched_at).toLocaleDateString() : "-"}</td>
         <td>${escapeHtml(row.watch_count)}</td>
         <td>${row.latest_rating_value ? renderStatusChip(`${row.latest_rating_value}/${row.latest_rating_scale || 10}`, "info") : renderStatusChip("unrated", "neutral")}</td>
-        <td>${renderStatusChip(escapeHtml(row.enrichment_status), row.enrichment_status === "enriched" ? "success" : row.enrichment_status === "failed" ? "danger" : "warning")}</td>
+        <td><div class="history-badges">${signals}</div></td>
+        <td>
+          <div class="button-cluster compact-actions">
+            <button class="secondary library-inline-button" data-media-item-open="${row.media_item_id}" type="button">Open Media</button>
+            <button class="secondary library-inline-button" data-library-history-open="${row.media_item_id}" data-library-history-label="${escapeHtml(row.title)}" data-library-history-type="movie" type="button">Open History</button>
+          </div>
+        </td>
       `;
     } else if (libraryMode === "episodes") {
+      const signals = [
+        row.horrorfest_year
+          ? renderStatusChip(`HF ${row.horrorfest_year}`, "danger")
+          : "",
+        renderStatusChip(
+          escapeHtml(row.enrichment_status),
+          row.enrichment_status === "enriched"
+            ? "success"
+            : row.enrichment_status === "failed"
+              ? "danger"
+              : "warning"
+        ),
+      ]
+        .filter(Boolean)
+        .join(" ");
       tr.innerHTML = `
         <td>
-          ${
-            row.media_item_id
-              ? `<button class="media-link-button" data-media-item-open="${row.media_item_id}" type="button">${escapeHtml(row.title)}</button>`
-              : escapeHtml(row.title)
-          }
+          <div class="library-title-cell">
+            ${
+              row.media_item_id
+                ? `<button class="media-link-button" data-media-item-open="${row.media_item_id}" type="button">${escapeHtml(row.title)}</button>`
+                : escapeHtml(row.title)
+            }
+            <div class="muted">S${String(row.season_number ?? "?").padStart(2, "0")}E${String(row.episode_number ?? "?").padStart(2, "0")}</div>
+          </div>
         </td>
         <td>${escapeHtml(row.show_title || "-")}</td>
-        <td>${row.season_number ?? "-"} / ${row.episode_number ?? "-"}</td>
+        <td>${row.latest_watched_at ? new Date(row.latest_watched_at).toLocaleDateString() : "-"}</td>
         <td>${escapeHtml(row.watch_count)}</td>
-        <td>${renderStatusChip(escapeHtml(row.enrichment_status), row.enrichment_status === "enriched" ? "success" : row.enrichment_status === "failed" ? "danger" : "warning")}</td>
+        <td><div class="history-badges">${signals}</div></td>
+        <td>
+          <div class="button-cluster compact-actions">
+            <button class="secondary library-inline-button" data-media-item-open="${row.media_item_id}" type="button">Open Media</button>
+            <button class="secondary library-inline-button" data-library-history-open="${row.media_item_id}" data-library-history-label="${escapeHtml(row.show_title ? `${row.show_title} - ${row.title}` : row.title)}" data-library-history-type="episode" type="button">Open History</button>
+          </div>
+        </td>
       `;
     } else {
+      const signals = [
+        Number(row.watched_percent) >= 100
+          ? renderStatusChip("caught up", "success")
+          : renderStatusChip(`${row.watched_episodes} watched`, "warning"),
+      ].join(" ");
       tr.innerHTML = `
         <td>
-          <button class="media-link-button" data-library-show-open="${row.show_id}" type="button">${escapeHtml(row.title)}</button>
+          <div class="library-title-cell">
+            <button class="media-link-button" data-library-show-open="${row.show_id}" type="button">${escapeHtml(row.title)}</button>
+          </div>
         </td>
         <td>${escapeHtml(row.year || "-")}</td>
-        <td>${escapeHtml(row.watched_episodes)}</td>
-        <td>${escapeHtml(row.total_episodes)}</td>
-        <td>${renderStatusChip(`${row.watched_percent}%`, Number(row.watched_percent) >= 100 ? "success" : Number(row.watched_percent) > 0 ? "warning" : "neutral")}</td>
+        <td>${escapeHtml(`${row.watched_episodes}/${row.total_episodes}`)}</td>
+        <td><div class="history-badges">${signals} ${renderStatusChip(`${row.watched_percent}%`, Number(row.watched_percent) >= 100 ? "success" : Number(row.watched_percent) > 0 ? "warning" : "neutral")}</div></td>
         <td>
-          ${
-            row.media_item_id
-              ? `<button class="secondary library-inline-button" data-media-item-open="${row.media_item_id}" type="button">Open Media</button>`
-              : '<span class="muted">No media row</span>'
-          }
+          <div class="button-cluster compact-actions">
+            <button class="secondary library-inline-button" data-library-show-open="${row.show_id}" type="button">Show Detail</button>
+            <button class="secondary library-inline-button" data-library-show-history="${escapeHtml(row.title)}" type="button">Open History</button>
+            ${
+              row.media_item_id
+                ? `<button class="secondary library-inline-button" data-media-item-open="${row.media_item_id}" type="button">Open Media</button>`
+                : ""
+            }
+          </div>
         </td>
       `;
     }
@@ -717,7 +1202,7 @@ async function openLibraryShow(showId) {
     return;
   }
   setActiveView("shows");
-  await Promise.all([loadShows(), loadProgress()]);
+  await loadShows();
   await loadShowDetail(showId);
 }
 
@@ -782,11 +1267,18 @@ async function loadDashboardRecentHistoryPreview() {
       tr.innerHTML = `
         <td>${new Date(row.watched_at).toLocaleDateString()}</td>
         <td>
-          ${
-            row.media_item_id
-              ? `<button class="media-link-button" data-media-item-open="${row.media_item_id}" type="button">${escapeHtml(title)}</button>`
-              : escapeHtml(title)
-          }
+          <div class="library-title-cell">
+            ${
+              row.media_item_id
+                ? `<button class="media-link-button" data-media-item-open="${row.media_item_id}" type="button">${escapeHtml(title)}</button>`
+                : escapeHtml(title)
+            }
+            ${
+              row.media_item_id
+                ? `<div class="compact-actions"><button class="secondary library-inline-button" data-dashboard-history-open="${row.media_item_id}" data-dashboard-history-label="${escapeHtml(title)}" data-dashboard-history-type="${row.media_item_type || ""}" type="button">Open History</button></div>`
+                : ""
+            }
+          </div>
         </td>
         <td>${row.playback_source}</td>
         <td>${signals || renderStatusChip("active", "success")}</td>
@@ -806,14 +1298,14 @@ async function loadDashboardUnratedPreview() {
     const response = await api("/api/v1/watch-events/unrated?limit=5");
     if (!response.ok) {
       dashboardRatingsStatus.textContent = "Failed to load unrated queue";
-      renderDashboardEmptyRow(dashboardRatingsBody, 3, "Unrated queue unavailable");
+      renderDashboardEmptyRow(dashboardRatingsBody, 4, "Unrated queue unavailable");
       return;
     }
     const rows = await response.json();
     dashboardRatingsBody.innerHTML = "";
     if (!rows.length) {
       dashboardRatingsStatus.textContent = "No unrated completed watches";
-      renderDashboardEmptyRow(dashboardRatingsBody, 3, "Nothing waiting on ratings");
+      renderDashboardEmptyRow(dashboardRatingsBody, 4, "Nothing waiting on ratings");
       return;
     }
     for (const row of rows) {
@@ -830,13 +1322,14 @@ async function loadDashboardUnratedPreview() {
           }
         </td>
         <td>${row.playback_source}</td>
+        <td><button class="secondary library-inline-button" data-dashboard-unrated-open type="button">Open Queue</button></td>
       `;
       dashboardRatingsBody.appendChild(tr);
     }
     dashboardRatingsStatus.textContent = `Showing ${rows.length} unrated watch(es)`;
   } catch (_error) {
     dashboardRatingsStatus.textContent = "Failed to load unrated queue";
-    renderDashboardEmptyRow(dashboardRatingsBody, 3, "Unrated queue unavailable");
+    renderDashboardEmptyRow(dashboardRatingsBody, 4, "Unrated queue unavailable");
   }
 }
 
@@ -847,7 +1340,7 @@ async function loadDashboardEnrichmentPreview() {
     let previewLabel = "failed";
     if (!response.ok) {
       dashboardEnrichmentStatus.textContent = "Failed to load enrichment watchlist";
-      renderDashboardEmptyRow(dashboardEnrichmentBody, 4, "Enrichment preview unavailable");
+      renderDashboardEmptyRow(dashboardEnrichmentBody, 5, "Enrichment preview unavailable");
       return;
     }
     let rows = await response.json();
@@ -856,7 +1349,7 @@ async function loadDashboardEnrichmentPreview() {
       previewLabel = "pending";
       if (!response.ok) {
         dashboardEnrichmentStatus.textContent = "Failed to load enrichment watchlist";
-        renderDashboardEmptyRow(dashboardEnrichmentBody, 4, "Enrichment preview unavailable");
+        renderDashboardEmptyRow(dashboardEnrichmentBody, 5, "Enrichment preview unavailable");
         return;
       }
       rows = await response.json();
@@ -865,7 +1358,9 @@ async function loadDashboardEnrichmentPreview() {
     dashboardEnrichmentBody.innerHTML = "";
     if (!rows.length) {
       dashboardEnrichmentStatus.textContent = "No pending or failed enrichment rows";
-      renderDashboardEmptyRow(dashboardEnrichmentBody, 4, "Enrichment queue is clear");
+      renderDashboardEmptyRow(dashboardEnrichmentBody, 5, "Enrichment queue is clear");
+      dashboardEnrichmentPreviewStatus = "";
+      dashboardEnrichmentOpen.textContent = "Open Queue";
       return;
     }
 
@@ -882,14 +1377,118 @@ async function loadDashboardEnrichmentPreview() {
         <td>${row.type}</td>
         <td>${renderStatusChip(row.enrichment_status, tone)}</td>
         <td>${row.next_action || "-"}</td>
+        <td><button class="secondary library-inline-button" data-dashboard-enrichment-open="${row.enrichment_status}" type="button">Open Filter</button></td>
       `;
       dashboardEnrichmentBody.appendChild(tr);
     }
     dashboardEnrichmentStatus.textContent = `Showing ${previewLabel} enrichment rows`;
+    dashboardEnrichmentPreviewStatus = previewLabel;
+    dashboardEnrichmentOpen.textContent =
+      previewLabel === "failed" ? "Open Failed" : "Open Pending";
   } catch (_error) {
     dashboardEnrichmentStatus.textContent = "Failed to load enrichment watchlist";
-    renderDashboardEmptyRow(dashboardEnrichmentBody, 4, "Enrichment preview unavailable");
+    renderDashboardEmptyRow(dashboardEnrichmentBody, 5, "Enrichment preview unavailable");
+    dashboardEnrichmentPreviewStatus = "";
+    dashboardEnrichmentOpen.textContent = "Open Queue";
   }
+}
+
+async function loadDashboardNeedsAttention() {
+  dashboardAttentionGrid.innerHTML = "";
+  const currentHorrorfest = getCurrentHorrorfestYearSummary();
+  let failedCount = 0;
+  let pendingCount = 0;
+  try {
+    const [failedResponse, pendingResponse] = await Promise.all([
+      api("/api/v1/metadata-enrichment/items?enrichment_status=failed&limit=250"),
+      api("/api/v1/metadata-enrichment/items?enrichment_status=pending&limit=250"),
+    ]);
+    if (failedResponse.ok) {
+      failedCount = (await failedResponse.json()).length;
+    }
+    if (pendingResponse.ok) {
+      pendingCount = (await pendingResponse.json()).length;
+    }
+  } catch (_error) {
+    failedCount = 0;
+    pendingCount = 0;
+  }
+
+  const importIssuesCount = importHistoryRows.filter((row) =>
+    row.status === "failed" || row.status === "completed_with_errors"
+  ).length;
+
+  const cards = [
+    {
+      title: "Unrated Watches",
+      value: statsSummaryData?.unrated_completed_watch_count ?? 0,
+      subtitle: "Completed watches waiting for a rating.",
+      tone: "warning",
+      actionLabel: "Open Queue",
+      actionKey: "unrated",
+    },
+    {
+      title: "Failed Enrichment",
+      value: failedCount,
+      subtitle: "Media items that still need metadata help.",
+      tone: failedCount ? "danger" : "success",
+      actionLabel: "Open Failed",
+      actionKey: "enrichment-failed",
+    },
+    {
+      title: "Pending Enrichment",
+      value: pendingCount,
+      subtitle: "Queued rows waiting to be enriched.",
+      tone: pendingCount ? "warning" : "success",
+      actionLabel: "Open Pending",
+      actionKey: "enrichment-pending",
+    },
+  ];
+
+  if (currentHorrorfest) {
+    cards.push({
+      title: currentHorrorfest.label,
+      value: currentHorrorfest.entryCount,
+      subtitle: currentHorrorfest.latestWatchAt
+        ? `Latest watch ${new Date(currentHorrorfest.latestWatchAt).toLocaleDateString()}`
+        : "Open the current Horrorfest year.",
+      tone: "danger",
+      actionLabel: "Open Year",
+      actionKey: "horrorfest-current",
+      year: currentHorrorfest.year,
+    });
+  }
+
+  if (importIssuesCount) {
+    cards.push({
+      title: "Import Issues",
+      value: importIssuesCount,
+      subtitle: "Recent imports with failures or recorded errors.",
+      tone: "info",
+      actionLabel: "Open Imports",
+      actionKey: "imports-errors",
+    });
+  }
+
+  dashboardAttentionGrid.innerHTML = cards
+    .map(
+      (card) => `
+        <article class="attention-card">
+          <div class="stats-card-label">${escapeHtml(card.title)}</div>
+          <div class="attention-card-value">${escapeHtml(card.value)}</div>
+          <p class="muted">${escapeHtml(card.subtitle)}</p>
+          <div class="compact-actions">
+            <button class="secondary library-inline-button" data-dashboard-action="${card.actionKey}" ${card.year ? `data-dashboard-year="${card.year}"` : ""} type="button">${escapeHtml(card.actionLabel)}</button>
+            ${
+              card.actionKey === "horrorfest-current" && card.year
+                ? `<button class="secondary library-inline-button" data-dashboard-action="horrorfest-history" data-dashboard-year="${card.year}" type="button">Open History</button>`
+                : ""
+            }
+          </div>
+        </article>
+      `
+    )
+    .join("");
 }
 
 async function loadDashboardPreviews() {
@@ -934,7 +1533,7 @@ async function loadStats() {
       for (const row of monthlyRows) {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${row.year}-${String(row.month).padStart(2, "0")}</td>
+          <td><button class="media-link-button" data-dashboard-month="${row.month}" data-dashboard-year="${row.year}" type="button">${row.year}-${String(row.month).padStart(2, "0")}</button></td>
           <td>${row.watch_count}</td>
           <td>${row.movie_count}</td>
           <td>${row.episode_count}</td>
@@ -955,7 +1554,7 @@ async function loadStats() {
       for (const row of horrorfestRows) {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${row.horrorfest_year}</td>
+          <td><button class="media-link-button" data-dashboard-horrorfest-year="${row.horrorfest_year}" type="button">${row.horrorfest_year}</button></td>
           <td>${row.entry_count}</td>
           <td>${formatDecimalValue(row.total_runtime_hours)}</td>
           <td>${row.average_rating_value ? formatDecimalValue(row.average_rating_value) : "-"}</td>
@@ -993,14 +1592,24 @@ async function loadShows() {
     showsStatus.textContent = `Loaded ${shows.length} show(s)`;
     for (const show of shows) {
       const li = document.createElement("li");
-      const button = document.createElement("button");
-      button.className = "secondary";
-      button.innerHTML = `
-        <span>${escapeHtml(show.title)}</span>
-        <span class="muted">${escapeHtml(show.year || "n/a")}</span>
+      li.className = "show-browse-row";
+      const latestWatchLabel = show.latest_watched_at
+        ? new Date(show.latest_watched_at).toLocaleDateString()
+        : "No watched episodes yet";
+      li.innerHTML = `
+        <div class="show-browse-main">
+          <div class="show-browse-title">${escapeHtml(show.title)}</div>
+          <div class="show-browse-meta">
+            ${show.year ? renderStatusChip(String(show.year), "neutral") : ""}
+            ${renderStatusChip(`${show.watched_episode_count || 0} watched`, show.watched_episode_count ? "success" : "neutral")}
+            ${show.latest_watched_at ? renderStatusChip(`Latest ${escapeHtml(latestWatchLabel)}`, "info") : renderStatusChip("no recent watch", "warning")}
+          </div>
+        </div>
+        <div class="compact-actions">
+          <button class="secondary library-inline-button" data-show-open="${show.show_id}" type="button">Open Show</button>
+          <button class="secondary library-inline-button" data-show-history="${escapeHtml(show.title)}" data-show-id="${show.show_id}" type="button">Open History</button>
+        </div>
       `;
-      button.onclick = () => loadShowDetail(show.show_id);
-      li.appendChild(button);
       showList.appendChild(li);
     }
   } catch (_error) {
@@ -1008,34 +1617,35 @@ async function loadShows() {
   }
 }
 
-async function loadProgress() {
-  progressStatus.textContent = "Loading progress...";
-  progressBody.innerHTML = "";
-  try {
-    const response = await api("/api/v1/shows/progress");
-    if (!response.ok) {
-      progressStatus.textContent = "Failed to load progress";
-      return;
-    }
-    const rows = await response.json();
-    if (rows.length === 0) {
-      progressStatus.textContent = "No watched progress yet";
-      return;
-    }
-    progressStatus.textContent = `Loaded ${rows.length} progress row(s)`;
-    for (const row of rows) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${row.show_title}</td>
-        <td>${row.watched_episodes}</td>
-        <td>${row.total_episodes}</td>
-        <td>${row.watched_percent}%</td>
-      `;
-      progressBody.appendChild(tr);
-    }
-  } catch (_error) {
-    progressStatus.textContent = "Failed to load progress";
+function getSeasonStateKey(showId, seasonNumber) {
+  return `${showId}:${seasonNumber ?? 0}`;
+}
+
+function isSeasonExpanded(showId, seasonNumber, defaultSeasonKey) {
+  const key = getSeasonStateKey(showId, seasonNumber);
+  if (showSeasonExpandState.has(key)) {
+    return showSeasonExpandState.get(key);
   }
+  return String(seasonNumber ?? 0) === defaultSeasonKey;
+}
+
+function toggleSeasonExpanded(showId, seasonNumber) {
+  const key = getSeasonStateKey(showId, seasonNumber);
+  const currentlyExpanded = showSeasonExpandState.get(key) ?? false;
+  showSeasonExpandState.set(key, !currentlyExpanded);
+}
+
+function getShowDetailSummary(detail) {
+  const watchedEpisodes = detail.episodes.filter((episode) => episode.watched_by_user).length;
+  const latestWatchedAt = detail.episodes
+    .map((episode) => episode.latest_watched_at)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+  return {
+    watchedEpisodes,
+    latestWatchedAt,
+  };
 }
 
 async function loadShowDetail(showId) {
@@ -1052,19 +1662,26 @@ async function loadShowDetail(showId) {
     const detail = await response.json();
     selectedShowDetail = detail;
     detailTitle.textContent = detail.show.title;
-    const progress = detail.progress[0];
-    detailProgress.textContent = progress
-      ? `Progress: ${progress.watched_episodes}/${progress.total_episodes} (${progress.watched_percent}%)`
-      : "Progress: no watched data yet";
+    const summary = getShowDetailSummary(detail);
+    detailProgress.textContent = summary.latestWatchedAt
+      ? `Watched episodes logged in Klug: ${summary.watchedEpisodes} · Latest watch ${new Date(summary.latestWatchedAt).toLocaleString()}`
+      : `Watched episodes logged in Klug: ${summary.watchedEpisodes}`;
     detailSummary.innerHTML = `
       <section class="detail-section">
         <h4>Show Snapshot</h4>
+        <div class="meta-pill-grid">
+          ${renderMetaPills([
+            ["Watched Episodes", summary.watchedEpisodes],
+            ["Latest Watch", summary.latestWatchedAt ? new Date(summary.latestWatchedAt).toLocaleDateString() : "-"],
+            ["TMDB", detail.show.tmdb_id],
+            ["Year", detail.show.year || "-"],
+          ])}
+        </div>
         <div class="detail-grid">
           ${renderDetailItems([
-            ["TMDB", escapeHtml(detail.show.tmdb_id)],
             ["TVDB", escapeHtml(detail.show.tvdb_id || "-")],
             ["IMDB", escapeHtml(detail.show.imdb_id || "-")],
-            ["Year", escapeHtml(detail.show.year || "-")],
+            ["Episode Rows", detail.episodes.length],
           ])}
         </div>
       </section>
@@ -1081,10 +1698,15 @@ async function loadShowDetail(showId) {
     const seasons = Array.from(groupedEpisodes.entries()).sort(
       ([left], [right]) => Number(left) - Number(right)
     );
+    const firstWatchedSeason =
+      seasons.find(([, seasonEpisodes]) => seasonEpisodes.some((ep) => ep.watched_by_user))?.[0] ??
+      seasons[0]?.[0] ??
+      "0";
     for (const [seasonKey, seasonEpisodes] of seasons) {
       const seasonSection = document.createElement("li");
       const watchedCount = seasonEpisodes.filter((ep) => ep.watched_by_user).length;
       const heading = Number(seasonKey) === 0 ? "Specials" : `Season ${seasonKey}`;
+      const expanded = isSeasonExpanded(detail.show.show_id, seasonKey, firstWatchedSeason);
       const listItems = seasonEpisodes
         .sort((left, right) => (left.episode_number ?? 0) - (right.episode_number ?? 0))
         .map((ep) => {
@@ -1097,11 +1719,17 @@ async function loadShowDetail(showId) {
           return `
             <li>
               <div class="episode-row">
-                <div>
+                <div class="episode-copy">
                   <div class="history-title-main">${escapeHtml(`E${ep.episode_number ?? "?"} - ${ep.title}`)}</div>
-                  <div class="history-badges">${ep.watched_by_user ? renderStatusChip("watched", "success") : renderStatusChip(watchedLabel, ep.watched_count ? "warning" : "neutral")}</div>
+                  <div class="history-badges">
+                    ${ep.watched_by_user ? renderStatusChip("watched", "success") : renderStatusChip(watchedLabel, ep.watched_count ? "warning" : "neutral")}
+                    ${ep.latest_watched_at ? renderStatusChip(`Last ${escapeHtml(new Date(ep.latest_watched_at).toLocaleDateString())}`, "info") : ""}
+                  </div>
                 </div>
-                <button class="secondary episode-detail-button" data-media-item-detail-id="${ep.media_item_id}" type="button">Open Media</button>
+                <div class="compact-actions">
+                  <button class="secondary episode-detail-button" data-media-item-detail-id="${ep.media_item_id}" type="button">Open Media</button>
+                  <button class="secondary library-inline-button" data-show-episode-history="${ep.media_item_id}" data-show-episode-label="${escapeHtml(`${detail.show.title} · ${ep.title}`)}" data-show-id="${detail.show.show_id}" type="button">Open History</button>
+                </div>
               </div>
             </li>
           `;
@@ -1110,10 +1738,16 @@ async function loadShowDetail(showId) {
       seasonSection.className = "season-group";
       seasonSection.innerHTML = `
         <div class="season-heading">
-          <h4>${escapeHtml(heading)}</h4>
-          ${renderStatusChip(`${watchedCount}/${seasonEpisodes.length} watched`, watchedCount === seasonEpisodes.length ? "success" : watchedCount ? "warning" : "neutral")}
+          <button class="season-toggle" data-show-season-toggle="${seasonKey}" data-show-id="${detail.show.show_id}" type="button">
+            <span>${expanded ? "Hide" : "Show"}</span>
+            <span>${escapeHtml(heading)}</span>
+          </button>
+          <div class="season-heading-actions">
+            ${renderStatusChip(`${watchedCount}/${seasonEpisodes.length} watched`, watchedCount === seasonEpisodes.length ? "success" : watchedCount ? "warning" : "neutral")}
+            <button class="secondary library-inline-button" data-show-season-history="${escapeHtml(detail.show.title)}" data-show-season-label="${escapeHtml(`${detail.show.title} · ${heading}`)}" data-show-id="${detail.show.show_id}" type="button">Open History</button>
+          </div>
         </div>
-        <ul class="season-list">${listItems}</ul>
+        <ul class="season-list ${expanded ? "" : "hidden"}">${listItems}</ul>
       `;
       episodeList.appendChild(seasonSection);
     }
@@ -1127,7 +1761,9 @@ function closeMediaPanel() {
   mediaPanel.classList.add("hidden");
   mediaPanelStatus.textContent = "Select a watch or episode to inspect richer media detail.";
   mediaPanelBody.innerHTML = "";
+  mediaPanelOpenHistory.disabled = true;
   selectedMediaItemId = null;
+  selectedMediaDetail = null;
 }
 
 function renderMediaRecentWatch(row) {
@@ -1161,6 +1797,7 @@ async function openMediaDetail(mediaItemId) {
   mediaPanel.classList.remove("hidden");
   mediaPanelTitle.textContent = "Loading media detail...";
   mediaPanelStatus.textContent = `Loading media item ${mediaItemId}...`;
+  mediaPanelOpenHistory.disabled = true;
   mediaPanelBody.innerHTML = "";
   try {
     const response = await api(`/api/v1/media-items/${mediaItemId}`);
@@ -1170,8 +1807,10 @@ async function openMediaDetail(mediaItemId) {
       return;
     }
     const detail = await response.json();
+    selectedMediaDetail = detail;
     mediaPanelTitle.textContent = detail.title;
     mediaPanelStatus.textContent = `${detail.type} · ${detail.enrichment_status}`;
+    mediaPanelOpenHistory.disabled = false;
     const poster = detail.poster_url
       ? `<img class="media-panel-poster" src="${escapeHtml(detail.poster_url)}" alt="${escapeHtml(detail.title)} poster" />`
       : '<div class="media-panel-poster-placeholder">No Poster</div>';
@@ -1199,6 +1838,7 @@ async function openMediaDetail(mediaItemId) {
                 ["Latest Rating", detail.latest_rating_value ? `${detail.latest_rating_value}/${detail.latest_rating_scale || 10}` : "-"],
                 ["Watch Count", detail.watch_count],
                 ["Completed", detail.completed_watch_count],
+                ["Latest Watch", detail.latest_watch_at ? new Date(detail.latest_watch_at).toLocaleDateString() : "-"],
               ])}
             </div>
             ${
@@ -1940,6 +2580,7 @@ async function loadHorrorfest(preferredYear = null) {
   horrorfestRows = [];
   selectedHorrorfestEntryId = null;
   horrorfestOpenMedia.disabled = true;
+  renderHorrorfestContextBanner();
   try {
     const selectedYear = await loadHorrorfestYears(preferredYear);
     if (!selectedYear) {
@@ -2097,6 +2738,9 @@ function buildHistoryQuery() {
   const params = new URLSearchParams();
   params.set("limit", String(historyLimit));
   params.set("offset", String(historyOffset));
+  if (linkedHistoryContext?.mediaItemId) {
+    params.set("media_item_id", linkedHistoryContext.mediaItemId);
+  }
   if (historyQuery.value.trim()) {
     params.set("query", historyQuery.value.trim());
   }
@@ -2113,6 +2757,13 @@ function buildHistoryQuery() {
     params.set("include_deleted", "true");
   }
   return params.toString();
+}
+
+function buildHistoryEndpoint() {
+  if (linkedHistoryContext?.type === "unrated_queue") {
+    return `/api/v1/watch-events/unrated?${buildHistoryQuery()}`;
+  }
+  return `/api/v1/watch-events?${buildHistoryQuery()}`;
 }
 
 function syncHistorySortUi() {
@@ -2290,7 +2941,7 @@ async function loadHistory() {
   historyOpenMedia.disabled = true;
   renderHistoryFilterSummary();
   try {
-    const response = await api(`/api/v1/watch-events?${buildHistoryQuery()}`);
+    const response = await api(buildHistoryEndpoint());
     if (!response.ok) {
       historyStatus.textContent = "Failed to load history";
       setHistoryPagination(0);
@@ -2301,14 +2952,27 @@ async function loadHistory() {
     const rows = await response.json();
     historyRows = rows;
     if (rows.length === 0) {
-      historyStatus.textContent = "No events for current filter/page";
+      historyStatus.textContent =
+        linkedHistoryContext?.type === "unrated_queue"
+          ? "No unrated watches matched the current queue view"
+          : linkedHistoryContext
+            ? "No watch events matched the linked browse context"
+            : "No events for current filter/page";
       setHistoryPagination(0);
-      historyDetailStatus.textContent = "Select a watch event to inspect or correct.";
+      historyDetailStatus.textContent =
+        linkedHistoryContext?.type === "unrated_queue"
+          ? "No unrated watches are currently waiting for ratings."
+          : linkedHistoryContext
+            ? "No watch events matched the linked browse context. Clear the link or return to Library."
+            : "Select a watch event to inspect or correct.";
       historyDetail.innerHTML = "";
       return;
     }
     renderHistoryRows();
-    historyStatus.textContent = `Loaded ${rows.length} event(s) for the current page`;
+    historyStatus.textContent =
+      linkedHistoryContext?.type === "unrated_queue"
+        ? `Loaded ${rows.length} unrated watch(es) for the current page`
+        : `Loaded ${rows.length} event(s) for the current page`;
     setHistoryPagination(rows.length);
     populateHistoryEditor(sortHistoryRows(rows)[0]);
   } catch (_error) {
@@ -2564,6 +3228,7 @@ async function loadMetadataEnrichment() {
   enrichmentStatusText.textContent = "Loading metadata enrichment queue...";
   enrichmentBody.innerHTML = "";
   selectedEnrichmentId = null;
+  renderAdminContextBanner();
   try {
     const response = await api(`/api/v1/metadata-enrichment/items?${buildEnrichmentQuery()}`);
     if (!response.ok) {
@@ -2907,6 +3572,12 @@ horrorfestRefresh.addEventListener("click", async () => {
 
 horrorfestYearSelect.addEventListener("change", async () => {
   const selectedYearValue = horrorfestYearSelect.value;
+  if (
+    dashboardHorrorfestContext &&
+    String(dashboardHorrorfestContext.year) !== selectedYearValue
+  ) {
+    clearHorrorfestContext();
+  }
   const selected = horrorfestYears.find(
     (item) => String(item.horrorfest_year) === selectedYearValue
   );
@@ -2973,6 +3644,46 @@ episodeList.addEventListener("click", async (event) => {
   if (!(target instanceof HTMLElement)) {
     return;
   }
+  const seasonToggle = target.closest("button[data-show-season-toggle]");
+  if (seasonToggle instanceof HTMLButtonElement) {
+    if (!selectedShowDetail) {
+      return;
+    }
+    toggleSeasonExpanded(selectedShowDetail.show.show_id, seasonToggle.dataset.showSeasonToggle);
+    await loadShowDetail(selectedShowDetail.show.show_id);
+    return;
+  }
+  const seasonHistoryButton = target.closest("button[data-show-season-history]");
+  if (seasonHistoryButton instanceof HTMLButtonElement) {
+    const title = seasonHistoryButton.dataset.showSeasonHistory;
+    const label = seasonHistoryButton.dataset.showSeasonLabel || title;
+    const showId = seasonHistoryButton.dataset.showId || null;
+    if (title) {
+      await openHistoryForShow({
+        title,
+        label,
+        sourceView: "shows",
+        showId,
+      });
+    }
+    return;
+  }
+  const episodeHistoryButton = target.closest("button[data-show-episode-history]");
+  if (episodeHistoryButton instanceof HTMLButtonElement) {
+    const mediaItemId = episodeHistoryButton.dataset.showEpisodeHistory;
+    const label = episodeHistoryButton.dataset.showEpisodeLabel || "selected episode";
+    const showId = episodeHistoryButton.dataset.showId || null;
+    if (mediaItemId) {
+      await openHistoryForMedia({
+        mediaItemId,
+        label,
+        mediaType: "episode",
+        sourceView: "shows",
+        showId,
+      });
+    }
+    return;
+  }
   const button = target.closest("button[data-media-item-detail-id]");
   if (!(button instanceof HTMLButtonElement)) {
     return;
@@ -2984,9 +3695,51 @@ episodeList.addEventListener("click", async (event) => {
   await openMediaDetail(mediaItemId);
 });
 
+showList.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const openButton = target.closest("button[data-show-open]");
+  if (openButton instanceof HTMLButtonElement) {
+    const showId = openButton.dataset.showOpen;
+    if (showId) {
+      await loadShowDetail(showId);
+    }
+    return;
+  }
+  const historyButton = target.closest("button[data-show-history]");
+  if (historyButton instanceof HTMLButtonElement) {
+    const title = historyButton.dataset.showHistory;
+    const showId = historyButton.dataset.showId || null;
+    if (title) {
+      await openHistoryForShow({
+        title,
+        sourceView: "shows",
+        showId,
+      });
+    }
+  }
+});
+
 dashboardHistoryBody.addEventListener("click", async (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const historyButton = target.closest("button[data-dashboard-history-open]");
+  if (historyButton instanceof HTMLButtonElement) {
+    const mediaItemId = historyButton.dataset.dashboardHistoryOpen;
+    const label = historyButton.dataset.dashboardHistoryLabel || "selected media";
+    const mediaType = historyButton.dataset.dashboardHistoryType || "";
+    if (mediaItemId) {
+      await openHistoryForMedia({
+        mediaItemId,
+        label,
+        mediaType,
+        sourceView: "dashboard",
+      });
+    }
     return;
   }
   const mediaButton = target.closest("button[data-media-item-open]");
@@ -3005,6 +3758,11 @@ dashboardRatingsBody.addEventListener("click", async (event) => {
   if (!(target instanceof HTMLElement)) {
     return;
   }
+  const unratedButton = target.closest("button[data-dashboard-unrated-open]");
+  if (unratedButton instanceof HTMLButtonElement) {
+    await openHistoryForUnratedQueue();
+    return;
+  }
   const mediaButton = target.closest("button[data-media-item-open]");
   if (!(mediaButton instanceof HTMLButtonElement)) {
     return;
@@ -3014,6 +3772,85 @@ dashboardRatingsBody.addEventListener("click", async (event) => {
     return;
   }
   await openMediaDetail(mediaItemId);
+});
+
+dashboardEnrichmentBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const button = target.closest("button[data-dashboard-enrichment-open]");
+  if (!(button instanceof HTMLButtonElement)) {
+    return;
+  }
+  await openDashboardEnrichment(
+    button.dataset.dashboardEnrichmentOpen || "",
+    `${button.dataset.dashboardEnrichmentOpen || "selected"} enrichment`
+  );
+});
+
+statsMonthlyBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const button = target.closest("button[data-dashboard-month]");
+  if (!(button instanceof HTMLButtonElement)) {
+    return;
+  }
+  const year = Number.parseInt(button.dataset.dashboardYear || "", 10);
+  const month = Number.parseInt(button.dataset.dashboardMonth || "", 10);
+  if (!Number.isFinite(year) || !Number.isFinite(month)) {
+    return;
+  }
+  await openHistoryForMonth({ year, month });
+});
+
+statsHorrorfestBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const button = target.closest("button[data-dashboard-horrorfest-year]");
+  if (!(button instanceof HTMLButtonElement)) {
+    return;
+  }
+  const year = Number.parseInt(button.dataset.dashboardHorrorfestYear || "", 10);
+  if (!Number.isFinite(year)) {
+    return;
+  }
+  await openDashboardHorrorfestYear(year);
+});
+
+dashboardAttentionGrid.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const button = target.closest("button[data-dashboard-action]");
+  if (!(button instanceof HTMLButtonElement)) {
+    return;
+  }
+  const action = button.dataset.dashboardAction;
+  const year = Number.parseInt(button.dataset.dashboardYear || "", 10);
+  if (action === "unrated") {
+    await openHistoryForUnratedQueue();
+  } else if (action === "enrichment-failed") {
+    await openDashboardEnrichment("failed", "failed enrichment");
+  } else if (action === "enrichment-pending") {
+    await openDashboardEnrichment("pending", "pending enrichment");
+  } else if (action === "horrorfest-current" && Number.isFinite(year)) {
+    await openDashboardHorrorfestYear(year);
+  } else if (action === "horrorfest-history" && Number.isFinite(year)) {
+    const selectedYear = horrorfestYears.find((row) => row.horrorfest_year === year);
+    if (selectedYear) {
+      await openHistoryForHorrorfestYear(selectedYear);
+    }
+  } else if (action === "imports-errors") {
+    setActiveView("admin");
+    setActiveAdminView("imports");
+    await loadImportHistory();
+  }
 });
 
 horrorfestConfigSave.addEventListener("click", async () => {
@@ -3128,6 +3965,12 @@ enrichmentApply.addEventListener("click", async () => {
 });
 
 enrichmentStatusFilter.addEventListener("change", async () => {
+  if (
+    dashboardAdminContext?.adminView === "enrichment" &&
+    enrichmentStatusFilter.value !== (dashboardAdminContext.enrichmentStatus || "")
+  ) {
+    clearAdminContext();
+  }
   await loadMetadataEnrichment();
 });
 
@@ -3185,20 +4028,53 @@ themeToggle.addEventListener("click", () => {
   toggleTheme();
 });
 
+dashboardUnratedOpen.addEventListener("click", async () => {
+  await openHistoryForUnratedQueue();
+});
+
+dashboardEnrichmentOpen.addEventListener("click", async () => {
+  await openDashboardEnrichment(
+    dashboardEnrichmentPreviewStatus || "",
+    `${dashboardEnrichmentPreviewStatus || "selected"} enrichment`
+  );
+});
+
+adminContextReturn.addEventListener("click", async () => {
+  setActiveView("dashboard");
+  await loadDashboardData();
+});
+
+adminContextClear.addEventListener("click", async () => {
+  clearAdminContext({ clearFilter: true });
+  await loadMetadataEnrichment();
+});
+
+horrorfestContextReturn.addEventListener("click", async () => {
+  setActiveView("dashboard");
+  await loadDashboardData();
+});
+
+horrorfestContextClear.addEventListener("click", async () => {
+  clearHorrorfestContext();
+  await loadHorrorfest();
+});
+
 for (const button of navButtons) {
   button.addEventListener("click", async () => {
     const targetView = button.dataset.viewTarget;
     setActiveView(targetView);
     if (targetView === "dashboard") {
-      await Promise.all([loadStats(), loadDashboardPreviews()]);
+      await loadDashboardData();
     } else if (targetView === "library") {
       await loadLibrary();
     } else if (targetView === "history") {
       await Promise.all([loadHistory(), loadUnratedWatches()]);
     } else if (targetView === "horrorfest") {
-      await loadHorrorfest();
+      await loadHorrorfest(
+        dashboardHorrorfestContext?.year ? String(dashboardHorrorfestContext.year) : null
+      );
     } else if (targetView === "shows") {
-      await Promise.all([loadShows(), loadProgress()]);
+      await loadShows();
     } else if (targetView === "admin") {
       const activeAdminView =
         window.localStorage.getItem(UI_PREF_KEYS.activeAdminView) || "imports";
@@ -3241,7 +4117,9 @@ for (const button of jumpButtons) {
     } else if (targetView === "library") {
       await loadLibrary();
     } else if (targetView === "horrorfest") {
-      await loadHorrorfest();
+      await loadHorrorfest(
+        dashboardHorrorfestContext?.year ? String(dashboardHorrorfestContext.year) : null
+      );
     } else if (targetView === "admin") {
       const targetAdminView = button.dataset.jumpAdmin || "imports";
       if (targetAdminView === "imports") {
@@ -3437,6 +4315,12 @@ libraryApply.addEventListener("click", async () => {
   window.localStorage.setItem(UI_PREF_KEYS.libraryQuery, libraryQuery.value.trim());
   window.localStorage.setItem(UI_PREF_KEYS.libraryShowQuery, libraryShowQuery.value.trim());
   window.localStorage.setItem(UI_PREF_KEYS.libraryYear, libraryYear.value.trim());
+  window.localStorage.setItem(
+    UI_PREF_KEYS.libraryEnrichmentStatus,
+    libraryEnrichmentStatus.value
+  );
+  window.localStorage.setItem(UI_PREF_KEYS.libraryWatched, libraryWatched.value);
+  window.localStorage.setItem(UI_PREF_KEYS.libraryLimit, libraryLimitSelect.value);
   renderLibraryFilterSummary();
   await loadLibrary();
 });
@@ -3464,6 +4348,32 @@ libraryBody.addEventListener("click", async (event) => {
     }
     return;
   }
+  const historyButton = target.closest("button[data-library-history-open]");
+  if (historyButton instanceof HTMLButtonElement) {
+    const mediaItemId = historyButton.dataset.libraryHistoryOpen;
+    const label = historyButton.dataset.libraryHistoryLabel || "selected media";
+    const mediaType = historyButton.dataset.libraryHistoryType || "";
+    if (mediaItemId) {
+      await openHistoryForMedia({
+        mediaItemId,
+        label,
+        mediaType,
+        sourceView: "library",
+      });
+    }
+    return;
+  }
+  const showHistoryButton = target.closest("button[data-library-show-history]");
+  if (showHistoryButton instanceof HTMLButtonElement) {
+    const title = showHistoryButton.dataset.libraryShowHistory;
+    if (title) {
+      await openHistoryForShow({
+        title,
+        sourceView: "library",
+      });
+    }
+    return;
+  }
   const showButton = target.closest("button[data-library-show-open]");
   if (showButton instanceof HTMLButtonElement) {
     const showId = showButton.dataset.libraryShowOpen;
@@ -3471,6 +4381,28 @@ libraryBody.addEventListener("click", async (event) => {
       await openLibraryShow(showId);
     }
   }
+});
+
+historyContextReturn.addEventListener("click", async () => {
+  await returnHistoryContextToSource();
+});
+
+historyContextClear.addEventListener("click", async () => {
+  clearLinkedHistoryContext();
+  await loadHistory();
+});
+
+mediaPanelOpenHistory.addEventListener("click", async () => {
+  if (!selectedMediaItemId || !selectedMediaDetail) {
+    return;
+  }
+  await openHistoryForMedia({
+    mediaItemId: selectedMediaItemId,
+    label: selectedMediaDetail.title,
+    mediaType: selectedMediaDetail.type === "show" ? "" : selectedMediaDetail.type,
+    sourceView: "media-panel",
+    libraryModeValue: libraryMode,
+  });
 });
 
 initializeUiShell();

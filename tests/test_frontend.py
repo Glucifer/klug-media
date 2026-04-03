@@ -11,6 +11,12 @@ def test_root_frontend_serves_index() -> None:
     assert "Klug Media" in response.text
     assert "Library" in response.text
     assert "Watched Media Index" in response.text
+    assert "Back to Library" in response.text
+    assert "Open History" in response.text
+    assert "Needs Attention" in response.text
+    assert "Back to Dashboard" in response.text
+    assert "Completion percentages come later with Collection." in response.text
+    assert "Open Show" in response.text
     assert "Recent Watch History" in response.text
     assert "Import Watch History" in response.text
     assert "Use Latest Cursor" in response.text

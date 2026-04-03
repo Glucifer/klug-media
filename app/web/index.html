@@ -78,6 +78,13 @@
               <p id="stats-status" class="muted">Loading stats...</p>
               <div id="stats-summary-cards" class="stats-grid"></div>
             </section>
+            <section class="section-card">
+              <div class="section-headline">
+                <h3>Needs Attention</h3>
+                <p class="muted">Fast lanes into queues and the current Horrorfest year.</p>
+              </div>
+              <div id="dashboard-attention-grid" class="attention-grid"></div>
+            </section>
             <div class="dashboard-grid">
               <section class="section-card">
                 <h3>Monthly Timeline</h3>
@@ -93,14 +100,14 @@
                 <table><thead><tr><th>Watched</th><th>Title</th><th>Source</th><th>Signals</th></tr></thead><tbody id="dashboard-history-body"></tbody></table>
               </section>
               <section class="section-card">
-                <div class="section-headline"><h3>Unrated Queue</h3><button class="secondary" data-jump-view="history" type="button">Rate Watches</button></div>
+                <div class="section-headline"><h3>Unrated Queue</h3><button id="dashboard-unrated-open" class="secondary" type="button">Rate Watches</button></div>
                 <p id="dashboard-ratings-status" class="muted">Loading unrated queue...</p>
-                <table><thead><tr><th>Watched</th><th>Title</th><th>Source</th></tr></thead><tbody id="dashboard-ratings-body"></tbody></table>
+                <table><thead><tr><th>Watched</th><th>Title</th><th>Source</th><th>Action</th></tr></thead><tbody id="dashboard-ratings-body"></tbody></table>
               </section>
               <section class="section-card">
-                <div class="section-headline"><h3>Enrichment Watchlist</h3><button class="secondary" data-jump-view="admin" data-jump-admin="enrichment" type="button">Open Queue</button></div>
+                <div class="section-headline"><h3>Enrichment Watchlist</h3><button id="dashboard-enrichment-open" class="secondary" type="button">Open Queue</button></div>
                 <p id="dashboard-enrichment-status" class="muted">Loading enrichment watchlist...</p>
-                <table><thead><tr><th>Title</th><th>Type</th><th>Status</th><th>Next Action</th></tr></thead><tbody id="dashboard-enrichment-body"></tbody></table>
+                <table><thead><tr><th>Title</th><th>Type</th><th>Status</th><th>Next Action</th><th>Action</th></tr></thead><tbody id="dashboard-enrichment-body"></tbody></table>
               </section>
             </div>
           </section>
@@ -111,6 +118,16 @@
               <section class="section-card section-primary">
                 <h3>Recent Watch History</h3>
                 <p id="history-status" class="muted">Loading history...</p>
+                <div id="history-context-banner" class="context-banner hidden">
+                  <div>
+                    <div class="context-banner-title">Linked Browse Context</div>
+                    <p id="history-context-text" class="muted">History is currently linked to another browse surface.</p>
+                  </div>
+                  <div class="button-cluster">
+                    <button id="history-context-return" class="secondary" type="button">Back to Library</button>
+                    <button id="history-context-clear" class="secondary" type="button">Clear Link</button>
+                  </div>
+                </div>
                 <div class="toolbar-grid">
                   <label for="history-query">Title Search</label><input id="history-query" type="search" placeholder="Search by movie, show, or episode title" />
                   <label for="history-media-type">Media Type</label><select id="history-media-type"><option value="">All</option><option value="movie">Movie</option><option value="show">Show</option><option value="episode">Episode</option></select>
@@ -204,6 +221,16 @@
               <section class="section-card section-primary">
                 <h3>Yearly Browsing</h3>
                 <p id="horrorfest-status" class="muted">Loading Horrorfest years...</p>
+                <div id="horrorfest-context-banner" class="context-banner hidden">
+                  <div>
+                    <div class="context-banner-title">Dashboard Context</div>
+                    <p id="horrorfest-context-text" class="muted">Horrorfest was opened from the dashboard.</p>
+                  </div>
+                  <div class="button-cluster">
+                    <button id="horrorfest-context-return" class="secondary" type="button">Back to Dashboard</button>
+                    <button id="horrorfest-context-clear" class="secondary" type="button">Clear Link</button>
+                  </div>
+                </div>
                 <p id="horrorfest-year-summary" class="muted">Select a year to inspect its ordered challenge log.</p>
                 <div id="horrorfest-year-metrics" class="stats-grid compact-stats"></div>
                 <div class="toolbar-inline"><label for="horrorfest-year-select">Year</label><select id="horrorfest-year-select"></select><label class="checkbox"><input id="horrorfest-include-removed" type="checkbox" />Include Removed</label><button id="horrorfest-refresh" class="secondary" type="button">Refresh</button></div>
@@ -226,16 +253,12 @@
           </section>
 
           <section class="view-panel hidden" data-view="shows">
-            <div class="section-header"><div><p class="eyebrow">Library Pulse</p><h2>Shows</h2></div></div>
+            <div class="section-header"><div><p class="eyebrow">TV Browsing</p><h2>Shows</h2><p class="muted">Browse watched episode history by show and season. Completion percentages come later with Collection.</p></div></div>
             <div class="split-layout">
               <section class="section-card section-primary">
                 <h3>Tracked Shows</h3>
                 <p id="shows-status" class="muted">Loading shows...</p>
                 <ul id="show-list" class="show-list show-list-cards"></ul>
-                <div class="section-divider"></div>
-                <h3>Progress</h3>
-                <p id="progress-status" class="muted">Loading progress...</p>
-                <table><thead><tr><th>Show</th><th>Watched</th><th>Total</th><th>Percent</th></tr></thead><tbody id="progress-body"></tbody></table>
               </section>
               <aside id="detail-card" class="section-card sticky-card hidden">
                 <h3 id="detail-title">Show Detail</h3>
@@ -331,6 +354,16 @@
               <div class="section-card">
                 <h3>Metadata Enrichment</h3>
                 <p id="enrichment-status-text" class="muted">Loading metadata enrichment queue...</p>
+                <div id="admin-context-banner" class="context-banner hidden">
+                  <div>
+                    <div class="context-banner-title">Dashboard Context</div>
+                    <p id="admin-context-text" class="muted">Enrichment was opened from the dashboard.</p>
+                  </div>
+                  <div class="button-cluster">
+                    <button id="admin-context-return" class="secondary" type="button">Back to Dashboard</button>
+                    <button id="admin-context-clear" class="secondary" type="button">Clear Filter</button>
+                  </div>
+                </div>
                 <div class="toolbar-grid"><label for="enrichment-status-filter">Status</label><select id="enrichment-status-filter"><option value="">All</option><option value="pending">pending</option><option value="failed">failed</option><option value="skipped">skipped</option><option value="enriched">enriched</option></select><label class="checkbox"><input id="enrichment-missing-ids" type="checkbox" />Missing IDs Only</label><label for="enrichment-limit">Rows</label><select id="enrichment-limit"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option><option value="250">250</option><option value="500">500</option></select><button id="enrichment-apply" class="secondary" type="button">Apply</button><button id="enrichment-process-pending" class="secondary" type="button">Process Pending</button></div>
                 <div class="split-layout">
                   <div class="section-primary"><table><thead><tr><th>Title</th><th>Type</th><th>IDs</th><th>Status</th><th>Metadata</th><th>Action</th></tr></thead><tbody id="enrichment-body"></tbody></table></div>
@@ -350,6 +383,9 @@
             <button id="media-panel-close" class="secondary" type="button">Close</button>
           </div>
           <p id="media-panel-status" class="muted">Select a watch or episode to inspect richer media detail.</p>
+          <div class="button-cluster">
+            <button id="media-panel-open-history" class="secondary" type="button" disabled>Open History</button>
+          </div>
           <div id="media-panel-body" class="detail-stack"></div>
         </aside>
       </div>

@@ -91,7 +91,7 @@ class ShowService:
         )
 
     @staticmethod
-    def list_shows(session: Session) -> list[Show]:
+    def list_shows(session: Session) -> list[Show | dict]:
         return show_repository.list_shows(session)
 
     @staticmethod

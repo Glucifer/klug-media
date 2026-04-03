@@ -24,6 +24,7 @@ def test_list_library_movies_returns_rows(monkeypatch) -> None:
                 "latest_rating_value": 9,
                 "latest_rating_scale": "10-star",
                 "enrichment_status": "enriched",
+                "horrorfest_year": 2025,
             }
         ]
 
@@ -56,6 +57,7 @@ def test_list_library_episodes_returns_rows(monkeypatch) -> None:
                 "watch_count": 1,
                 "latest_watched_at": datetime.now(UTC),
                 "enrichment_status": "enriched",
+                "horrorfest_year": None,
             }
         ],
     )

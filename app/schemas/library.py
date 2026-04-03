@@ -14,6 +14,7 @@ class LibraryMovieRead(KlugBaseModel):
     latest_rating_value: int | None
     latest_rating_scale: str | None
     enrichment_status: str
+    horrorfest_year: int | None = None
 
 
 class LibraryEpisodeRead(KlugBaseModel):
@@ -26,6 +27,7 @@ class LibraryEpisodeRead(KlugBaseModel):
     watch_count: int
     latest_watched_at: datetime | None
     enrichment_status: str
+    horrorfest_year: int | None = None
 
 
 class LibraryShowRead(KlugBaseModel):

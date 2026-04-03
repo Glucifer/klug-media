@@ -346,6 +346,27 @@ ul {
   margin-bottom: var(--space-3);
 }
 
+.context-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: linear-gradient(90deg, rgba(255, 138, 61, 0.08), rgba(97, 178, 255, 0.08));
+}
+
+.context-banner-title {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
 .mode-switch {
   display: inline-flex;
   flex-wrap: wrap;
@@ -375,6 +396,12 @@ ul {
   gap: var(--space-3);
 }
 
+.attention-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
 .stats-card {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -393,6 +420,20 @@ ul {
   font-size: 26px;
   font-weight: 700;
   margin-top: var(--space-2);
+}
+
+.attention-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel-soft);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.attention-card-value {
+  font-size: 28px;
+  font-weight: 700;
 }
 
 .split-layout {
@@ -487,9 +528,35 @@ ul {
   padding: var(--space-3);
 }
 
-.show-list-cards button,
+.show-browse-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.show-browse-main,
+.episode-copy {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.show-browse-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.show-browse-meta,
+.season-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: center;
+}
+
 .episode-detail-button {
-  width: 100%;
+  width: auto;
   justify-content: space-between;
   display: flex;
   align-items: center;
@@ -530,8 +597,17 @@ ul {
   padding: 8px 10px;
 }
 
+.compact-actions {
+  gap: var(--space-1);
+}
+
+.compact-actions .library-inline-button {
+  min-height: 34px;
+}
+
 .history-title-cell,
-.horrorfest-title-cell {
+.horrorfest-title-cell,
+.library-title-cell {
   display: grid;
   gap: var(--space-1);
 }
@@ -795,6 +871,24 @@ ul {
   margin: 0;
 }
 
+.season-toggle {
+  min-height: auto;
+  padding: 0;
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--fg);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.season-toggle:hover {
+  transform: none;
+  color: var(--accent-strong);
+}
+
 .season-list {
   display: grid;
   gap: var(--space-2);
@@ -874,6 +968,11 @@ tr.selected {
     align-items: start;
     flex-direction: column;
   }
+
+  .context-banner {
+    align-items: start;
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 760px) {
@@ -896,7 +995,10 @@ tr.selected {
   .toolbar-inline,
   .pagination-row,
   .button-cluster,
-  .toggle-row {
+  .toggle-row,
+  .show-browse-row,
+  .season-heading,
+  .season-heading-actions {
     flex-direction: column;
     align-items: stretch;
   }

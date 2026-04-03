@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy import Select, String, and_, case, cast, distinct, func, select
 from sqlalchemy.orm import Session
 
-from app.db.models.entities import MediaItem, Show, WatchEvent
+from app.db.models.entities import HorrorfestEntry, MediaItem, Show, WatchEvent
 
 
 def _latest_rating_subquery() -> Select:
@@ -44,6 +44,21 @@ def _watch_stats_subquery() -> Select:
     )
 
 
+def _horrorfest_stats_subquery() -> Select:
+    return (
+        select(
+            WatchEvent.media_item_id.label("media_item_id"),
+            func.max(HorrorfestEntry.horrorfest_year).label("horrorfest_year"),
+        )
+        .join(HorrorfestEntry, HorrorfestEntry.watch_id == WatchEvent.watch_id)
+        .where(
+            WatchEvent.is_deleted.is_(False),
+            HorrorfestEntry.is_removed.is_(False),
+        )
+        .group_by(WatchEvent.media_item_id)
+    )
+
+
 def list_library_movies(
     session: Session,
     *,
@@ -59,6 +74,7 @@ def list_library_movies(
 
     watch_stats = _watch_stats_subquery().subquery()
     latest_rating = _latest_rating_subquery().subquery()
+    horrorfest_stats = _horrorfest_stats_subquery().subquery()
 
     statement = (
         select(
@@ -70,11 +86,16 @@ def list_library_movies(
             latest_rating.c.rating_value.label("latest_rating_value"),
             latest_rating.c.rating_scale.label("latest_rating_scale"),
             MediaItem.enrichment_status,
+            horrorfest_stats.c.horrorfest_year,
         )
         .join(watch_stats, watch_stats.c.media_item_id == MediaItem.media_item_id)
         .outerjoin(
             latest_rating,
             latest_rating.c.media_item_id == MediaItem.media_item_id,
+        )
+        .outerjoin(
+            horrorfest_stats,
+            horrorfest_stats.c.media_item_id == MediaItem.media_item_id,
         )
         .where(MediaItem.type == "movie")
     )
@@ -109,6 +130,7 @@ def list_library_episodes(
         return []
 
     watch_stats = _watch_stats_subquery().subquery()
+    horrorfest_stats = _horrorfest_stats_subquery().subquery()
 
     statement = (
         select(
@@ -121,9 +143,14 @@ def list_library_episodes(
             watch_stats.c.watch_count,
             watch_stats.c.latest_watched_at,
             MediaItem.enrichment_status,
+            horrorfest_stats.c.horrorfest_year,
         )
         .join(watch_stats, watch_stats.c.media_item_id == MediaItem.media_item_id)
         .outerjoin(Show, Show.show_id == MediaItem.show_id)
+        .outerjoin(
+            horrorfest_stats,
+            horrorfest_stats.c.media_item_id == MediaItem.media_item_id,
+        )
         .where(MediaItem.type == "episode")
     )
 
