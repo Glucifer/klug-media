@@ -425,6 +425,11 @@ class WatchEventService:
                 origin_playback_event_id=origin_playback_event_id,
                 rewatch=is_rewatch,
             )
+            WatchEventService._recompute_rewatch_for_media_timeline(
+                session,
+                user_id=watch_event.user_id,
+                media_item_id=watch_event.media_item_id,
+            )
             HorrorfestService.sync_watch_event(session, watch_event=watch_event)
             session.commit()
             return WatchEventCreateResult(

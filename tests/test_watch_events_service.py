@@ -50,6 +50,10 @@ def test_create_watch_event_normalizes_input(monkeypatch) -> None:
         "app.services.watch_events.watch_event_repository.create_watch_event",
         fake_create_watch_event,
     )
+    monkeypatch.setattr(
+        "app.services.watch_events.WatchEventService._recompute_rewatch_for_media_timeline",
+        lambda *_args, **_kwargs: None,
+    )
 
     result = WatchEventService.create_watch_event(
         session,
@@ -186,6 +190,10 @@ def test_create_watch_event_marks_rewatch_when_prior_watch_exists(monkeypatch) -
         "app.services.watch_events.watch_event_repository.create_watch_event",
         fake_create_watch_event,
     )
+    monkeypatch.setattr(
+        "app.services.watch_events.WatchEventService._recompute_rewatch_for_media_timeline",
+        lambda *_args, **_kwargs: None,
+    )
 
     result = WatchEventService.create_watch_event(
         session,
@@ -205,6 +213,59 @@ def test_create_watch_event_marks_rewatch_when_prior_watch_exists(monkeypatch) -
 
     assert result.watch_event is expected_event
     assert result.created is True
+    session.commit.assert_called_once()
+
+
+def test_create_watch_event_recomputes_media_timeline_after_insert(monkeypatch) -> None:
+    session = Mock()
+    media_item_id = uuid4()
+    user_id = uuid4()
+    inserted_event = Mock(user_id=user_id, media_item_id=media_item_id)
+    recompute = Mock()
+
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.get_watch_event_by_source_event",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.find_matching_watch_event",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.prior_watch_event_exists",
+        lambda *_args, **_kwargs: False,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.watch_event_repository.create_watch_event",
+        lambda *_args, **_kwargs: inserted_event,
+    )
+    monkeypatch.setattr(
+        "app.services.watch_events.WatchEventService._recompute_rewatch_for_media_timeline",
+        recompute,
+    )
+
+    result = WatchEventService.create_watch_event(
+        session,
+        user_id=user_id,
+        media_item_id=media_item_id,
+        watched_at=datetime.now(UTC),
+        playback_source="manual",
+        total_seconds=None,
+        watched_seconds=None,
+        progress_percent=None,
+        completed=True,
+        rating_value=None,
+        rating_scale=None,
+        media_version_id=None,
+        source_event_id=None,
+    )
+
+    assert result.watch_event is inserted_event
+    recompute.assert_called_once_with(
+        session,
+        user_id=user_id,
+        media_item_id=media_item_id,
+    )
     session.commit.assert_called_once()
 
 
@@ -468,6 +529,7 @@ def test_list_watch_events_clamps_limit(monkeypatch) -> None:
         watched_before=None,
         local_date_from=None,
         local_date_to=None,
+        query=None,
         media_type=None,
         include_deleted=False,
         deleted_only=False,
