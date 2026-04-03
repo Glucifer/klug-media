@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -536,11 +536,15 @@ def _list_horrorfest_entry_rows(
     horrorfest_year: int | None = None,
     media_item_id: UUID | None = None,
     decade_start: int | None = None,
+    watch_date: date | None = None,
+    playback_source: str | None = None,
+    rating_value: Decimal | None = None,
 ) -> list[dict[str, object]]:
     statement: Select[tuple[HorrorfestEntry, WatchEvent, MediaItem]] = (
         select(HorrorfestEntry, WatchEvent, MediaItem)
         .join(WatchEvent, WatchEvent.watch_id == HorrorfestEntry.watch_id)
         .join(MediaItem, MediaItem.media_item_id == WatchEvent.media_item_id)
+        .join(User, User.user_id == WatchEvent.user_id)
     )
     if not include_removed:
         statement = statement.where(
@@ -559,6 +563,13 @@ def _list_horrorfest_entry_rows(
             MediaItem.year >= decade_start,
             MediaItem.year < decade_start + 10,
         )
+    if watch_date is not None:
+        local_watch_date = func.date(func.timezone(User.timezone, WatchEvent.watched_at))
+        statement = statement.where(local_watch_date == watch_date)
+    if playback_source is not None:
+        statement = statement.where(WatchEvent.playback_source == playback_source)
+    if rating_value is not None:
+        statement = statement.where(WatchEvent.rating_value == rating_value)
     statement = statement.order_by(
         HorrorfestEntry.horrorfest_year.desc(),
         HorrorfestEntry.watch_order.asc().nulls_last(),
@@ -612,6 +623,25 @@ def list_horrorfest_decade_entries(
         user_id=user_id,
         horrorfest_year=horrorfest_year,
         decade_start=decade_start,
+    )
+
+
+def list_horrorfest_year_entries(
+    session: Session,
+    *,
+    horrorfest_year: int,
+    watch_date: date | None = None,
+    playback_source: str | None = None,
+    rating_value: Decimal | None = None,
+    user_id: UUID | None = None,
+) -> list[dict[str, object]]:
+    return _list_horrorfest_entry_rows(
+        session,
+        user_id=user_id,
+        horrorfest_year=horrorfest_year,
+        watch_date=watch_date,
+        playback_source=playback_source,
+        rating_value=rating_value,
     )
 
 

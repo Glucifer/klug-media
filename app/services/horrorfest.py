@@ -1,4 +1,5 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -187,6 +188,29 @@ class HorrorfestService:
             session,
             decade_start=decade_start,
             horrorfest_year=horrorfest_year,
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def list_analytics_year_entries(
+        session: Session,
+        *,
+        horrorfest_year: int,
+        watch_date: date | None = None,
+        playback_source: str | None = None,
+        rating_value: Decimal | None = None,
+        user_id: UUID | None = None,
+    ) -> list[dict[str, object]]:
+        HorrorfestService._get_year_or_raise(session, horrorfest_year=horrorfest_year)
+        normalized_playback_source = HorrorfestService._normalize_optional_text(playback_source)
+        if rating_value is not None and rating_value < 0:
+            raise ValueError("rating_value must be zero or greater")
+        return horrorfest_repository.list_horrorfest_year_entries(
+            session,
+            horrorfest_year=horrorfest_year,
+            watch_date=watch_date,
+            playback_source=normalized_playback_source,
+            rating_value=rating_value,
             user_id=user_id,
         )
 

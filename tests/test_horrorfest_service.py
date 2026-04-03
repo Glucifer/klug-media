@@ -1,4 +1,5 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from decimal import Decimal
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -172,4 +173,49 @@ def test_list_analytics_decade_entries_rejects_non_decade_boundary() -> None:
         HorrorfestService.list_analytics_decade_entries(
             Mock(),
             decade_start=1977,
+        )
+
+
+def test_list_analytics_year_entries_delegates_with_filters(monkeypatch) -> None:
+    session = Mock()
+    captured = {}
+    year_config = Mock()
+    year_config.horrorfest_year = 2025
+
+    monkeypatch.setattr(
+        "app.services.horrorfest.horrorfest_repository.get_horrorfest_year",
+        lambda *_args, **_kwargs: year_config,
+    )
+
+    def fake_list(_session, **kwargs):
+        captured.update(kwargs)
+        return [{"watch_id": uuid4()}]
+
+    monkeypatch.setattr(
+        "app.services.horrorfest.horrorfest_repository.list_horrorfest_year_entries",
+        fake_list,
+    )
+
+    result = HorrorfestService.list_analytics_year_entries(
+        session,
+        horrorfest_year=2025,
+        watch_date=date(2025, 10, 1),
+        playback_source="  kodi  ",
+        rating_value=Decimal("8"),
+        user_id=uuid4(),
+    )
+
+    assert len(result) == 1
+    assert captured["horrorfest_year"] == 2025
+    assert captured["watch_date"] == date(2025, 10, 1)
+    assert captured["playback_source"] == "kodi"
+    assert captured["rating_value"] == Decimal("8")
+
+
+def test_list_analytics_year_entries_rejects_negative_rating() -> None:
+    with pytest.raises(ValueError, match="rating_value must be zero or greater"):
+        HorrorfestService.list_analytics_year_entries(
+            Mock(),
+            horrorfest_year=2025,
+            rating_value=Decimal("-1"),
         )

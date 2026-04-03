@@ -1,3 +1,6 @@
+from datetime import date
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from uuid import UUID
@@ -130,6 +133,37 @@ def get_horrorfest_analytics_year_detail(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return HorrorfestAnalyticsYearDetailRead.model_validate(detail)
+
+
+@router.get(
+    "/analytics/years/{horrorfest_year}/entries",
+    response_model=list[HorrorfestEntryRead],
+)
+def list_horrorfest_analytics_year_entries(
+    horrorfest_year: int,
+    watch_date: date | None = Query(default=None),
+    playback_source: str | None = Query(default=None),
+    rating_value: Decimal | None = Query(default=None, ge=0),
+    user_id: UUID | None = Query(default=None),
+    session: Session = Depends(get_db_session),
+) -> list[HorrorfestEntryRead]:
+    try:
+        rows = HorrorfestService.list_analytics_year_entries(
+            session,
+            horrorfest_year=horrorfest_year,
+            watch_date=watch_date,
+            playback_source=playback_source,
+            rating_value=rating_value,
+            user_id=user_id,
+        )
+    except ValueError as exc:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if "not found" in str(exc)
+            else status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+    return [HorrorfestEntryRead.model_validate(item) for item in rows]
 
 
 @router.put("/years/{horrorfest_year}", response_model=HorrorfestYearRead)

@@ -104,7 +104,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - recently watched, unrated queue with 1-10 rating actions
   - shared media side panel fed by `/api/v1/media-items/{media_item_id}` for poster-first movie/episode drilldown
   - one-click media-detail open actions from dashboard previews, history, Horrorfest, and show episodes
-  - Horrorfest now has internal `Log` and `Analytics` modes: yearly browsing/correction remains in `Log`, while `Analytics` provides in-app year-over-year reporting, selected-year drilldowns, cross-year title/decade matrices, Title Matrix search/sort controls, and a dedicated analytics side panel for title/decade click-through watch history
+  - Horrorfest now has internal `Log` and `Analytics` modes: yearly browsing/correction remains in `Log`, while `Analytics` provides in-app year-over-year reporting, selected-year drilldowns, cross-year title/decade matrices, Title Matrix search/sort controls, and a dedicated analytics side panel for title/decade/date/source/rating click-through watch history
   - Shows is now evolving toward browsing-first TV navigation: richer show rows, linked History jumps, season collapse/expand, and episode-level media/history drilldown while completion percentages are intentionally de-emphasized until a future Collection feature exists
   - Admin workspace split into Imports, Manual Add, Scrobbler, and Enrichment subviews
   - import runner (file upload + mode/dry-run/resume options)

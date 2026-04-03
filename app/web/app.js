@@ -2638,9 +2638,16 @@ function renderHorrorfestAnalyticsDetail(detail) {
   } else {
     for (const row of detail.daily_rows) {
       const tr = document.createElement("tr");
+      const formattedDate = new Date(`${row.watch_date}T00:00:00`).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      });
+      tr.classList.add("history-row-clickable");
+      tr.dataset.horrorfestAnalyticsWatchDate = row.watch_date;
+      tr.dataset.horrorfestAnalyticsLabel = `Horrorfest ${detail.summary.horrorfest_year} · ${formattedDate}`;
       tr.innerHTML = `
         <td>${new Date(`${row.watch_date}T00:00:00`).toLocaleDateString()}</td>
-        <td>${row.watch_count}</td>
+        <td><button class="matrix-cell-button" data-horrorfest-analytics-watch-date="${row.watch_date}" data-horrorfest-analytics-label="${escapeHtml(`Horrorfest ${detail.summary.horrorfest_year} · ${formattedDate}`)}" type="button">${row.watch_count}</button></td>
         <td>${formatDecimalValue(row.total_runtime_hours)}</td>
         <td>${row.average_rating_value ? formatDecimalValue(row.average_rating_value) : "-"}</td>
       `;
@@ -2654,9 +2661,12 @@ function renderHorrorfestAnalyticsDetail(detail) {
   } else {
     for (const row of detail.source_rows) {
       const tr = document.createElement("tr");
+      tr.classList.add("history-row-clickable");
+      tr.dataset.horrorfestAnalyticsPlaybackSource = row.playback_source;
+      tr.dataset.horrorfestAnalyticsLabel = `Horrorfest ${detail.summary.horrorfest_year} · ${row.playback_source}`;
       tr.innerHTML = `
         <td>${escapeHtml(row.playback_source)}</td>
-        <td>${row.watch_count}</td>
+        <td><button class="matrix-cell-button" data-horrorfest-analytics-playback-source="${escapeHtml(row.playback_source)}" data-horrorfest-analytics-label="${escapeHtml(`Horrorfest ${detail.summary.horrorfest_year} · ${row.playback_source}`)}" type="button">${row.watch_count}</button></td>
         <td>${formatDecimalValue(row.total_runtime_hours)}</td>
         <td>${row.average_rating_value ? formatDecimalValue(row.average_rating_value) : "-"}</td>
       `;
@@ -2670,9 +2680,13 @@ function renderHorrorfestAnalyticsDetail(detail) {
   } else {
     for (const row of detail.rating_rows) {
       const tr = document.createElement("tr");
+      const ratingLabel = formatDecimalValue(row.rating_value);
+      tr.classList.add("history-row-clickable");
+      tr.dataset.horrorfestAnalyticsRatingValue = String(row.rating_value);
+      tr.dataset.horrorfestAnalyticsLabel = `Horrorfest ${detail.summary.horrorfest_year} · Rated ${ratingLabel}`;
       tr.innerHTML = `
-        <td>${formatDecimalValue(row.rating_value)}</td>
-        <td>${row.watch_count}</td>
+        <td>${ratingLabel}</td>
+        <td><button class="matrix-cell-button" data-horrorfest-analytics-rating-value="${row.rating_value}" data-horrorfest-analytics-label="${escapeHtml(`Horrorfest ${detail.summary.horrorfest_year} · Rated ${ratingLabel}`)}" type="button">${row.watch_count}</button></td>
       `;
       horrorfestAnalyticsRatingsBody.appendChild(tr);
     }
@@ -2801,6 +2815,9 @@ async function loadHorrorfestDrilldown({
   mediaItemId = null,
   decadeStart = null,
   horrorfestYear = null,
+  watchDate = null,
+  playbackSource = null,
+  ratingValue = null,
 }) {
   horrorfestDrilldownState = {
     kind,
@@ -2808,6 +2825,9 @@ async function loadHorrorfestDrilldown({
     mediaItemId,
     decadeStart,
     horrorfestYear,
+    watchDate,
+    playbackSource,
+    ratingValue,
     rows: [],
   };
   horrorfestDrilldownPanel.classList.remove("hidden");
@@ -2819,13 +2839,24 @@ async function loadHorrorfestDrilldown({
     path = `/api/v1/horrorfest/analytics/titles/${mediaItemId}/entries`;
   } else if (kind === "decade" && decadeStart !== null) {
     path = `/api/v1/horrorfest/analytics/decades/${decadeStart}/entries`;
+  } else if (kind === "year_detail" && horrorfestYear) {
+    path = `/api/v1/horrorfest/analytics/years/${horrorfestYear}/entries`;
   } else {
     horrorfestDrilldownStatus.textContent = "This drilldown is missing its target.";
     return;
   }
   const params = new URLSearchParams();
-  if (horrorfestYear) {
+  if (horrorfestYear && kind !== "year_detail") {
     params.set("horrorfest_year", String(horrorfestYear));
+  }
+  if (watchDate) {
+    params.set("watch_date", watchDate);
+  }
+  if (playbackSource) {
+    params.set("playback_source", playbackSource);
+  }
+  if (ratingValue !== null && ratingValue !== undefined) {
+    params.set("rating_value", String(ratingValue));
   }
   const response = await api(params.toString() ? `${path}?${params.toString()}` : path);
   if (!response.ok) {
@@ -4298,6 +4329,81 @@ horrorfestAnalyticsYearsBody.addEventListener("click", async (event) => {
   if (year) {
     await loadHorrorfestAnalyticsDetail(year);
   }
+});
+
+horrorfestAnalyticsDailyBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement) || !selectedHorrorfestAnalyticsYear) {
+    return;
+  }
+  const source =
+    target.closest("button[data-horrorfest-analytics-watch-date]") ||
+    target.closest("tr[data-horrorfest-analytics-watch-date]");
+  if (!(source instanceof HTMLElement)) {
+    return;
+  }
+  const watchDate = source.dataset.horrorfestAnalyticsWatchDate;
+  if (!watchDate) {
+    return;
+  }
+  await loadHorrorfestDrilldown({
+    kind: "year_detail",
+    label:
+      source.dataset.horrorfestAnalyticsLabel ||
+      `Horrorfest ${selectedHorrorfestAnalyticsYear} · ${watchDate}`,
+    horrorfestYear: selectedHorrorfestAnalyticsYear,
+    watchDate,
+  });
+});
+
+horrorfestAnalyticsSourcesBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement) || !selectedHorrorfestAnalyticsYear) {
+    return;
+  }
+  const source =
+    target.closest("button[data-horrorfest-analytics-playback-source]") ||
+    target.closest("tr[data-horrorfest-analytics-playback-source]");
+  if (!(source instanceof HTMLElement)) {
+    return;
+  }
+  const playbackSource = source.dataset.horrorfestAnalyticsPlaybackSource;
+  if (!playbackSource) {
+    return;
+  }
+  await loadHorrorfestDrilldown({
+    kind: "year_detail",
+    label:
+      source.dataset.horrorfestAnalyticsLabel ||
+      `Horrorfest ${selectedHorrorfestAnalyticsYear} · ${playbackSource}`,
+    horrorfestYear: selectedHorrorfestAnalyticsYear,
+    playbackSource,
+  });
+});
+
+horrorfestAnalyticsRatingsBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement) || !selectedHorrorfestAnalyticsYear) {
+    return;
+  }
+  const source =
+    target.closest("button[data-horrorfest-analytics-rating-value]") ||
+    target.closest("tr[data-horrorfest-analytics-rating-value]");
+  if (!(source instanceof HTMLElement)) {
+    return;
+  }
+  const ratingValue = source.dataset.horrorfestAnalyticsRatingValue;
+  if (!ratingValue) {
+    return;
+  }
+  await loadHorrorfestDrilldown({
+    kind: "year_detail",
+    label:
+      source.dataset.horrorfestAnalyticsLabel ||
+      `Horrorfest ${selectedHorrorfestAnalyticsYear} · Rated ${ratingValue}`,
+    horrorfestYear: selectedHorrorfestAnalyticsYear,
+    ratingValue,
+  });
 });
 
 horrorfestTitleMatrixBody.addEventListener("click", async (event) => {

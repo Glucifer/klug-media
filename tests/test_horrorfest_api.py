@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
@@ -256,6 +256,97 @@ def test_get_horrorfest_analytics_year_detail_returns_not_found(monkeypatch) -> 
 
     client = TestClient(app)
     response = client.get("/api/v1/horrorfest/analytics/years/1999")
+
+    assert response.status_code == 404
+
+
+def test_list_horrorfest_analytics_year_entries_returns_rows(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    monkeypatch.setattr(
+        HorrorfestService,
+        "list_analytics_year_entries",
+        lambda *_args, **_kwargs: [
+            {
+                "horrorfest_entry_id": uuid4(),
+                "watch_id": uuid4(),
+                "horrorfest_year": 2025,
+                "watch_order": 2,
+                "source_kind": "manual",
+                "created_at": datetime.now(UTC),
+                "updated_at": None,
+                "updated_by": None,
+                "update_reason": None,
+                "is_removed": False,
+                "removed_at": None,
+                "removed_by": None,
+                "removed_reason": None,
+                "user_id": uuid4(),
+                "media_item_id": uuid4(),
+                "watched_at": datetime.now(UTC),
+                "playback_source": "kodi",
+                "media_item_title": "The Thing",
+                "media_item_type": "movie",
+                "display_title": "The Thing (1982)",
+                "rating_value": Decimal("8"),
+                "rating_scale": "10-star",
+                "effective_runtime_seconds": 6540,
+                "rewatch": False,
+                "completed": True,
+            }
+        ],
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/horrorfest/analytics/years/2025/entries")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) == 1
+    assert payload[0]["horrorfest_year"] == 2025
+    assert payload[0]["watch_order"] == 2
+
+
+def test_list_horrorfest_analytics_year_entries_passes_filters(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    captured = {}
+
+    def fake_list(*_args, **kwargs):
+        captured.update(kwargs)
+        return []
+
+    monkeypatch.setattr(
+        HorrorfestService,
+        "list_analytics_year_entries",
+        fake_list,
+    )
+
+    client = TestClient(app)
+    response = client.get(
+        "/api/v1/horrorfest/analytics/years/2025/entries"
+        "?watch_date=2025-10-01&playback_source=kodi&rating_value=8"
+    )
+
+    assert response.status_code == 200
+    assert captured["horrorfest_year"] == 2025
+    assert captured["watch_date"] == date(2025, 10, 1)
+    assert captured["playback_source"] == "kodi"
+    assert captured["rating_value"] == 8
+
+
+def test_list_horrorfest_analytics_year_entries_returns_not_found(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+
+    def _raise_not_found(*_args, **_kwargs):
+        raise ValueError("Horrorfest year '1999' not found")
+
+    monkeypatch.setattr(
+        HorrorfestService,
+        "list_analytics_year_entries",
+        _raise_not_found,
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/horrorfest/analytics/years/1999/entries")
 
     assert response.status_code == 404
 
