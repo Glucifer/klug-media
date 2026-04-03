@@ -21,6 +21,8 @@ def test_root_frontend_serves_index() -> None:
     assert "Year-over-Year Summary" in response.text
     assert "Open Selected Year Log" in response.text
     assert "Selected Year Drilldown" in response.text
+    assert "Title Matrix" in response.text
+    assert "Decade Matrix" in response.text
     assert "Recent Watch History" in response.text
     assert "Import Watch History" in response.text
     assert "Use Latest Cursor" in response.text

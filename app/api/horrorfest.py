@@ -5,6 +5,8 @@ from uuid import UUID
 from app.core.auth import require_request_auth
 from app.db.session import get_db_session
 from app.schemas.horrorfest import (
+    HorrorfestAnalyticsDecadeMatrixRead,
+    HorrorfestAnalyticsTitleMatrixRead,
     HorrorfestAnalyticsYearDetailRead,
     HorrorfestAnalyticsYearRead,
     HorrorfestEntryInclude,
@@ -42,6 +44,26 @@ def list_horrorfest_analytics_years(
         HorrorfestAnalyticsYearRead.model_validate(item)
         for item in HorrorfestService.list_analytics_years(session, user_id=user_id)
     ]
+
+
+@router.get("/analytics/titles", response_model=HorrorfestAnalyticsTitleMatrixRead)
+def get_horrorfest_analytics_title_matrix(
+    user_id: UUID | None = Query(default=None),
+    session: Session = Depends(get_db_session),
+) -> HorrorfestAnalyticsTitleMatrixRead:
+    return HorrorfestAnalyticsTitleMatrixRead.model_validate(
+        HorrorfestService.get_analytics_title_matrix(session, user_id=user_id)
+    )
+
+
+@router.get("/analytics/decades", response_model=HorrorfestAnalyticsDecadeMatrixRead)
+def get_horrorfest_analytics_decade_matrix(
+    user_id: UUID | None = Query(default=None),
+    session: Session = Depends(get_db_session),
+) -> HorrorfestAnalyticsDecadeMatrixRead:
+    return HorrorfestAnalyticsDecadeMatrixRead.model_validate(
+        HorrorfestService.get_analytics_decade_matrix(session, user_id=user_id)
+    )
 
 
 @router.get(

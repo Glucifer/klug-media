@@ -258,3 +258,57 @@ def test_get_horrorfest_analytics_year_detail_returns_not_found(monkeypatch) -> 
     response = client.get("/api/v1/horrorfest/analytics/years/1999")
 
     assert response.status_code == 404
+
+
+def test_get_horrorfest_analytics_title_matrix_returns_payload(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    monkeypatch.setattr(
+        HorrorfestService,
+        "get_analytics_title_matrix",
+        lambda *_args, **_kwargs: {
+            "years": [2025, 2024, 2023],
+            "rows": [
+                {
+                    "media_item_id": uuid4(),
+                    "title": "Ghost Mansion",
+                    "total_count": 3,
+                    "year_counts": {"2025": 1, "2024": 2, "2023": 0},
+                }
+            ],
+        },
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/horrorfest/analytics/titles")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["years"] == [2025, 2024, 2023]
+    assert payload["rows"][0]["title"] == "Ghost Mansion"
+    assert payload["rows"][0]["year_counts"]["2024"] == 2
+
+
+def test_get_horrorfest_analytics_decade_matrix_returns_payload(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    monkeypatch.setattr(
+        HorrorfestService,
+        "get_analytics_decade_matrix",
+        lambda *_args, **_kwargs: {
+            "years": [2025, 2024, 2023],
+            "rows": [
+                {
+                    "decade": "1980s",
+                    "total_count": 12,
+                    "year_counts": {"2025": 5, "2024": 4, "2023": 3},
+                }
+            ],
+        },
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/horrorfest/analytics/decades")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["rows"][0]["decade"] == "1980s"
+    assert payload["rows"][0]["total_count"] == 12

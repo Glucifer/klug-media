@@ -193,6 +193,10 @@ const horrorfestAnalyticsSummaryCards = document.getElementById("horrorfest-anal
 const horrorfestAnalyticsDailyBody = document.getElementById("horrorfest-analytics-daily-body");
 const horrorfestAnalyticsSourcesBody = document.getElementById("horrorfest-analytics-sources-body");
 const horrorfestAnalyticsRatingsBody = document.getElementById("horrorfest-analytics-ratings-body");
+const horrorfestTitleMatrixHead = document.getElementById("horrorfest-title-matrix-head");
+const horrorfestTitleMatrixBody = document.getElementById("horrorfest-title-matrix-body");
+const horrorfestDecadeMatrixHead = document.getElementById("horrorfest-decade-matrix-head");
+const horrorfestDecadeMatrixBody = document.getElementById("horrorfest-decade-matrix-body");
 const adminContextBanner = document.getElementById("admin-context-banner");
 const adminContextText = document.getElementById("admin-context-text");
 const adminContextReturn = document.getElementById("admin-context-return");
@@ -258,6 +262,8 @@ let selectedRatingWatchId = null;
 let horrorfestYears = [];
 let horrorfestRows = [];
 let horrorfestAnalyticsYears = [];
+let horrorfestTitleMatrix = null;
+let horrorfestDecadeMatrix = null;
 let selectedHorrorfestEntryId = null;
 let selectedHorrorfestAnalyticsYear = null;
 let horrorfestMode = window.localStorage.getItem(UI_PREF_KEYS.horrorfestMode) || "log";
@@ -2685,6 +2691,37 @@ function renderHorrorfestAnalyticsYears() {
   }
 }
 
+function renderHorrorfestCrossYearMatrix({ head, body, keyLabel, matrix, rowLabelKey, mediaKey = null }) {
+  head.innerHTML = "";
+  body.innerHTML = "";
+  if (!matrix || !matrix.years?.length) {
+    head.innerHTML = `<tr><th>${escapeHtml(keyLabel)}</th><th>Total</th></tr>`;
+    body.innerHTML = `<tr><td colspan="2">No matrix data available yet</td></tr>`;
+    return;
+  }
+  const yearHeaders = matrix.years
+    .map((year) => `<th>${escapeHtml(String(year))}</th>`)
+    .join("");
+  head.innerHTML = `<tr><th>${escapeHtml(keyLabel)}</th><th>Total</th>${yearHeaders}</tr>`;
+  for (const row of matrix.rows) {
+    const yearCells = matrix.years
+      .map((year) => `<td>${row.year_counts?.[String(year)] ?? 0}</td>`)
+      .join("");
+    const label = row[rowLabelKey];
+    const labelCell =
+      mediaKey && row[mediaKey]
+        ? `<button class="media-link-button" data-media-item-open="${row[mediaKey]}" type="button">${escapeHtml(label)}</button>`
+        : escapeHtml(label);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${labelCell}</td>
+      <td>${row.total_count}</td>
+      ${yearCells}
+    `;
+    body.appendChild(tr);
+  }
+}
+
 async function loadHorrorfestAnalyticsDetail(year) {
   horrorfestAnalyticsDetailStatus.textContent = `Loading analytics for Horrorfest ${year}...`;
   const response = await api(`/api/v1/horrorfest/analytics/years/${year}`);
@@ -2706,6 +2743,35 @@ async function loadHorrorfestAnalyticsDetail(year) {
   renderHorrorfestAnalyticsDetail(detail);
 }
 
+async function loadHorrorfestAnalyticsMatrices() {
+  const [titleResponse, decadeResponse] = await Promise.all([
+    api("/api/v1/horrorfest/analytics/titles"),
+    api("/api/v1/horrorfest/analytics/decades"),
+  ]);
+  if (!titleResponse.ok || !decadeResponse.ok) {
+    throw new Error("Failed to load Horrorfest cross-year matrices");
+  }
+  [horrorfestTitleMatrix, horrorfestDecadeMatrix] = await Promise.all([
+    titleResponse.json(),
+    decadeResponse.json(),
+  ]);
+  renderHorrorfestCrossYearMatrix({
+    head: horrorfestTitleMatrixHead,
+    body: horrorfestTitleMatrixBody,
+    keyLabel: "Title",
+    matrix: horrorfestTitleMatrix,
+    rowLabelKey: "title",
+    mediaKey: "media_item_id",
+  });
+  renderHorrorfestCrossYearMatrix({
+    head: horrorfestDecadeMatrixHead,
+    body: horrorfestDecadeMatrixBody,
+    keyLabel: "Decade",
+    matrix: horrorfestDecadeMatrix,
+    rowLabelKey: "decade",
+  });
+}
+
 async function loadHorrorfestAnalytics(preferredYear = null) {
   horrorfestAnalyticsStatus.textContent = "Loading Horrorfest analytics...";
   horrorfestAnalyticsYearsBody.innerHTML = "";
@@ -2713,6 +2779,10 @@ async function loadHorrorfestAnalytics(preferredYear = null) {
   horrorfestAnalyticsDailyBody.innerHTML = "";
   horrorfestAnalyticsSourcesBody.innerHTML = "";
   horrorfestAnalyticsRatingsBody.innerHTML = "";
+  horrorfestTitleMatrixHead.innerHTML = "";
+  horrorfestTitleMatrixBody.innerHTML = "";
+  horrorfestDecadeMatrixHead.innerHTML = "";
+  horrorfestDecadeMatrixBody.innerHTML = "";
   horrorfestAnalyticsOpenLog.disabled = true;
   try {
     const response = await api("/api/v1/horrorfest/analytics/years");
@@ -2728,6 +2798,7 @@ async function loadHorrorfestAnalytics(preferredYear = null) {
       horrorfestAnalyticsDetailStatus.textContent = "Select a Horrorfest year to inspect its analytics.";
       return;
     }
+    await loadHorrorfestAnalyticsMatrices();
     const selectedYear =
       Number.parseInt(preferredYear || "", 10) ||
       selectedHorrorfestAnalyticsYear ||
@@ -3959,6 +4030,22 @@ horrorfestAnalyticsYearsBody.addEventListener("click", async (event) => {
     await loadHorrorfestAnalyticsDetail(year);
   }
 });
+
+for (const matrixBody of [horrorfestTitleMatrixBody, horrorfestDecadeMatrixBody]) {
+  matrixBody.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    const mediaButton = target.closest("button[data-media-item-open]");
+    if (mediaButton instanceof HTMLButtonElement) {
+      const mediaItemId = mediaButton.dataset.mediaItemOpen;
+      if (mediaItemId) {
+        await openMediaDetail(mediaItemId);
+      }
+    }
+  });
+}
 
 mediaPanelClose.addEventListener("click", () => {
   closeMediaPanel();

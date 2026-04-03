@@ -137,6 +137,28 @@ class HorrorfestService:
         return detail
 
     @staticmethod
+    def get_analytics_title_matrix(
+        session: Session,
+        *,
+        user_id: UUID | None = None,
+    ) -> dict[str, object]:
+        return horrorfest_repository.list_horrorfest_analytics_title_matrix(
+            session,
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def get_analytics_decade_matrix(
+        session: Session,
+        *,
+        user_id: UUID | None = None,
+    ) -> dict[str, object]:
+        return horrorfest_repository.list_horrorfest_analytics_decade_matrix(
+            session,
+            user_id=user_id,
+        )
+
+    @staticmethod
     def sync_watch_event(
         session: Session,
         *,

@@ -114,3 +114,26 @@ class HorrorfestAnalyticsYearDetailRead(KlugORMModel):
     daily_rows: list[HorrorfestAnalyticsDailyRead]
     source_rows: list[HorrorfestAnalyticsSourceRead]
     rating_rows: list[HorrorfestAnalyticsRatingRead]
+
+
+class HorrorfestAnalyticsTitleMatrixRowRead(KlugORMModel):
+    media_item_id: UUID | None = None
+    title: str
+    total_count: int
+    year_counts: dict[str, int]
+
+
+class HorrorfestAnalyticsDecadeMatrixRowRead(KlugORMModel):
+    decade: str
+    total_count: int
+    year_counts: dict[str, int]
+
+
+class HorrorfestAnalyticsTitleMatrixRead(KlugORMModel):
+    years: list[int]
+    rows: list[HorrorfestAnalyticsTitleMatrixRowRead]
+
+
+class HorrorfestAnalyticsDecadeMatrixRead(KlugORMModel):
+    years: list[int]
+    rows: list[HorrorfestAnalyticsDecadeMatrixRowRead]

@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Date, Select, and_, case, cast, func, select
+from sqlalchemy import Date, Integer, Select, and_, case, cast, func, select
 from sqlalchemy.orm import Session
 
 from app.db.models.entities import (
@@ -58,6 +58,9 @@ def _horrorfest_analytics_base_statement(
             WatchEvent.rating_value.label("rating_value"),
             WatchEvent.watched_at.label("watched_at"),
             WatchEvent.rewatch.label("rewatch"),
+            MediaItem.media_item_id.label("media_item_id"),
+            MediaItem.title.label("media_item_title"),
+            MediaItem.year.label("media_item_year"),
             _effective_runtime_expr().label("effective_runtime_seconds"),
         )
         .select_from(HorrorfestEntry)
@@ -106,6 +109,47 @@ def _build_analytics_summary(row: object) -> dict[str, object]:
         "rated_watch_count": int(row.rated_watch_count or 0),
         "first_watch_at": row.first_watch_at,
         "latest_watch_at": row.latest_watch_at,
+    }
+
+
+def _build_cross_year_matrix(
+    rows: list[object],
+    *,
+    label_key: str,
+    extra_key: str | None = None,
+    media_item_key: str | None = None,
+    row_label_name: str,
+) -> dict[str, object]:
+    years = sorted({int(row.horrorfest_year) for row in rows}, reverse=True)
+    grouped: dict[tuple[object, ...], dict[str, object]] = {}
+    for row in rows:
+        label_value = getattr(row, label_key)
+        extra_value = getattr(row, extra_key) if extra_key else None
+        group_key = (label_value, extra_value)
+        if group_key not in grouped:
+            if extra_key and extra_value is not None and row_label_name == "title":
+                display_label = f"{label_value} ({extra_value})"
+            else:
+                display_label = str(label_value)
+            grouped[group_key] = {
+                row_label_name: display_label,
+                "total_count": 0,
+                "year_counts": {str(year): 0 for year in years},
+            }
+            if media_item_key:
+                grouped[group_key]["media_item_id"] = getattr(row, media_item_key)
+        grouped[group_key]["total_count"] += int(row.watch_count or 0)
+        grouped[group_key]["year_counts"][str(int(row.horrorfest_year))] = int(
+            row.watch_count or 0
+        )
+
+    def _sort_key(item: dict[str, object]) -> tuple[object, ...]:
+        label = str(item[row_label_name]).lower()
+        return (label,)
+
+    return {
+        "years": years,
+        "rows": sorted(grouped.values(), key=_sort_key),
     }
 
 
@@ -255,6 +299,82 @@ def list_horrorfest_analytics_years(
     )
     rows = session.execute(statement).all()
     return [_build_analytics_summary(row) for row in rows]
+
+
+def list_horrorfest_analytics_title_matrix(
+    session: Session,
+    *,
+    user_id: UUID | None = None,
+) -> dict[str, object]:
+    analytics_rows = _horrorfest_analytics_base_statement(user_id=user_id).subquery()
+    statement = (
+        select(
+            analytics_rows.c.media_item_id,
+            analytics_rows.c.media_item_title,
+            analytics_rows.c.media_item_year,
+            analytics_rows.c.horrorfest_year,
+            func.count().label("watch_count"),
+        )
+        .group_by(
+            analytics_rows.c.media_item_id,
+            analytics_rows.c.media_item_title,
+            analytics_rows.c.media_item_year,
+            analytics_rows.c.horrorfest_year,
+        )
+        .order_by(
+            analytics_rows.c.media_item_title.asc(),
+            analytics_rows.c.media_item_year.asc().nulls_last(),
+            analytics_rows.c.horrorfest_year.desc(),
+        )
+    )
+    rows = session.execute(statement).all()
+    return _build_cross_year_matrix(
+        rows,
+        label_key="media_item_title",
+        extra_key="media_item_year",
+        media_item_key="media_item_id",
+        row_label_name="title",
+    )
+
+
+def list_horrorfest_analytics_decade_matrix(
+    session: Session,
+    *,
+    user_id: UUID | None = None,
+) -> dict[str, object]:
+    analytics_rows = _horrorfest_analytics_base_statement(user_id=user_id).subquery()
+    decade_start = cast((analytics_rows.c.media_item_year / 10), Integer) * 10
+    decade_label = func.concat(decade_start, "s")
+    statement = (
+        select(
+            decade_start.label("decade_start"),
+            decade_label.label("decade"),
+            analytics_rows.c.horrorfest_year,
+            func.count().label("watch_count"),
+        )
+        .where(analytics_rows.c.media_item_year.is_not(None))
+        .group_by(decade_start, decade_label, analytics_rows.c.horrorfest_year)
+        .order_by(decade_start.asc(), analytics_rows.c.horrorfest_year.desc())
+    )
+    rows = session.execute(statement).all()
+    years = sorted({int(row.horrorfest_year) for row in rows}, reverse=True)
+    grouped: dict[int, dict[str, object]] = {}
+    for row in rows:
+        decade_key = int(row.decade_start)
+        if decade_key not in grouped:
+            grouped[decade_key] = {
+                "decade": str(row.decade),
+                "total_count": 0,
+                "year_counts": {str(year): 0 for year in years},
+            }
+        grouped[decade_key]["total_count"] += int(row.watch_count or 0)
+        grouped[decade_key]["year_counts"][str(int(row.horrorfest_year))] = int(
+            row.watch_count or 0
+        )
+    return {
+        "years": years,
+        "rows": [grouped[key] for key in sorted(grouped.keys())],
+    }
 
 
 def get_horrorfest_analytics_year_detail(
