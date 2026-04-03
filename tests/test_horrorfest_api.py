@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -146,3 +147,114 @@ def test_include_watch_event_in_horrorfest_returns_row(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["horrorfest_year"] == 2026
+
+
+def test_list_horrorfest_analytics_years_returns_rows(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    monkeypatch.setattr(
+        HorrorfestService,
+        "list_analytics_years",
+        lambda *_args, **_kwargs: [
+            {
+                "horrorfest_year": 2025,
+                "watch_count": 206,
+                "watch_days": 43,
+                "new_watch_count": 131,
+                "rewatch_count": 75,
+                "total_runtime_seconds": 1245240,
+                "total_runtime_hours": Decimal("345.90"),
+                "average_watches_per_day": Decimal("4.79"),
+                "average_runtime_hours_per_day": Decimal("8.04"),
+                "average_runtime_minutes_per_watch": Decimal("100.70"),
+                "average_rating_value": Decimal("7.60"),
+                "rated_watch_count": 206,
+                "first_watch_at": datetime.now(UTC),
+                "latest_watch_at": datetime.now(UTC),
+            }
+        ],
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/horrorfest/analytics/years")
+
+    assert response.status_code == 200
+    assert response.json()[0]["horrorfest_year"] == 2025
+    assert response.json()[0]["watch_count"] == 206
+
+
+def test_get_horrorfest_analytics_year_detail_returns_payload(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    monkeypatch.setattr(
+        HorrorfestService,
+        "get_analytics_year_detail",
+        lambda *_args, **_kwargs: {
+            "summary": {
+                "horrorfest_year": 2025,
+                "watch_count": 206,
+                "watch_days": 43,
+                "new_watch_count": 131,
+                "rewatch_count": 75,
+                "total_runtime_seconds": 1245240,
+                "total_runtime_hours": Decimal("345.90"),
+                "average_watches_per_day": Decimal("4.79"),
+                "average_runtime_hours_per_day": Decimal("8.04"),
+                "average_runtime_minutes_per_watch": Decimal("100.70"),
+                "average_rating_value": Decimal("7.60"),
+                "rated_watch_count": 206,
+                "first_watch_at": datetime.now(UTC),
+                "latest_watch_at": datetime.now(UTC),
+            },
+            "daily_rows": [
+                {
+                    "watch_date": "2025-10-01",
+                    "watch_count": 5,
+                    "total_runtime_seconds": 28800,
+                    "total_runtime_hours": Decimal("8.00"),
+                    "average_rating_value": Decimal("7.40"),
+                }
+            ],
+            "source_rows": [
+                {
+                    "playback_source": "kodi",
+                    "watch_count": 150,
+                    "total_runtime_seconds": 972000,
+                    "total_runtime_hours": Decimal("270.00"),
+                    "average_rating_value": Decimal("7.20"),
+                }
+            ],
+            "rating_rows": [
+                {
+                    "rating_value": Decimal("8.00"),
+                    "watch_count": 42,
+                }
+            ],
+        },
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/horrorfest/analytics/years/2025")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["summary"]["horrorfest_year"] == 2025
+    assert payload["daily_rows"][0]["watch_count"] == 5
+    assert payload["source_rows"][0]["playback_source"] == "kodi"
+    assert payload["rating_rows"][0]["watch_count"] == 42
+
+
+def test_get_horrorfest_analytics_year_detail_returns_not_found(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+
+    def _raise_not_found(*_args, **_kwargs):
+        raise ValueError("Horrorfest year '1999' not found")
+
+    monkeypatch.setattr(
+        HorrorfestService,
+        "get_analytics_year_detail",
+        _raise_not_found,
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/horrorfest/analytics/years/1999")
+
+    assert response.status_code == 404

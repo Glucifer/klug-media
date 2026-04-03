@@ -16,7 +16,11 @@ def test_root_frontend_serves_index() -> None:
     assert "Needs Attention" in response.text
     assert "Back to Dashboard" in response.text
     assert "Completion percentages come later with Collection." in response.text
-    assert "Open Show" in response.text
+    assert "Tracked Shows" in response.text
+    assert "Analytics" in response.text
+    assert "Year-over-Year Summary" in response.text
+    assert "Open Selected Year Log" in response.text
+    assert "Selected Year Drilldown" in response.text
     assert "Recent Watch History" in response.text
     assert "Import Watch History" in response.text
     assert "Use Latest Cursor" in response.text

@@ -661,6 +661,11 @@ ul {
   gap: var(--space-1);
 }
 
+#horrorfest-analytics-panel {
+  display: grid;
+  gap: var(--space-4);
+}
+
 .signal-stack {
   display: grid;
   gap: var(--space-1);

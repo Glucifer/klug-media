@@ -216,21 +216,28 @@
           </section>
 
           <section class="view-panel hidden" data-view="horrorfest">
-            <div class="section-header"><div><p class="eyebrow">Annual Challenge</p><h2>Horrorfest</h2></div></div>
+            <div class="section-header">
+              <div><p class="eyebrow">Annual Challenge</p><h2>Horrorfest</h2></div>
+              <div class="mode-switch" role="tablist" aria-label="Horrorfest mode">
+                <button class="secondary horrorfest-mode active" data-horrorfest-mode="log" type="button">Log</button>
+                <button class="secondary horrorfest-mode" data-horrorfest-mode="analytics" type="button">Analytics</button>
+              </div>
+            </div>
+            <div id="horrorfest-context-banner" class="context-banner hidden">
+              <div>
+                <div class="context-banner-title">Dashboard Context</div>
+                <p id="horrorfest-context-text" class="muted">Horrorfest was opened from the dashboard.</p>
+              </div>
+              <div class="button-cluster">
+                <button id="horrorfest-context-return" class="secondary" type="button">Back to Dashboard</button>
+                <button id="horrorfest-context-clear" class="secondary" type="button">Clear Link</button>
+              </div>
+            </div>
+            <div id="horrorfest-log-panel">
             <div class="split-layout">
               <section class="section-card section-primary">
                 <h3>Yearly Browsing</h3>
                 <p id="horrorfest-status" class="muted">Loading Horrorfest years...</p>
-                <div id="horrorfest-context-banner" class="context-banner hidden">
-                  <div>
-                    <div class="context-banner-title">Dashboard Context</div>
-                    <p id="horrorfest-context-text" class="muted">Horrorfest was opened from the dashboard.</p>
-                  </div>
-                  <div class="button-cluster">
-                    <button id="horrorfest-context-return" class="secondary" type="button">Back to Dashboard</button>
-                    <button id="horrorfest-context-clear" class="secondary" type="button">Clear Link</button>
-                  </div>
-                </div>
                 <p id="horrorfest-year-summary" class="muted">Select a year to inspect its ordered challenge log.</p>
                 <div id="horrorfest-year-metrics" class="stats-grid compact-stats"></div>
                 <div class="toolbar-inline"><label for="horrorfest-year-select">Year</label><select id="horrorfest-year-select"></select><label class="checkbox"><input id="horrorfest-include-removed" type="checkbox" />Include Removed</label><button id="horrorfest-refresh" class="secondary" type="button">Refresh</button></div>
@@ -249,6 +256,62 @@
                 <div class="toggle-row"><label class="checkbox"><input id="horrorfest-config-active" type="checkbox" checked />Active</label></div>
                 <div class="button-cluster"><button id="horrorfest-config-save" class="secondary" type="button">Save Year</button></div>
               </aside>
+            </div>
+            </div>
+            <div id="horrorfest-analytics-panel" class="hidden">
+              <section class="section-card">
+                <div class="section-headline">
+                  <div>
+                    <h3>Year-over-Year Summary</h3>
+                    <p id="horrorfest-analytics-status" class="muted">Loading Horrorfest analytics...</p>
+                  </div>
+                  <div class="button-cluster">
+                    <button id="horrorfest-analytics-refresh" class="secondary" type="button">Refresh Analytics</button>
+                    <button id="horrorfest-analytics-open-log" class="secondary" type="button">Open Selected Year Log</button>
+                  </div>
+                </div>
+                <table class="horrorfest-table">
+                  <thead>
+                    <tr>
+                      <th><button class="table-sort active" data-horrorfest-analytics-sort="year" type="button">Year</button></th>
+                      <th><button class="table-sort" data-horrorfest-analytics-sort="watch_count" type="button">Watches</button></th>
+                      <th><button class="table-sort" data-horrorfest-analytics-sort="watch_days" type="button">Days</button></th>
+                      <th><button class="table-sort" data-horrorfest-analytics-sort="new_watch_count" type="button">New</button></th>
+                      <th><button class="table-sort" data-horrorfest-analytics-sort="rewatch_count" type="button">Rewatch</button></th>
+                      <th><button class="table-sort" data-horrorfest-analytics-sort="total_runtime_hours" type="button">Runtime (hrs)</button></th>
+                      <th><button class="table-sort" data-horrorfest-analytics-sort="average_watches_per_day" type="button">Avg/Day</button></th>
+                      <th><button class="table-sort" data-horrorfest-analytics-sort="average_runtime_hours_per_day" type="button">Avg Hrs/Day</button></th>
+                      <th><button class="table-sort" data-horrorfest-analytics-sort="average_runtime_minutes_per_watch" type="button">Avg Min/Watch</button></th>
+                      <th><button class="table-sort" data-horrorfest-analytics-sort="average_rating_value" type="button">Avg Rating</button></th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="horrorfest-analytics-years-body"></tbody>
+                </table>
+              </section>
+              <section class="section-card">
+                <div class="section-headline">
+                  <div>
+                    <h3>Selected Year Drilldown</h3>
+                    <p id="horrorfest-analytics-detail-status" class="muted">Select a Horrorfest year to inspect its analytics.</p>
+                  </div>
+                </div>
+                <div id="horrorfest-analytics-summary-cards" class="stats-grid compact-stats"></div>
+                <div class="dashboard-grid">
+                  <section class="section-card">
+                    <h3>Daily Activity</h3>
+                    <table><thead><tr><th>Date</th><th>Watches</th><th>Runtime (hrs)</th><th>Avg Rating</th></tr></thead><tbody id="horrorfest-analytics-daily-body"></tbody></table>
+                  </section>
+                  <section class="section-card">
+                    <h3>Playback Sources</h3>
+                    <table><thead><tr><th>Source</th><th>Watches</th><th>Runtime (hrs)</th><th>Avg Rating</th></tr></thead><tbody id="horrorfest-analytics-sources-body"></tbody></table>
+                  </section>
+                  <section class="section-card">
+                    <h3>Rating Distribution</h3>
+                    <table><thead><tr><th>Rating</th><th>Watches</th></tr></thead><tbody id="horrorfest-analytics-ratings-body"></tbody></table>
+                  </section>
+                </div>
+              </section>
             </div>
           </section>
 

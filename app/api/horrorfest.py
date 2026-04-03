@@ -5,6 +5,8 @@ from uuid import UUID
 from app.core.auth import require_request_auth
 from app.db.session import get_db_session
 from app.schemas.horrorfest import (
+    HorrorfestAnalyticsYearDetailRead,
+    HorrorfestAnalyticsYearRead,
     HorrorfestEntryInclude,
     HorrorfestEntryMove,
     HorrorfestEntryMutation,
@@ -29,6 +31,37 @@ def list_horrorfest_years(
         HorrorfestYearRead.model_validate(item)
         for item in HorrorfestService.list_years(session)
     ]
+
+
+@router.get("/analytics/years", response_model=list[HorrorfestAnalyticsYearRead])
+def list_horrorfest_analytics_years(
+    user_id: UUID | None = Query(default=None),
+    session: Session = Depends(get_db_session),
+) -> list[HorrorfestAnalyticsYearRead]:
+    return [
+        HorrorfestAnalyticsYearRead.model_validate(item)
+        for item in HorrorfestService.list_analytics_years(session, user_id=user_id)
+    ]
+
+
+@router.get(
+    "/analytics/years/{horrorfest_year}",
+    response_model=HorrorfestAnalyticsYearDetailRead,
+)
+def get_horrorfest_analytics_year_detail(
+    horrorfest_year: int,
+    user_id: UUID | None = Query(default=None),
+    session: Session = Depends(get_db_session),
+) -> HorrorfestAnalyticsYearDetailRead:
+    try:
+        detail = HorrorfestService.get_analytics_year_detail(
+            session,
+            horrorfest_year=horrorfest_year,
+            user_id=user_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return HorrorfestAnalyticsYearDetailRead.model_validate(detail)
 
 
 @router.put("/years/{horrorfest_year}", response_model=HorrorfestYearRead)

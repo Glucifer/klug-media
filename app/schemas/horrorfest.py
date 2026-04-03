@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -69,3 +69,48 @@ class HorrorfestEntryMove(HorrorfestEntryMutation):
 class HorrorfestEntryInclude(HorrorfestEntryMutation):
     horrorfest_year: int = Field(ge=1900, le=9999)
     target_order: int | None = Field(default=None, ge=1, le=10000)
+
+
+class HorrorfestAnalyticsYearRead(KlugORMModel):
+    horrorfest_year: int
+    watch_count: int
+    watch_days: int
+    new_watch_count: int
+    rewatch_count: int
+    total_runtime_seconds: int
+    total_runtime_hours: Decimal
+    average_watches_per_day: Decimal
+    average_runtime_hours_per_day: Decimal
+    average_runtime_minutes_per_watch: Decimal
+    average_rating_value: Decimal | None = None
+    rated_watch_count: int
+    first_watch_at: datetime | None = None
+    latest_watch_at: datetime | None = None
+
+
+class HorrorfestAnalyticsDailyRead(KlugORMModel):
+    watch_date: date
+    watch_count: int
+    total_runtime_seconds: int
+    total_runtime_hours: Decimal
+    average_rating_value: Decimal | None = None
+
+
+class HorrorfestAnalyticsSourceRead(KlugORMModel):
+    playback_source: str
+    watch_count: int
+    total_runtime_seconds: int
+    total_runtime_hours: Decimal
+    average_rating_value: Decimal | None = None
+
+
+class HorrorfestAnalyticsRatingRead(KlugORMModel):
+    rating_value: Decimal
+    watch_count: int
+
+
+class HorrorfestAnalyticsYearDetailRead(KlugORMModel):
+    summary: HorrorfestAnalyticsYearRead
+    daily_rows: list[HorrorfestAnalyticsDailyRead]
+    source_rows: list[HorrorfestAnalyticsSourceRead]
+    rating_rows: list[HorrorfestAnalyticsRatingRead]

@@ -110,6 +110,33 @@ class HorrorfestService:
         )
 
     @staticmethod
+    def list_analytics_years(
+        session: Session,
+        *,
+        user_id: UUID | None = None,
+    ) -> list[dict[str, object]]:
+        return horrorfest_repository.list_horrorfest_analytics_years(
+            session,
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def get_analytics_year_detail(
+        session: Session,
+        *,
+        horrorfest_year: int,
+        user_id: UUID | None = None,
+    ) -> dict[str, object]:
+        detail = horrorfest_repository.get_horrorfest_analytics_year_detail(
+            session,
+            horrorfest_year=horrorfest_year,
+            user_id=user_id,
+        )
+        if detail is None:
+            raise ValueError(f"Horrorfest year '{horrorfest_year}' not found")
+        return detail
+
+    @staticmethod
     def sync_watch_event(
         session: Session,
         *,

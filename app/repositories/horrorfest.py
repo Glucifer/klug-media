@@ -1,10 +1,18 @@
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Select, and_, func, select
+from sqlalchemy import Date, Select, and_, case, cast, func, select
 from sqlalchemy.orm import Session
 
-from app.db.models.entities import HorrorfestEntry, HorrorfestYear, MediaItem, WatchEvent
+from app.db.models.entities import (
+    HorrorfestEntry,
+    HorrorfestYear,
+    MediaItem,
+    MediaVersion,
+    User,
+    WatchEvent,
+)
 
 
 def _format_display_title(
@@ -23,6 +31,82 @@ def _format_display_title(
     if item_year is not None:
         return f"{base_title} ({item_year})"
     return base_title
+
+
+def _effective_runtime_expr():
+    return func.coalesce(
+        WatchEvent.watch_runtime_seconds,
+        MediaVersion.runtime_seconds,
+        WatchEvent.total_seconds,
+        MediaItem.base_runtime_seconds,
+        0,
+    )
+
+
+def _horrorfest_analytics_base_statement(
+    *,
+    horrorfest_year: int | None = None,
+    user_id: UUID | None = None,
+) -> Select:
+    local_ts = func.timezone(User.timezone, WatchEvent.watched_at)
+    local_date = cast(local_ts, Date)
+    statement = (
+        select(
+            HorrorfestEntry.horrorfest_year.label("horrorfest_year"),
+            local_date.label("watch_date"),
+            WatchEvent.playback_source.label("playback_source"),
+            WatchEvent.rating_value.label("rating_value"),
+            WatchEvent.watched_at.label("watched_at"),
+            WatchEvent.rewatch.label("rewatch"),
+            _effective_runtime_expr().label("effective_runtime_seconds"),
+        )
+        .select_from(HorrorfestEntry)
+        .join(WatchEvent, WatchEvent.watch_id == HorrorfestEntry.watch_id)
+        .join(User, User.user_id == WatchEvent.user_id)
+        .join(MediaItem, MediaItem.media_item_id == WatchEvent.media_item_id)
+        .outerjoin(MediaVersion, MediaVersion.media_version_id == WatchEvent.media_version_id)
+        .where(
+            HorrorfestEntry.is_removed.is_(False),
+            WatchEvent.is_deleted.is_(False),
+        )
+    )
+    if horrorfest_year is not None:
+        statement = statement.where(HorrorfestEntry.horrorfest_year == horrorfest_year)
+    if user_id is not None:
+        statement = statement.where(WatchEvent.user_id == user_id)
+    return statement
+
+
+def _build_analytics_summary(row: object) -> dict[str, object]:
+    watch_count = int(row.watch_count or 0)
+    watch_days = int(row.watch_days or 0)
+    total_runtime_seconds = int(row.total_runtime_seconds or 0)
+    watch_count_decimal = Decimal(watch_count or 1)
+    watch_days_decimal = Decimal(watch_days or 1)
+    return {
+        "horrorfest_year": int(row.horrorfest_year),
+        "watch_count": watch_count,
+        "watch_days": watch_days,
+        "new_watch_count": int(row.new_watch_count or 0),
+        "rewatch_count": int(row.rewatch_count or 0),
+        "total_runtime_seconds": total_runtime_seconds,
+        "total_runtime_hours": (
+            Decimal(total_runtime_seconds) / Decimal("3600")
+        ).quantize(Decimal("0.01")),
+        "average_watches_per_day": (
+            Decimal(watch_count) / watch_days_decimal
+        ).quantize(Decimal("0.01")),
+        "average_runtime_hours_per_day": (
+            Decimal(total_runtime_seconds) / Decimal("3600") / watch_days_decimal
+        ).quantize(Decimal("0.01")),
+        "average_runtime_minutes_per_watch": (
+            Decimal(total_runtime_seconds) / Decimal("60") / watch_count_decimal
+        ).quantize(Decimal("0.01")),
+        "average_rating_value": row.average_rating_value,
+        "rated_watch_count": int(row.rated_watch_count or 0),
+        "first_watch_at": row.first_watch_at,
+        "latest_watch_at": row.latest_watch_at,
+    }
 
 
 def get_horrorfest_year(
@@ -137,6 +221,147 @@ def list_horrorfest_years(session: Session) -> list[dict[str, object]]:
             }
         )
     return payload
+
+
+def list_horrorfest_analytics_years(
+    session: Session,
+    *,
+    user_id: UUID | None = None,
+) -> list[dict[str, object]]:
+    analytics_rows = _horrorfest_analytics_base_statement(user_id=user_id).subquery()
+    statement = (
+        select(
+            analytics_rows.c.horrorfest_year,
+            func.count().label("watch_count"),
+            func.count(func.distinct(analytics_rows.c.watch_date)).label("watch_days"),
+            func.sum(case((analytics_rows.c.rewatch.is_(False), 1), else_=0)).label(
+                "new_watch_count"
+            ),
+            func.sum(case((analytics_rows.c.rewatch.is_(True), 1), else_=0)).label(
+                "rewatch_count"
+            ),
+            func.coalesce(func.sum(analytics_rows.c.effective_runtime_seconds), 0).label(
+                "total_runtime_seconds"
+            ),
+            func.avg(analytics_rows.c.rating_value).label("average_rating_value"),
+            func.sum(
+                case((analytics_rows.c.rating_value.is_not(None), 1), else_=0)
+            ).label("rated_watch_count"),
+            func.min(analytics_rows.c.watched_at).label("first_watch_at"),
+            func.max(analytics_rows.c.watched_at).label("latest_watch_at"),
+        )
+        .group_by(analytics_rows.c.horrorfest_year)
+        .order_by(analytics_rows.c.horrorfest_year.desc())
+    )
+    rows = session.execute(statement).all()
+    return [_build_analytics_summary(row) for row in rows]
+
+
+def get_horrorfest_analytics_year_detail(
+    session: Session,
+    *,
+    horrorfest_year: int,
+    user_id: UUID | None = None,
+) -> dict[str, object] | None:
+    analytics_rows = _horrorfest_analytics_base_statement(
+        horrorfest_year=horrorfest_year,
+        user_id=user_id,
+    ).subquery()
+    summary_statement = select(
+        analytics_rows.c.horrorfest_year,
+        func.count().label("watch_count"),
+        func.count(func.distinct(analytics_rows.c.watch_date)).label("watch_days"),
+        func.sum(case((analytics_rows.c.rewatch.is_(False), 1), else_=0)).label(
+            "new_watch_count"
+        ),
+        func.sum(case((analytics_rows.c.rewatch.is_(True), 1), else_=0)).label(
+            "rewatch_count"
+        ),
+        func.coalesce(func.sum(analytics_rows.c.effective_runtime_seconds), 0).label(
+            "total_runtime_seconds"
+        ),
+        func.avg(analytics_rows.c.rating_value).label("average_rating_value"),
+        func.sum(case((analytics_rows.c.rating_value.is_not(None), 1), else_=0)).label(
+            "rated_watch_count"
+        ),
+        func.min(analytics_rows.c.watched_at).label("first_watch_at"),
+        func.max(analytics_rows.c.watched_at).label("latest_watch_at"),
+    ).group_by(analytics_rows.c.horrorfest_year)
+    summary_row = session.execute(summary_statement).one_or_none()
+    if summary_row is None:
+        return None
+
+    daily_statement = (
+        select(
+            analytics_rows.c.watch_date,
+            func.count().label("watch_count"),
+            func.coalesce(func.sum(analytics_rows.c.effective_runtime_seconds), 0).label(
+                "total_runtime_seconds"
+            ),
+            func.avg(analytics_rows.c.rating_value).label("average_rating_value"),
+        )
+        .group_by(analytics_rows.c.watch_date)
+        .order_by(analytics_rows.c.watch_date.asc())
+    )
+    source_statement = (
+        select(
+            analytics_rows.c.playback_source,
+            func.count().label("watch_count"),
+            func.coalesce(func.sum(analytics_rows.c.effective_runtime_seconds), 0).label(
+                "total_runtime_seconds"
+            ),
+            func.avg(analytics_rows.c.rating_value).label("average_rating_value"),
+        )
+        .group_by(analytics_rows.c.playback_source)
+        .order_by(func.count().desc(), analytics_rows.c.playback_source.asc())
+    )
+    rating_statement = (
+        select(
+            analytics_rows.c.rating_value,
+            func.count().label("watch_count"),
+        )
+        .where(analytics_rows.c.rating_value.is_not(None))
+        .group_by(analytics_rows.c.rating_value)
+        .order_by(analytics_rows.c.rating_value.desc())
+    )
+
+    daily_rows = session.execute(daily_statement).all()
+    source_rows = session.execute(source_statement).all()
+    rating_rows = session.execute(rating_statement).all()
+    return {
+        "summary": _build_analytics_summary(summary_row),
+        "daily_rows": [
+            {
+                "watch_date": row.watch_date,
+                "watch_count": int(row.watch_count or 0),
+                "total_runtime_seconds": int(row.total_runtime_seconds or 0),
+                "total_runtime_hours": (
+                    Decimal(int(row.total_runtime_seconds or 0)) / Decimal("3600")
+                ).quantize(Decimal("0.01")),
+                "average_rating_value": row.average_rating_value,
+            }
+            for row in daily_rows
+        ],
+        "source_rows": [
+            {
+                "playback_source": row.playback_source,
+                "watch_count": int(row.watch_count or 0),
+                "total_runtime_seconds": int(row.total_runtime_seconds or 0),
+                "total_runtime_hours": (
+                    Decimal(int(row.total_runtime_seconds or 0)) / Decimal("3600")
+                ).quantize(Decimal("0.01")),
+                "average_rating_value": row.average_rating_value,
+            }
+            for row in source_rows
+        ],
+        "rating_rows": [
+            {
+                "rating_value": row.rating_value,
+                "watch_count": int(row.watch_count or 0),
+            }
+            for row in rating_rows
+        ],
+    }
 
 
 def list_horrorfest_entries(
