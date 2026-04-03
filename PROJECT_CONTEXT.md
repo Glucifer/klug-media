@@ -94,12 +94,14 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - client-side section switching for Dashboard, History, Horrorfest, Shows, and Admin
   - dashboard previews for stats, recent watches, unrated queue, and enrichment watchlist
   - watch history title search plus pagination/filtering and client-side sorting for watched time, title, and rating
+  - history quick-jump date presets plus active filter summary chips
   - watch history detail rendered as grouped metadata sections plus a sticky correction panel
   - watch history version/runtime override controls for per-watch movie cuts
   - recently watched, unrated queue with 1-10 rating actions
-  - shared media side panel fed by `/api/v1/media-items/{media_item_id}` for richer movie/episode drilldown
+  - shared media side panel fed by `/api/v1/media-items/{media_item_id}` for poster-first movie/episode drilldown
+  - one-click media-detail open actions from dashboard previews, history, Horrorfest, and show episodes
   - Horrorfest yearly browsing with per-year summary cards plus separate curation/year-config area
-  - shows/progress view with a cleaner sticky detail panel and episode-level media drilldown
+  - shows/progress view with a cleaner sticky detail panel, season-grouped episode browsing, and episode-level media drilldown
   - Admin workspace split into Imports, Manual Add, Scrobbler, and Enrichment subviews
   - import runner (file upload + mode/dry-run/resume options)
   - cursor visibility (`cursor_before`, `cursor_after`, local last cursor)

@@ -404,6 +404,11 @@ ul {
   margin-bottom: var(--space-3);
 }
 
+.history-presets,
+.history-filter-summary {
+  margin-bottom: var(--space-3);
+}
+
 .toolbar-grid .checkbox {
   align-self: end;
 }
@@ -506,9 +511,41 @@ ul {
   gap: var(--space-1);
 }
 
+.history-row-main,
+.horrorfest-row-main {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: start;
+}
+
 .history-title-main,
 .horrorfest-title-main {
   font-weight: 700;
+}
+
+.media-link-button {
+  min-height: auto;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--fg);
+  font-size: inherit;
+  font-weight: 700;
+  text-align: left;
+}
+
+.media-link-button:hover {
+  transform: none;
+  color: var(--accent-strong);
+}
+
+.history-row-clickable {
+  cursor: pointer;
+}
+
+.history-row-clickable:hover {
+  background: rgba(97, 178, 255, 0.08);
 }
 
 .history-meta-row,
@@ -543,10 +580,19 @@ ul {
   font-size: 14px;
 }
 
+.detail-subtitle {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2) var(--space-3);
+}
+
+.detail-grid.compact-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .detail-item {
@@ -603,6 +649,82 @@ ul {
   gap: var(--space-3);
 }
 
+.media-panel-hero {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.media-panel-poster,
+.media-panel-poster-placeholder {
+  width: 132px;
+  aspect-ratio: 2 / 3;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 138, 61, 0.12), rgba(97, 178, 255, 0.08)), var(--panel-soft);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.22);
+}
+
+.media-panel-poster {
+  object-fit: cover;
+  display: block;
+}
+
+.media-panel-poster-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.media-panel-copy,
+.media-panel-header-copy {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.media-panel-title-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.media-panel-summary {
+  color: var(--fg);
+  line-height: 1.55;
+}
+
+.meta-pill-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.meta-pill {
+  display: grid;
+  gap: 4px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.meta-pill-label {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.meta-pill-value {
+  font-weight: 700;
+}
+
 .recent-watch-list {
   display: grid;
   gap: var(--space-2);
@@ -622,6 +744,40 @@ ul {
   justify-content: space-between;
   gap: var(--space-3);
   align-items: center;
+}
+
+.season-group {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.season-group + .season-group {
+  margin-top: var(--space-3);
+}
+
+.season-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.season-heading h4 {
+  margin: 0;
+}
+
+.season-list {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  padding-left: 0;
+}
+
+.season-list li {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel-soft);
+  padding: var(--space-3);
 }
 
 tr.selected {
@@ -715,10 +871,24 @@ tr.selected {
     grid-template-columns: 1fr;
   }
 
+  .detail-grid.compact-grid,
+  .meta-pill-grid {
+    grid-template-columns: 1fr;
+  }
+
   .side-panel {
     top: var(--space-3);
     right: var(--space-3);
     bottom: var(--space-3);
     width: calc(100vw - 2 * var(--space-3));
+  }
+
+  .media-panel-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .media-panel-poster,
+  .media-panel-poster-placeholder {
+    width: min(220px, 100%);
   }
 }

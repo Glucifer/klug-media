@@ -119,6 +119,13 @@
                   <label for="history-limit">Rows</label><select id="history-limit"><option value="10">10</option><option value="25">25</option><option value="50">50</option></select>
                   <button id="history-apply" class="secondary" type="button">Apply</button>
                 </div>
+                <div class="toolbar-inline history-presets">
+                  <span class="muted">Quick Jump</span>
+                  <button class="secondary" data-history-preset="last-30" type="button">Last 30 Days</button>
+                  <button class="secondary" data-history-preset="this-year" type="button">This Year</button>
+                  <button class="secondary" data-history-preset="clear" type="button">Clear</button>
+                </div>
+                <p id="history-filter-summary" class="muted">Showing the latest watches.</p>
                 <table class="history-table"><thead><tr><th><button class="table-sort active" data-history-sort="watched_at" type="button">Watched At</button></th><th><button class="table-sort" data-history-sort="title" type="button">Title</button></th><th><button class="table-sort" data-history-sort="rating" type="button">Rating</button></th><th>Type</th><th>Source</th><th>Status</th></tr></thead><tbody id="history-body"></tbody></table>
                 <div class="pagination-row"><button id="history-prev" class="secondary" type="button">Previous</button><span id="history-page" class="muted">Page 1</span><button id="history-next" class="secondary" type="button">Next</button></div>
               </section>
@@ -128,7 +135,7 @@
                 <div class="button-cluster"><button id="history-open-media" class="secondary" type="button" disabled>Open Media Detail</button></div>
                 <div id="history-detail" class="detail-stack"></div>
                 <div class="toolbar-grid">
-                  <label for="history-editor-updated-by">Updated By</label><input id="history-editor-updated-by" type="text" placeholder="operator name" />
+                  <label for="history-editor-updated-by">Operator</label><input id="history-editor-updated-by" type="text" placeholder="operator name" />
                   <label for="history-editor-reason">Reason</label><input id="history-editor-reason" type="text" placeholder="optional reason" />
                   <label for="history-editor-watched-at">Watched At</label><input id="history-editor-watched-at" type="datetime-local" />
                   <label for="history-editor-media-item-id">Media Item ID</label><input id="history-editor-media-item-id" type="text" placeholder="media item uuid" />
@@ -147,7 +154,7 @@
                 <div class="section-primary"><table><thead><tr><th>Watched At</th><th>Title</th><th>Source</th><th>Action</th></tr></thead><tbody id="ratings-body"></tbody></table></div>
                 <aside class="sticky-card">
                   <p id="ratings-detail-status" class="muted">Select an unrated watch to rate it.</p>
-                  <div class="toolbar-grid"><label for="ratings-updated-by">Updated By</label><input id="ratings-updated-by" type="text" placeholder="operator name" /><label for="ratings-reason">Reason</label><input id="ratings-reason" type="text" placeholder="optional reason" /><label for="ratings-value">Rating</label><select id="ratings-value"><option value="">Choose</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select></div>
+                  <div class="toolbar-grid"><label for="ratings-updated-by">Operator</label><input id="ratings-updated-by" type="text" placeholder="operator name" /><label for="ratings-reason">Reason</label><input id="ratings-reason" type="text" placeholder="optional reason" /><label for="ratings-value">Rating</label><select id="ratings-value"><option value="">Choose</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select></div>
                   <div class="button-cluster"><button id="ratings-save" class="secondary" type="button">Save Rating</button></div>
                   <pre id="ratings-detail" class="code-block"></pre>
                 </aside>
@@ -169,7 +176,8 @@
               <aside class="section-card sticky-card">
                 <h3>Year Curation</h3>
                 <p id="horrorfest-detail-status" class="muted">Select a Horrorfest row to inspect or correct.</p>
-                <div class="toolbar-grid"><label for="horrorfest-updated-by">Updated By</label><input id="horrorfest-updated-by" type="text" placeholder="operator name" /><label for="horrorfest-reason">Reason</label><input id="horrorfest-reason" type="text" placeholder="optional reason" /><label for="horrorfest-target-order">Target Order</label><input id="horrorfest-target-order" type="number" min="1" max="10000" /><label for="horrorfest-include-watch-id">Include Watch ID</label><input id="horrorfest-include-watch-id" type="text" placeholder="watch uuid" /></div>
+                <div class="button-cluster"><button id="horrorfest-open-media" class="secondary" type="button" disabled>Open Media Detail</button></div>
+                <div class="toolbar-grid"><label for="horrorfest-updated-by">Operator</label><input id="horrorfest-updated-by" type="text" placeholder="operator name" /><label for="horrorfest-reason">Reason</label><input id="horrorfest-reason" type="text" placeholder="optional reason" /><label for="horrorfest-target-order">Target Order</label><input id="horrorfest-target-order" type="number" min="1" max="10000" /><label for="horrorfest-include-watch-id">Include Watch ID</label><input id="horrorfest-include-watch-id" type="text" placeholder="watch uuid" /></div>
                 <div class="button-cluster"><button id="horrorfest-move" class="secondary" type="button">Move Entry</button><button id="horrorfest-remove" class="secondary" type="button">Remove</button><button id="horrorfest-restore" class="secondary" type="button">Restore</button><button id="horrorfest-include" class="secondary" type="button">Include Watch</button></div>
                 <pre id="horrorfest-detail" class="code-block"></pre>
                 <div class="section-divider"></div>
@@ -262,7 +270,7 @@
                   <input id="manual-watch-season-number" type="number" min="1" placeholder="Season" />
                   <input id="manual-watch-episode-number" type="number" min="1" placeholder="Episode" />
                   <select id="manual-watch-rating-value"><option value="">No rating</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select>
-                  <input id="manual-watch-created-by" type="text" placeholder="created by (optional)" />
+                  <input id="manual-watch-created-by" type="text" placeholder="operator name (optional)" />
                   <label class="checkbox"><input id="manual-watch-completed" type="checkbox" checked />Completed</label>
                   <button id="manual-watch-submit" type="submit">Add Watch</button>
                 </form>

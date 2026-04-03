@@ -62,6 +62,7 @@ const historyLimitSelect = document.getElementById("history-limit");
 const historyApply = document.getElementById("history-apply");
 const historyStatus = document.getElementById("history-status");
 const historyBody = document.getElementById("history-body");
+const historyFilterSummary = document.getElementById("history-filter-summary");
 const historyPrev = document.getElementById("history-prev");
 const historyNext = document.getElementById("history-next");
 const historyPage = document.getElementById("history-page");
@@ -106,6 +107,7 @@ const horrorfestMove = document.getElementById("horrorfest-move");
 const horrorfestRemove = document.getElementById("horrorfest-remove");
 const horrorfestRestore = document.getElementById("horrorfest-restore");
 const horrorfestInclude = document.getElementById("horrorfest-include");
+const horrorfestOpenMedia = document.getElementById("horrorfest-open-media");
 const horrorfestConfigYear = document.getElementById("horrorfest-config-year");
 const horrorfestConfigLabel = document.getElementById("horrorfest-config-label");
 const horrorfestConfigStart = document.getElementById("horrorfest-config-start");
@@ -162,6 +164,7 @@ const adminNavButtons = Array.from(document.querySelectorAll("[data-admin-view-t
 const adminPanels = Array.from(document.querySelectorAll(".admin-panel[data-admin-view]"));
 const jumpButtons = Array.from(document.querySelectorAll("[data-jump-view]"));
 const historySortButtons = Array.from(document.querySelectorAll("[data-history-sort]"));
+const historyPresetButtons = Array.from(document.querySelectorAll("[data-history-preset]"));
 
 const IMPORT_PREF_KEYS = {
   userId: "klug.import_user_id",
@@ -261,6 +264,75 @@ function renderDetailItems(items) {
     .join("");
 }
 
+function renderMetaPills(items) {
+  return items
+    .map(
+      ([label, value]) => `
+        <div class="meta-pill">
+          <div class="meta-pill-label">${escapeHtml(label)}</div>
+          <div class="meta-pill-value">${value === null || value === undefined || value === "" ? "-" : value}</div>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function formatDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function setHistoryDatePreset(preset) {
+  const now = new Date();
+  if (preset === "last-30") {
+    const start = new Date(now);
+    start.setDate(start.getDate() - 29);
+    historyLocalDateFrom.value = formatDateInputValue(start);
+    historyLocalDateTo.value = formatDateInputValue(now);
+  } else if (preset === "this-year") {
+    historyLocalDateFrom.value = `${now.getFullYear()}-01-01`;
+    historyLocalDateTo.value = formatDateInputValue(now);
+  } else {
+    historyQuery.value = "";
+    historyMediaType.value = "";
+    historyLocalDateFrom.value = "";
+    historyLocalDateTo.value = "";
+    historyIncludeDeleted.checked = false;
+    window.localStorage.setItem(UI_PREF_KEYS.historyQuery, "");
+  }
+}
+
+function renderHistoryFilterSummary() {
+  const chips = [];
+  if (historyQuery.value.trim()) {
+    chips.push(renderStatusChip(`title: ${escapeHtml(historyQuery.value.trim())}`, "info"));
+  }
+  if (historyMediaType.value) {
+    chips.push(renderStatusChip(historyMediaType.value, "neutral"));
+  }
+  if (historyLocalDateFrom.value) {
+    chips.push(renderStatusChip(`from ${historyLocalDateFrom.value}`, "warning"));
+  }
+  if (historyLocalDateTo.value) {
+    chips.push(renderStatusChip(`to ${historyLocalDateTo.value}`, "warning"));
+  }
+  if (historyIncludeDeleted.checked) {
+    chips.push(renderStatusChip("including deleted", "danger"));
+  }
+  const sortLabel =
+    historySortKey === "watched_at"
+      ? "watched"
+      : historySortKey === "title"
+        ? "title"
+        : "rating";
+  chips.push(renderStatusChip(`sort ${sortLabel} ${historySortDirection}`, "neutral"));
+  historyFilterSummary.innerHTML = chips.length
+    ? `Active filters: ${chips.join(" ")}`
+    : "Showing the latest watches.";
+}
+
 function initializeTheme() {
   const savedTheme = window.localStorage.getItem(UI_PREF_KEYS.theme) || "dark";
   document.documentElement.dataset.theme = savedTheme;
@@ -305,6 +377,7 @@ function initializeUiShell() {
   setActiveView(window.localStorage.getItem(UI_PREF_KEYS.activeView) || "dashboard");
   setActiveAdminView(window.localStorage.getItem(UI_PREF_KEYS.activeAdminView) || "imports");
   syncHistorySortUi();
+  renderHistoryFilterSummary();
 }
 
 function setAuthenticatedUI(authenticated, message) {
@@ -479,9 +552,16 @@ async function loadDashboardRecentHistoryPreview() {
       ]
         .filter(Boolean)
         .join(" ");
+      tr.classList.toggle("history-row-clickable", Boolean(row.media_item_id));
       tr.innerHTML = `
         <td>${new Date(row.watched_at).toLocaleDateString()}</td>
-        <td>${title}</td>
+        <td>
+          ${
+            row.media_item_id
+              ? `<button class="media-link-button" data-media-item-open="${row.media_item_id}" type="button">${escapeHtml(title)}</button>`
+              : escapeHtml(title)
+          }
+        </td>
         <td>${row.playback_source}</td>
         <td>${signals || renderStatusChip("active", "success")}</td>
       `;
@@ -512,9 +592,17 @@ async function loadDashboardUnratedPreview() {
     }
     for (const row of rows) {
       const tr = document.createElement("tr");
+      const title = row.display_title || row.media_item_title || row.media_item_id;
+      tr.classList.toggle("history-row-clickable", Boolean(row.media_item_id));
       tr.innerHTML = `
         <td>${new Date(row.watched_at).toLocaleDateString()}</td>
-        <td>${row.display_title || row.media_item_title || row.media_item_id}</td>
+        <td>
+          ${
+            row.media_item_id
+              ? `<button class="media-link-button" data-media-item-open="${row.media_item_id}" type="button">${escapeHtml(title)}</button>`
+              : escapeHtml(title)
+          }
+        </td>
         <td>${row.playback_source}</td>
       `;
       dashboardRatingsBody.appendChild(tr);
@@ -756,24 +844,52 @@ async function loadShowDetail(showId) {
       </section>
     `;
 
-    for (const ep of detail.episodes) {
-      const li = document.createElement("li");
-      const watchedLabel =
-        ep.watched_by_user === null
-          ? `watches: ${ep.watched_count}`
-          : ep.watched_by_user
-            ? "watched"
-            : "not watched";
-      li.innerHTML = `
-        <div class="episode-row">
-          <div>
-            <div class="history-title-main">${escapeHtml(`S${ep.season_number ?? "?"}E${ep.episode_number ?? "?"} - ${ep.title}`)}</div>
-            <div class="history-badges">${ep.watched_by_user ? renderStatusChip("watched", "success") : renderStatusChip(watchedLabel, ep.watched_count ? "warning" : "neutral")}</div>
-          </div>
-          <button class="secondary episode-detail-button" data-media-item-detail-id="${ep.media_item_id}" type="button">Open Media</button>
+    const groupedEpisodes = new Map();
+    for (const episode of detail.episodes) {
+      const seasonKey = String(episode.season_number ?? 0);
+      const existing = groupedEpisodes.get(seasonKey) || [];
+      existing.push(episode);
+      groupedEpisodes.set(seasonKey, existing);
+    }
+
+    const seasons = Array.from(groupedEpisodes.entries()).sort(
+      ([left], [right]) => Number(left) - Number(right)
+    );
+    for (const [seasonKey, seasonEpisodes] of seasons) {
+      const seasonSection = document.createElement("li");
+      const watchedCount = seasonEpisodes.filter((ep) => ep.watched_by_user).length;
+      const heading = Number(seasonKey) === 0 ? "Specials" : `Season ${seasonKey}`;
+      const listItems = seasonEpisodes
+        .sort((left, right) => (left.episode_number ?? 0) - (right.episode_number ?? 0))
+        .map((ep) => {
+          const watchedLabel =
+            ep.watched_by_user === null
+              ? `watches: ${ep.watched_count}`
+              : ep.watched_by_user
+                ? "watched"
+                : "not watched";
+          return `
+            <li>
+              <div class="episode-row">
+                <div>
+                  <div class="history-title-main">${escapeHtml(`E${ep.episode_number ?? "?"} - ${ep.title}`)}</div>
+                  <div class="history-badges">${ep.watched_by_user ? renderStatusChip("watched", "success") : renderStatusChip(watchedLabel, ep.watched_count ? "warning" : "neutral")}</div>
+                </div>
+                <button class="secondary episode-detail-button" data-media-item-detail-id="${ep.media_item_id}" type="button">Open Media</button>
+              </div>
+            </li>
+          `;
+        })
+        .join("");
+      seasonSection.className = "season-group";
+      seasonSection.innerHTML = `
+        <div class="season-heading">
+          <h4>${escapeHtml(heading)}</h4>
+          ${renderStatusChip(`${watchedCount}/${seasonEpisodes.length} watched`, watchedCount === seasonEpisodes.length ? "success" : watchedCount ? "warning" : "neutral")}
         </div>
+        <ul class="season-list">${listItems}</ul>
       `;
-      episodeList.appendChild(li);
+      episodeList.appendChild(seasonSection);
     }
     detailStatus.textContent = `Loaded ${detail.episodes.length} episode(s)`;
   } catch (_error) {
@@ -830,23 +946,41 @@ async function openMediaDetail(mediaItemId) {
     const detail = await response.json();
     mediaPanelTitle.textContent = detail.title;
     mediaPanelStatus.textContent = `${detail.type} · ${detail.enrichment_status}`;
+    const poster = detail.poster_url
+      ? `<img class="media-panel-poster" src="${escapeHtml(detail.poster_url)}" alt="${escapeHtml(detail.title)} poster" />`
+      : '<div class="media-panel-poster-placeholder">No Poster</div>';
     const recentWatches = detail.recent_watches.length
       ? `<ul class="recent-watch-list">${detail.recent_watches.map((row) => renderMediaRecentWatch(row)).join("")}</ul>`
       : `<p class="muted">No watch history yet for this media item.</p>`;
     mediaPanelBody.innerHTML = `
       <section class="detail-section">
-        <h4>Core Metadata</h4>
-        <div class="detail-grid">
-          ${renderDetailItems([
-            ["Type", renderStatusChip(escapeHtml(detail.type), "neutral")],
-            ["Year", escapeHtml(detail.year || "-")],
-            ["Runtime", escapeHtml(formatRuntimeMinutes(detail.base_runtime_seconds))],
-            ["Latest Rating", escapeHtml(detail.latest_rating_value ? `${detail.latest_rating_value}/${detail.latest_rating_scale || ""}` : "-")],
-            ["TMDB", escapeHtml(detail.tmdb_id || "-")],
-            ["IMDB", escapeHtml(detail.imdb_id || "-")],
-            ["TVDB", escapeHtml(detail.tvdb_id || "-")],
-            ["Watch Count", escapeHtml(detail.watch_count)],
-          ])}
+        <div class="media-panel-hero">
+          ${poster}
+          <div class="media-panel-copy">
+            <div class="media-panel-header-copy">
+              <div class="media-panel-title-line">
+                <h4>${escapeHtml(detail.title)}</h4>
+                ${renderStatusChip(escapeHtml(detail.type), "neutral")}
+                ${detail.year ? renderStatusChip(String(detail.year), "info") : ""}
+              </div>
+              <div class="detail-subtitle">
+                ${detail.release_date ? escapeHtml(new Date(detail.release_date).toLocaleDateString()) : "Release date unavailable"}
+              </div>
+            </div>
+            <div class="meta-pill-grid">
+              ${renderMetaPills([
+                ["Runtime", formatRuntimeMinutes(detail.base_runtime_seconds)],
+                ["Latest Rating", detail.latest_rating_value ? `${detail.latest_rating_value}/${detail.latest_rating_scale || 10}` : "-"],
+                ["Watch Count", detail.watch_count],
+                ["Completed", detail.completed_watch_count],
+              ])}
+            </div>
+            ${
+              detail.summary
+                ? `<p class="media-panel-summary">${escapeHtml(detail.summary)}</p>`
+                : '<p class="muted">No summary available yet.</p>'
+            }
+          </div>
         </div>
       </section>
       ${
@@ -865,19 +999,22 @@ async function openMediaDetail(mediaItemId) {
           : ""
       }
       <section class="detail-section">
-        <h4>Enrichment</h4>
-        <div class="detail-grid">
+        <h4>Metadata & IDs</h4>
+        <div class="detail-grid compact-grid">
           ${renderDetailItems([
-            ["Status", renderStatusChip(escapeHtml(detail.enrichment_status), detail.enrichment_status === "enriched" ? "success" : detail.enrichment_status === "failed" ? "danger" : "warning")],
+            ["Enrichment", renderStatusChip(escapeHtml(detail.enrichment_status), detail.enrichment_status === "enriched" ? "success" : detail.enrichment_status === "failed" ? "danger" : "warning")],
             ["Source", escapeHtml(detail.metadata_source || "-")],
             ["Updated", escapeHtml(detail.metadata_updated_at ? new Date(detail.metadata_updated_at).toLocaleString() : "-")],
-            ["Error", escapeHtml(detail.enrichment_error || "-")],
+            ["TMDB", escapeHtml(detail.tmdb_id || "-")],
+            ["IMDB", escapeHtml(detail.imdb_id || "-")],
+            ["TVDB", escapeHtml(detail.tvdb_id || "-")],
           ])}
         </div>
-        ${detail.summary ? `<p>${escapeHtml(detail.summary)}</p>` : ""}
+        ${detail.enrichment_error ? `<p class="muted">Latest enrichment issue: ${escapeHtml(detail.enrichment_error)}</p>` : ""}
       </section>
       <section class="detail-section">
         <h4>Recent Watches</h4>
+        <p class="detail-subtitle">Recent watches stay visible here, but the media summary remains the primary view.</p>
         ${recentWatches}
       </section>
     `;
@@ -1527,6 +1664,7 @@ function populateHorrorfestDetail(row) {
   horrorfestDetailStatus.textContent = `Selected Horrorfest watch ${row.display_title}`;
   horrorfestDetail.textContent = formatHorrorfestDetail(row);
   horrorfestTargetOrder.value = row.watch_order || "";
+  horrorfestOpenMedia.disabled = !row.media_item_id;
 }
 
 async function loadHorrorfestYears(preferredYear = null) {
@@ -1575,6 +1713,7 @@ async function loadHorrorfest(preferredYear = null) {
   horrorfestBody.innerHTML = "";
   horrorfestRows = [];
   selectedHorrorfestEntryId = null;
+  horrorfestOpenMedia.disabled = true;
   try {
     const selectedYear = await loadHorrorfestYears(preferredYear);
     if (!selectedYear) {
@@ -1614,7 +1753,13 @@ async function loadHorrorfest(preferredYear = null) {
         <td>${row.watch_order ?? "-"}</td>
         <td>
           <div class="horrorfest-title-cell">
-            <div class="horrorfest-title-main">${escapeHtml(row.display_title)}</div>
+            <div class="horrorfest-row-main">
+              ${
+                row.media_item_id
+                  ? `<button class="media-link-button" data-media-item-open="${row.media_item_id}" type="button">${escapeHtml(row.display_title)}</button>`
+                  : `<div class="horrorfest-title-main">${escapeHtml(row.display_title)}</div>`
+              }
+            </div>
             <div class="muted">${escapeHtml(row.source_kind)}</div>
           </div>
         </td>
@@ -1629,6 +1774,7 @@ async function loadHorrorfest(preferredYear = null) {
     populateHorrorfestDetail(horrorfestRows[0]);
   } catch (_error) {
     horrorfestStatus.textContent = "Failed to load Horrorfest";
+    horrorfestOpenMedia.disabled = true;
   }
 }
 
@@ -1840,7 +1986,7 @@ function formatHistoryDetail(row) {
           ["Completed", escapeHtml(row.completed ? "yes" : "no")],
           ["Deleted", escapeHtml(row.is_deleted ? "yes" : "no")],
           ["Version Override", escapeHtml(row.watch_version_name || "default")],
-          ["Updated By", escapeHtml(row.updated_by || "n/a")],
+          ["Operator", escapeHtml(row.updated_by || "n/a")],
           ["Update Reason", escapeHtml(row.update_reason || "n/a")],
           ["Deleted Reason", escapeHtml(row.deleted_reason || "n/a")],
         ])}
@@ -1885,11 +2031,18 @@ function renderHistoryRows() {
       renderStatusChip(row.playback_source, "info"),
     ].join(" ");
     tr.dataset.watchId = row.watch_id;
+    tr.classList.add("history-row-clickable");
     tr.innerHTML = `
       <td>${watchedAt}</td>
       <td>
         <div class="history-title-cell">
-          <div class="history-title-main">${escapeHtml(title)}</div>
+          <div class="history-row-main">
+            ${
+              row.media_item_id
+                ? `<button class="media-link-button" data-media-item-open="${row.media_item_id}" type="button">${escapeHtml(title)}</button>`
+                : `<div class="history-title-main">${escapeHtml(title)}</div>`
+            }
+          </div>
           <div class="history-badges">${badges}</div>
         </div>
       </td>
@@ -1909,6 +2062,7 @@ async function loadHistory() {
   historyRows = [];
   selectedHistoryId = null;
   historyOpenMedia.disabled = true;
+  renderHistoryFilterSummary();
   try {
     const response = await api(`/api/v1/watch-events?${buildHistoryQuery()}`);
     if (!response.ok) {
@@ -2377,11 +2531,13 @@ historyApply.addEventListener("click", async () => {
   historyLimit = Number.parseInt(historyLimitSelect.value, 10);
   historyOffset = 0;
   window.localStorage.setItem(UI_PREF_KEYS.historyQuery, historyQuery.value.trim());
+  renderHistoryFilterSummary();
   await loadHistory();
 });
 
 historyQuery.addEventListener("change", () => {
   window.localStorage.setItem(UI_PREF_KEYS.historyQuery, historyQuery.value.trim());
+  renderHistoryFilterSummary();
 });
 
 historyQuery.addEventListener("keydown", async (event) => {
@@ -2392,28 +2548,47 @@ historyQuery.addEventListener("keydown", async (event) => {
   historyLimit = Number.parseInt(historyLimitSelect.value, 10);
   historyOffset = 0;
   window.localStorage.setItem(UI_PREF_KEYS.historyQuery, historyQuery.value.trim());
+  renderHistoryFilterSummary();
   await loadHistory();
 });
 
 historyMediaType.addEventListener("change", async () => {
   historyOffset = 0;
+  renderHistoryFilterSummary();
   await loadHistory();
 });
 
 historyLocalDateFrom.addEventListener("change", async () => {
   historyOffset = 0;
+  renderHistoryFilterSummary();
   await loadHistory();
 });
 
 historyLocalDateTo.addEventListener("change", async () => {
   historyOffset = 0;
+  renderHistoryFilterSummary();
   await loadHistory();
 });
 
 historyIncludeDeleted.addEventListener("change", async () => {
   historyOffset = 0;
+  renderHistoryFilterSummary();
   await loadHistory();
 });
+
+for (const button of historyPresetButtons) {
+  button.addEventListener("click", async () => {
+    const preset = button.dataset.historyPreset;
+    if (!preset) {
+      return;
+    }
+    setHistoryDatePreset(preset);
+    historyOffset = 0;
+    window.localStorage.setItem(UI_PREF_KEYS.historyQuery, historyQuery.value.trim());
+    renderHistoryFilterSummary();
+    await loadHistory();
+  });
+}
 
 historyPrev.addEventListener("click", async () => {
   historyOffset = Math.max(0, historyOffset - historyLimit);
@@ -2428,6 +2603,14 @@ historyNext.addEventListener("click", async () => {
 historyBody.addEventListener("click", async (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const mediaButton = target.closest("button[data-media-item-open]");
+  if (mediaButton instanceof HTMLButtonElement) {
+    const mediaItemId = mediaButton.dataset.mediaItemOpen;
+    if (mediaItemId) {
+      await openMediaDetail(mediaItemId);
+    }
     return;
   }
   const row = target.closest("tr[data-watch-id]");
@@ -2454,6 +2637,7 @@ for (const button of historySortButtons) {
       historySortDirection = sortKey === "title" ? "asc" : "desc";
     }
     syncHistorySortUi();
+    renderHistoryFilterSummary();
     if (historyRows.length) {
       renderHistoryRows();
       const selectedRow =
@@ -2513,6 +2697,14 @@ horrorfestBody.addEventListener("click", async (event) => {
   if (!(target instanceof HTMLElement)) {
     return;
   }
+  const mediaButton = target.closest("button[data-media-item-open]");
+  if (mediaButton instanceof HTMLButtonElement) {
+    const mediaItemId = mediaButton.dataset.mediaItemOpen;
+    if (mediaItemId) {
+      await openMediaDetail(mediaItemId);
+    }
+    return;
+  }
   const row = target.closest("tr[data-horrorfest-entry-id]");
   if (!(row instanceof HTMLTableRowElement)) {
     return;
@@ -2535,6 +2727,17 @@ historyOpenMedia.addEventListener("click", async () => {
   await openMediaDetail(selectedRow.media_item_id);
 });
 
+horrorfestOpenMedia.addEventListener("click", async () => {
+  const selectedRow = horrorfestRows.find(
+    (item) => item.horrorfest_entry_id === selectedHorrorfestEntryId
+  );
+  if (!selectedRow?.media_item_id) {
+    horrorfestDetailStatus.textContent = "Select a Horrorfest watch with media detail first.";
+    return;
+  }
+  await openMediaDetail(selectedRow.media_item_id);
+});
+
 mediaPanelClose.addEventListener("click", () => {
   closeMediaPanel();
 });
@@ -2549,6 +2752,38 @@ episodeList.addEventListener("click", async (event) => {
     return;
   }
   const mediaItemId = button.dataset.mediaItemDetailId;
+  if (!mediaItemId) {
+    return;
+  }
+  await openMediaDetail(mediaItemId);
+});
+
+dashboardHistoryBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const mediaButton = target.closest("button[data-media-item-open]");
+  if (!(mediaButton instanceof HTMLButtonElement)) {
+    return;
+  }
+  const mediaItemId = mediaButton.dataset.mediaItemOpen;
+  if (!mediaItemId) {
+    return;
+  }
+  await openMediaDetail(mediaItemId);
+});
+
+dashboardRatingsBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const mediaButton = target.closest("button[data-media-item-open]");
+  if (!(mediaButton instanceof HTMLButtonElement)) {
+    return;
+  }
+  const mediaItemId = mediaButton.dataset.mediaItemOpen;
   if (!mediaItemId) {
     return;
   }
