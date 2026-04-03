@@ -56,6 +56,27 @@ def get_horrorfest_analytics_title_matrix(
     )
 
 
+@router.get(
+    "/analytics/titles/{media_item_id}/entries",
+    response_model=list[HorrorfestEntryRead],
+)
+def list_horrorfest_analytics_title_entries(
+    media_item_id: UUID,
+    horrorfest_year: int | None = Query(default=None),
+    user_id: UUID | None = Query(default=None),
+    session: Session = Depends(get_db_session),
+) -> list[HorrorfestEntryRead]:
+    return [
+        HorrorfestEntryRead.model_validate(item)
+        for item in HorrorfestService.list_analytics_title_entries(
+            session,
+            media_item_id=media_item_id,
+            horrorfest_year=horrorfest_year,
+            user_id=user_id,
+        )
+    ]
+
+
 @router.get("/analytics/decades", response_model=HorrorfestAnalyticsDecadeMatrixRead)
 def get_horrorfest_analytics_decade_matrix(
     user_id: UUID | None = Query(default=None),
@@ -64,6 +85,31 @@ def get_horrorfest_analytics_decade_matrix(
     return HorrorfestAnalyticsDecadeMatrixRead.model_validate(
         HorrorfestService.get_analytics_decade_matrix(session, user_id=user_id)
     )
+
+
+@router.get(
+    "/analytics/decades/{decade_start}/entries",
+    response_model=list[HorrorfestEntryRead],
+)
+def list_horrorfest_analytics_decade_entries(
+    decade_start: int,
+    horrorfest_year: int | None = Query(default=None),
+    user_id: UUID | None = Query(default=None),
+    session: Session = Depends(get_db_session),
+) -> list[HorrorfestEntryRead]:
+    try:
+        rows = HorrorfestService.list_analytics_decade_entries(
+            session,
+            decade_start=decade_start,
+            horrorfest_year=horrorfest_year,
+            user_id=user_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    return [HorrorfestEntryRead.model_validate(item) for item in rows]
 
 
 @router.get(

@@ -22,7 +22,11 @@ def test_root_frontend_serves_index() -> None:
     assert "Open Selected Year Log" in response.text
     assert "Selected Year Drilldown" in response.text
     assert "Title Matrix" in response.text
+    assert "Filter titles" in response.text
+    assert "Selected Year Count" in response.text
     assert "Decade Matrix" in response.text
+    assert "Analytics Drilldown" in response.text
+    assert "Select a title or decade count to inspect the matching Horrorfest watches." in response.text
     assert "Recent Watch History" in response.text
     assert "Import Watch History" in response.text
     assert "Use Latest Cursor" in response.text

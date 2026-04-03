@@ -312,3 +312,117 @@ def test_get_horrorfest_analytics_decade_matrix_returns_payload(monkeypatch) -> 
     payload = response.json()
     assert payload["rows"][0]["decade"] == "1980s"
     assert payload["rows"][0]["total_count"] == 12
+
+
+def test_list_horrorfest_analytics_title_entries_returns_rows(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    media_item_id = uuid4()
+    monkeypatch.setattr(
+        HorrorfestService,
+        "list_analytics_title_entries",
+        lambda *_args, **_kwargs: [
+            {
+                "horrorfest_entry_id": uuid4(),
+                "watch_id": uuid4(),
+                "horrorfest_year": 2025,
+                "watch_order": 4,
+                "source_kind": "manual",
+                "created_at": datetime.now(UTC),
+                "updated_at": None,
+                "updated_by": None,
+                "update_reason": None,
+                "is_removed": False,
+                "removed_at": None,
+                "removed_by": None,
+                "removed_reason": None,
+                "user_id": uuid4(),
+                "media_item_id": media_item_id,
+                "watched_at": datetime.now(UTC),
+                "playback_source": "kodi",
+                "media_item_title": "The Thing",
+                "media_item_type": "movie",
+                "display_title": "The Thing (1982)",
+                "rating_value": Decimal("9"),
+                "rating_scale": "10-star",
+                "effective_runtime_seconds": 6540,
+                "rewatch": True,
+                "completed": True,
+            }
+        ],
+    )
+
+    client = TestClient(app)
+    response = client.get(f"/api/v1/horrorfest/analytics/titles/{media_item_id}/entries")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) == 1
+    assert payload[0]["media_item_id"] == str(media_item_id)
+    assert payload[0]["watch_order"] == 4
+
+
+def test_list_horrorfest_analytics_decade_entries_returns_rows(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    monkeypatch.setattr(
+        HorrorfestService,
+        "list_analytics_decade_entries",
+        lambda *_args, **_kwargs: [
+            {
+                "horrorfest_entry_id": uuid4(),
+                "watch_id": uuid4(),
+                "horrorfest_year": 2024,
+                "watch_order": 7,
+                "source_kind": "manual",
+                "created_at": datetime.now(UTC),
+                "updated_at": None,
+                "updated_by": None,
+                "update_reason": None,
+                "is_removed": False,
+                "removed_at": None,
+                "removed_by": None,
+                "removed_reason": None,
+                "user_id": uuid4(),
+                "media_item_id": uuid4(),
+                "watched_at": datetime.now(UTC),
+                "playback_source": "disc",
+                "media_item_title": "Halloween",
+                "media_item_type": "movie",
+                "display_title": "Halloween (1978)",
+                "rating_value": None,
+                "rating_scale": None,
+                "effective_runtime_seconds": 5460,
+                "rewatch": False,
+                "completed": True,
+            }
+        ],
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/horrorfest/analytics/decades/1970/entries?horrorfest_year=2024")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) == 1
+    assert payload[0]["horrorfest_year"] == 2024
+    assert payload[0]["display_title"] == "Halloween (1978)"
+
+
+def test_list_horrorfest_analytics_decade_entries_returns_422_for_invalid_decade(
+    monkeypatch,
+) -> None:
+    _set_permissive_auth(monkeypatch)
+
+    def _raise_invalid(*_args, **_kwargs):
+        raise ValueError("decade_start must be a decade boundary")
+
+    monkeypatch.setattr(
+        HorrorfestService,
+        "list_analytics_decade_entries",
+        _raise_invalid,
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/horrorfest/analytics/decades/1977/entries")
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "decade_start must be a decade boundary"

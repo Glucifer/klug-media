@@ -139,3 +139,37 @@ def test_include_watch_event_rejects_out_of_window_watch(monkeypatch) -> None:
             target_order=None,
             commit=False,
         )
+
+
+def test_list_analytics_title_entries_delegates_to_repository(monkeypatch) -> None:
+    session = Mock()
+    media_item_id = uuid4()
+    captured = {}
+
+    def fake_list(_session, **kwargs):
+        captured.update(kwargs)
+        return [{"watch_id": uuid4()}]
+
+    monkeypatch.setattr(
+        "app.services.horrorfest.horrorfest_repository.list_horrorfest_title_entries",
+        fake_list,
+    )
+
+    result = HorrorfestService.list_analytics_title_entries(
+        session,
+        media_item_id=media_item_id,
+        horrorfest_year=2025,
+        user_id=uuid4(),
+    )
+
+    assert len(result) == 1
+    assert captured["media_item_id"] == media_item_id
+    assert captured["horrorfest_year"] == 2025
+
+
+def test_list_analytics_decade_entries_rejects_non_decade_boundary() -> None:
+    with pytest.raises(ValueError, match="decade_start must be a decade boundary"):
+        HorrorfestService.list_analytics_decade_entries(
+            Mock(),
+            decade_start=1977,
+        )

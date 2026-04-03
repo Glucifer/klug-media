@@ -318,6 +318,17 @@
                     <h3>Title Matrix</h3>
                     <p class="muted">Cross-year counts for repeated Horrorfest titles.</p>
                   </div>
+                  <div class="toolbar-inline horrorfest-matrix-toolbar">
+                    <label for="horrorfest-title-matrix-query">Search</label>
+                    <input id="horrorfest-title-matrix-query" type="search" placeholder="Filter titles" />
+                    <label for="horrorfest-title-matrix-sort">Sort</label>
+                    <select id="horrorfest-title-matrix-sort">
+                      <option value="title">Title</option>
+                      <option value="total_count">Total Count</option>
+                      <option value="selected_year_count">Selected Year Count</option>
+                    </select>
+                    <button id="horrorfest-title-matrix-direction" class="secondary" type="button">Desc</button>
+                  </div>
                 </div>
                 <div class="table-scroll">
                   <table class="horrorfest-table"><thead id="horrorfest-title-matrix-head"></thead><tbody id="horrorfest-title-matrix-body"></tbody></table>
@@ -334,6 +345,17 @@
                   <table class="horrorfest-table"><thead id="horrorfest-decade-matrix-head"></thead><tbody id="horrorfest-decade-matrix-body"></tbody></table>
                 </div>
               </section>
+              <aside id="horrorfest-drilldown-panel" class="side-panel hidden" aria-live="polite">
+                <div class="side-panel-header">
+                  <div>
+                    <p class="eyebrow">Analytics Drilldown</p>
+                    <h3 id="horrorfest-drilldown-title">Horrorfest Drilldown</h3>
+                  </div>
+                  <button id="horrorfest-drilldown-close" class="secondary" type="button">Close</button>
+                </div>
+                <p id="horrorfest-drilldown-status" class="muted">Select a title or decade count to inspect the matching Horrorfest watches.</p>
+                <div id="horrorfest-drilldown-body" class="detail-stack"></div>
+              </aside>
             </div>
           </section>
 

@@ -666,8 +666,67 @@ ul {
   gap: var(--space-4);
 }
 
+.horrorfest-matrix-toolbar {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.horrorfest-matrix-toolbar input,
+.horrorfest-matrix-toolbar select {
+  min-width: 140px;
+}
+
 .table-scroll {
   overflow-x: auto;
+}
+
+.matrix-cell-button {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.matrix-cell-button:hover {
+  text-decoration: underline;
+}
+
+.matrix-action-cell {
+  white-space: nowrap;
+}
+
+.drilldown-list {
+  display: grid;
+  gap: var(--space-3);
+  padding-left: 0;
+  list-style: none;
+}
+
+.drilldown-list li {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  padding: var(--space-3);
+}
+
+.drilldown-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.drilldown-item-meta {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.drilldown-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .signal-stack {
@@ -754,6 +813,10 @@ ul {
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
   overflow: auto;
   z-index: 30;
+}
+
+#horrorfest-drilldown-panel {
+  z-index: 29;
 }
 
 .side-panel-header {
@@ -1030,6 +1093,11 @@ tr.selected {
 
   .media-panel-hero {
     grid-template-columns: 1fr;
+  }
+
+  .drilldown-item-head {
+    grid-template-columns: 1fr;
+    display: grid;
   }
 
   .media-panel-poster,

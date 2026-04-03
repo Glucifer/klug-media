@@ -159,6 +159,38 @@ class HorrorfestService:
         )
 
     @staticmethod
+    def list_analytics_title_entries(
+        session: Session,
+        *,
+        media_item_id: UUID,
+        horrorfest_year: int | None = None,
+        user_id: UUID | None = None,
+    ) -> list[dict[str, object]]:
+        return horrorfest_repository.list_horrorfest_title_entries(
+            session,
+            media_item_id=media_item_id,
+            horrorfest_year=horrorfest_year,
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def list_analytics_decade_entries(
+        session: Session,
+        *,
+        decade_start: int,
+        horrorfest_year: int | None = None,
+        user_id: UUID | None = None,
+    ) -> list[dict[str, object]]:
+        if decade_start % 10 != 0:
+            raise ValueError("decade_start must be a decade boundary")
+        return horrorfest_repository.list_horrorfest_decade_entries(
+            session,
+            decade_start=decade_start,
+            horrorfest_year=horrorfest_year,
+            user_id=user_id,
+        )
+
+    @staticmethod
     def sync_watch_event(
         session: Session,
         *,

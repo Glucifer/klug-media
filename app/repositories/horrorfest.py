@@ -484,69 +484,135 @@ def get_horrorfest_analytics_year_detail(
     }
 
 
+def _build_horrorfest_entry_payload(
+    entry: HorrorfestEntry,
+    watch_event: WatchEvent,
+    media_item: MediaItem,
+) -> dict[str, object]:
+    return {
+        "horrorfest_entry_id": entry.horrorfest_entry_id,
+        "watch_id": entry.watch_id,
+        "horrorfest_year": entry.horrorfest_year,
+        "watch_order": entry.watch_order,
+        "source_kind": entry.source_kind,
+        "created_at": entry.created_at,
+        "updated_at": entry.updated_at,
+        "updated_by": entry.updated_by,
+        "update_reason": entry.update_reason,
+        "is_removed": entry.is_removed,
+        "removed_at": entry.removed_at,
+        "removed_by": entry.removed_by,
+        "removed_reason": entry.removed_reason,
+        "user_id": watch_event.user_id,
+        "media_item_id": watch_event.media_item_id,
+        "watched_at": watch_event.watched_at,
+        "playback_source": watch_event.playback_source,
+        "media_item_title": media_item.title,
+        "media_item_type": media_item.type,
+        "display_title": _format_display_title(
+            item_type=media_item.type,
+            item_title=media_item.title,
+            item_year=media_item.year,
+            season_number=media_item.season_number,
+            episode_number=media_item.episode_number,
+        ),
+        "rating_value": watch_event.rating_value,
+        "rating_scale": watch_event.rating_scale,
+        "effective_runtime_seconds": (
+            watch_event.watch_runtime_seconds
+            or watch_event.total_seconds
+            or media_item.base_runtime_seconds
+        ),
+        "rewatch": watch_event.rewatch,
+        "completed": watch_event.completed,
+    }
+
+
+def _list_horrorfest_entry_rows(
+    session: Session,
+    *,
+    include_removed: bool = False,
+    user_id: UUID | None = None,
+    horrorfest_year: int | None = None,
+    media_item_id: UUID | None = None,
+    decade_start: int | None = None,
+) -> list[dict[str, object]]:
+    statement: Select[tuple[HorrorfestEntry, WatchEvent, MediaItem]] = (
+        select(HorrorfestEntry, WatchEvent, MediaItem)
+        .join(WatchEvent, WatchEvent.watch_id == HorrorfestEntry.watch_id)
+        .join(MediaItem, MediaItem.media_item_id == WatchEvent.media_item_id)
+    )
+    if not include_removed:
+        statement = statement.where(
+            HorrorfestEntry.is_removed.is_(False),
+            WatchEvent.is_deleted.is_(False),
+        )
+    if user_id is not None:
+        statement = statement.where(WatchEvent.user_id == user_id)
+    if horrorfest_year is not None:
+        statement = statement.where(HorrorfestEntry.horrorfest_year == horrorfest_year)
+    if media_item_id is not None:
+        statement = statement.where(MediaItem.media_item_id == media_item_id)
+    if decade_start is not None:
+        statement = statement.where(
+            MediaItem.year.is_not(None),
+            MediaItem.year >= decade_start,
+            MediaItem.year < decade_start + 10,
+        )
+    statement = statement.order_by(
+        HorrorfestEntry.horrorfest_year.desc(),
+        HorrorfestEntry.watch_order.asc().nulls_last(),
+        WatchEvent.watched_at.asc(),
+        HorrorfestEntry.created_at.asc(),
+    )
+    rows = session.execute(statement).all()
+    return [
+        _build_horrorfest_entry_payload(entry, watch_event, media_item)
+        for entry, watch_event, media_item in rows
+    ]
+
+
 def list_horrorfest_entries(
     session: Session,
     *,
     horrorfest_year: int,
     include_removed: bool,
 ) -> list[dict[str, object]]:
-    statement: Select[tuple[HorrorfestEntry, WatchEvent, MediaItem]] = (
-        select(HorrorfestEntry, WatchEvent, MediaItem)
-        .join(WatchEvent, WatchEvent.watch_id == HorrorfestEntry.watch_id)
-        .join(MediaItem, MediaItem.media_item_id == WatchEvent.media_item_id)
-        .where(HorrorfestEntry.horrorfest_year == horrorfest_year)
+    return _list_horrorfest_entry_rows(
+        session,
+        horrorfest_year=horrorfest_year,
+        include_removed=include_removed,
     )
-    if not include_removed:
-        statement = statement.where(HorrorfestEntry.is_removed.is_(False))
-    statement = statement.order_by(
-        HorrorfestEntry.is_removed.asc(),
-        HorrorfestEntry.watch_order.asc().nulls_last(),
-        WatchEvent.watched_at.asc(),
-        HorrorfestEntry.created_at.asc(),
+
+
+def list_horrorfest_title_entries(
+    session: Session,
+    *,
+    media_item_id: UUID,
+    horrorfest_year: int | None = None,
+    user_id: UUID | None = None,
+) -> list[dict[str, object]]:
+    return _list_horrorfest_entry_rows(
+        session,
+        user_id=user_id,
+        horrorfest_year=horrorfest_year,
+        media_item_id=media_item_id,
     )
-    rows = session.execute(statement).all()
-    payload: list[dict[str, object]] = []
-    for entry, watch_event, media_item in rows:
-        payload.append(
-            {
-                "horrorfest_entry_id": entry.horrorfest_entry_id,
-                "watch_id": entry.watch_id,
-                "horrorfest_year": entry.horrorfest_year,
-                "watch_order": entry.watch_order,
-                "source_kind": entry.source_kind,
-                "created_at": entry.created_at,
-                "updated_at": entry.updated_at,
-                "updated_by": entry.updated_by,
-                "update_reason": entry.update_reason,
-                "is_removed": entry.is_removed,
-                "removed_at": entry.removed_at,
-                "removed_by": entry.removed_by,
-                "removed_reason": entry.removed_reason,
-                "user_id": watch_event.user_id,
-                "media_item_id": watch_event.media_item_id,
-                "watched_at": watch_event.watched_at,
-                "playback_source": watch_event.playback_source,
-                "media_item_title": media_item.title,
-                "media_item_type": media_item.type,
-                "display_title": _format_display_title(
-                    item_type=media_item.type,
-                    item_title=media_item.title,
-                    item_year=media_item.year,
-                    season_number=media_item.season_number,
-                    episode_number=media_item.episode_number,
-                ),
-                "rating_value": watch_event.rating_value,
-                "rating_scale": watch_event.rating_scale,
-                "effective_runtime_seconds": (
-                    watch_event.watch_runtime_seconds
-                    or watch_event.total_seconds
-                    or media_item.base_runtime_seconds
-                ),
-                "rewatch": watch_event.rewatch,
-                "completed": watch_event.completed,
-            }
-        )
-    return payload
+
+
+def list_horrorfest_decade_entries(
+    session: Session,
+    *,
+    decade_start: int,
+    horrorfest_year: int | None = None,
+    user_id: UUID | None = None,
+) -> list[dict[str, object]]:
+    return _list_horrorfest_entry_rows(
+        session,
+        user_id=user_id,
+        horrorfest_year=horrorfest_year,
+        decade_start=decade_start,
+    )
 
 
 def get_horrorfest_entry(
