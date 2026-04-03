@@ -338,6 +338,26 @@ ul {
   margin-bottom: var(--space-3);
 }
 
+.library-toolbar-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.mode-switch {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.library-mode.active {
+  background: linear-gradient(90deg, rgba(255, 138, 61, 0.16), rgba(97, 178, 255, 0.12));
+  border-color: var(--border-strong);
+  color: var(--fg);
+}
+
 .view-panel {
   display: grid;
   gap: var(--space-4);
@@ -505,6 +525,11 @@ ul {
   margin-left: 6px;
 }
 
+.library-inline-button {
+  min-height: auto;
+  padding: 8px 10px;
+}
+
 .history-title-cell,
 .horrorfest-title-cell {
   display: grid;
@@ -538,6 +563,10 @@ ul {
 .media-link-button:hover {
   transform: none;
   color: var(--accent-strong);
+}
+
+.library-table td {
+  vertical-align: middle;
 }
 
 .history-row-clickable {
@@ -839,6 +868,11 @@ tr.selected {
   .sticky-card {
     position: static;
     min-height: auto;
+  }
+
+  .library-toolbar-head {
+    align-items: start;
+    flex-direction: column;
   }
 }
 

@@ -9,6 +9,8 @@ def test_root_frontend_serves_index() -> None:
 
     assert response.status_code == 200
     assert "Klug Media" in response.text
+    assert "Library" in response.text
+    assert "Watched Media Index" in response.text
     assert "Recent Watch History" in response.text
     assert "Import Watch History" in response.text
     assert "Use Latest Cursor" in response.text

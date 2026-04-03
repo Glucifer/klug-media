@@ -31,6 +31,7 @@
           </div>
           <nav class="sidebar-nav">
             <button class="nav-link active" data-view-target="dashboard" type="button">Dashboard</button>
+            <button class="nav-link" data-view-target="library" type="button">Library</button>
             <button class="nav-link" data-view-target="history" type="button">History</button>
             <button class="nav-link" data-view-target="horrorfest" type="button">Horrorfest</button>
             <button class="nav-link" data-view-target="shows" type="button">Shows</button>
@@ -159,6 +160,41 @@
                   <pre id="ratings-detail" class="code-block"></pre>
                 </aside>
               </div>
+            </section>
+          </section>
+
+          <section class="view-panel hidden" data-view="library">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Watched Media Index</p>
+                <h2>Library</h2>
+                <p class="muted">Browse canonical watched media. Owned collection support can come later.</p>
+              </div>
+            </div>
+            <section class="section-card">
+              <div class="library-toolbar-head">
+                <div class="mode-switch" role="tablist" aria-label="Library mode">
+                  <button class="secondary library-mode active" data-library-mode="movies" type="button">Movies</button>
+                  <button class="secondary library-mode" data-library-mode="episodes" type="button">Episodes</button>
+                  <button class="secondary library-mode" data-library-mode="shows" type="button">Shows</button>
+                </div>
+                <p id="library-status" class="muted">Loading watched library...</p>
+              </div>
+              <div class="toolbar-grid">
+                <label for="library-query">Title Search</label><input id="library-query" type="search" placeholder="Search watched movies, episodes, or shows" />
+                <label for="library-show-query">Show Title</label><input id="library-show-query" type="search" placeholder="Episodes mode only" />
+                <label for="library-year">Year</label><input id="library-year" type="number" min="1800" max="9999" placeholder="Movies mode only" />
+                <label for="library-enrichment-status">Enrichment Status</label><select id="library-enrichment-status"><option value="">All</option><option value="pending">pending</option><option value="enriched">enriched</option><option value="failed">failed</option><option value="skipped">skipped</option></select>
+                <label for="library-watched">Watched</label><select id="library-watched"><option value="">All</option><option value="true">Watched</option><option value="false">Unwatched</option></select>
+                <label for="library-limit">Rows</label><select id="library-limit"><option value="25">25</option><option value="50">50</option><option value="100">100</option></select>
+                <button id="library-apply" class="secondary" type="button">Apply</button>
+              </div>
+              <p id="library-filter-summary" class="muted">Showing watched library rows.</p>
+              <table class="library-table">
+                <thead><tr id="library-head"></tr></thead>
+                <tbody id="library-body"></tbody>
+              </table>
+              <div class="pagination-row"><button id="library-prev" class="secondary" type="button">Previous</button><span id="library-page" class="muted">Page 1</span><button id="library-next" class="secondary" type="button">Next</button></div>
             </section>
           </section>
 

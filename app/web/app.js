@@ -53,6 +53,20 @@ const importDetailStatus = document.getElementById("import-detail-status");
 const importCopyDetail = document.getElementById("import-copy-detail");
 const importDownloadErrors = document.getElementById("import-download-errors");
 const importDetail = document.getElementById("import-detail");
+const libraryQuery = document.getElementById("library-query");
+const libraryShowQuery = document.getElementById("library-show-query");
+const libraryYear = document.getElementById("library-year");
+const libraryEnrichmentStatus = document.getElementById("library-enrichment-status");
+const libraryWatched = document.getElementById("library-watched");
+const libraryLimitSelect = document.getElementById("library-limit");
+const libraryApply = document.getElementById("library-apply");
+const libraryStatus = document.getElementById("library-status");
+const libraryFilterSummary = document.getElementById("library-filter-summary");
+const libraryHead = document.getElementById("library-head");
+const libraryBody = document.getElementById("library-body");
+const libraryPrev = document.getElementById("library-prev");
+const libraryNext = document.getElementById("library-next");
+const libraryPage = document.getElementById("library-page");
 const historyMediaType = document.getElementById("history-media-type");
 const historyQuery = document.getElementById("history-query");
 const historyLocalDateFrom = document.getElementById("history-local-date-from");
@@ -165,6 +179,7 @@ const adminPanels = Array.from(document.querySelectorAll(".admin-panel[data-admi
 const jumpButtons = Array.from(document.querySelectorAll("[data-jump-view]"));
 const historySortButtons = Array.from(document.querySelectorAll("[data-history-sort]"));
 const historyPresetButtons = Array.from(document.querySelectorAll("[data-history-preset]"));
+const libraryModeButtons = Array.from(document.querySelectorAll("[data-library-mode]"));
 
 const IMPORT_PREF_KEYS = {
   userId: "klug.import_user_id",
@@ -184,6 +199,10 @@ const UI_PREF_KEYS = {
   activeView: "klug.active_view",
   activeAdminView: "klug.active_admin_view",
   historyQuery: "klug.history_query",
+  libraryMode: "klug.library_mode",
+  libraryQuery: "klug.library_query",
+  libraryShowQuery: "klug.library_show_query",
+  libraryYear: "klug.library_year",
 };
 const IMPORT_UPLOAD_MAX_MB = 25;
 const IMPORT_UPLOAD_MAX_BYTES = IMPORT_UPLOAD_MAX_MB * 1024 * 1024;
@@ -191,6 +210,9 @@ const IMPORT_UPLOAD_MAX_BYTES = IMPORT_UPLOAD_MAX_MB * 1024 * 1024;
 let historyOffset = 0;
 let historyLimit = Number.parseInt(historyLimitSelect.value, 10);
 let historyRows = [];
+let libraryOffset = 0;
+let libraryLimit = Number.parseInt(libraryLimitSelect.value, 10);
+let libraryMode = window.localStorage.getItem(UI_PREF_KEYS.libraryMode) || "movies";
 let selectedHistoryId = null;
 let historySortKey = "watched_at";
 let historySortDirection = "desc";
@@ -212,6 +234,7 @@ let selectedImportBatchDetail = null;
 let statsSummaryData = null;
 let statsMonthlyRowsData = [];
 let statsHorrorfestRowsData = [];
+let libraryRows = [];
 let selectedShowDetail = null;
 let selectedMediaItemId = null;
 
@@ -226,6 +249,16 @@ async function api(path, options = {}) {
 
 function renderStatusChip(label, tone = "neutral") {
   return `<span class="status-chip status-${tone}">${label}</span>`;
+}
+
+function parseOptionalBoolean(value) {
+  if (value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+  return null;
 }
 
 function escapeHtml(value) {
@@ -374,10 +407,15 @@ function setActiveView(viewName) {
 function initializeUiShell() {
   initializeTheme();
   historyQuery.value = window.localStorage.getItem(UI_PREF_KEYS.historyQuery) || "";
+  libraryQuery.value = window.localStorage.getItem(UI_PREF_KEYS.libraryQuery) || "";
+  libraryShowQuery.value = window.localStorage.getItem(UI_PREF_KEYS.libraryShowQuery) || "";
+  libraryYear.value = window.localStorage.getItem(UI_PREF_KEYS.libraryYear) || "";
   setActiveView(window.localStorage.getItem(UI_PREF_KEYS.activeView) || "dashboard");
   setActiveAdminView(window.localStorage.getItem(UI_PREF_KEYS.activeAdminView) || "imports");
+  setLibraryMode(window.localStorage.getItem(UI_PREF_KEYS.libraryMode) || "movies");
   syncHistorySortUi();
   renderHistoryFilterSummary();
+  renderLibraryFilterSummary();
 }
 
 function setAuthenticatedUI(authenticated, message) {
@@ -470,6 +508,7 @@ async function checkSession() {
 async function loadDashboardData() {
   loadManualWatchPreferences();
   await Promise.all([
+    loadLibrary(),
     loadShows(),
     loadProgress(),
     loadStats(),
@@ -523,6 +562,193 @@ function renderDashboardEmptyRow(body, colspan, message) {
   const tr = document.createElement("tr");
   tr.innerHTML = `<td colspan="${colspan}">${message}</td>`;
   body.appendChild(tr);
+}
+
+function setLibraryMode(mode) {
+  libraryMode = mode || "movies";
+  for (const button of libraryModeButtons) {
+    button.classList.toggle("active", button.dataset.libraryMode === libraryMode);
+  }
+  const isMovies = libraryMode === "movies";
+  const isEpisodes = libraryMode === "episodes";
+  libraryYear.disabled = !isMovies;
+  libraryShowQuery.disabled = !isEpisodes;
+  window.localStorage.setItem(UI_PREF_KEYS.libraryMode, libraryMode);
+  renderLibraryFilterSummary();
+}
+
+function renderLibraryFilterSummary() {
+  const chips = [renderStatusChip(`mode: ${libraryMode}`, "info")];
+  if (libraryQuery.value.trim()) {
+    chips.push(renderStatusChip(`title: ${escapeHtml(libraryQuery.value.trim())}`, "neutral"));
+  }
+  if (libraryMode === "episodes" && libraryShowQuery.value.trim()) {
+    chips.push(
+      renderStatusChip(`show: ${escapeHtml(libraryShowQuery.value.trim())}`, "neutral")
+    );
+  }
+  if (libraryMode === "movies" && libraryYear.value.trim()) {
+    chips.push(renderStatusChip(`year: ${escapeHtml(libraryYear.value.trim())}`, "neutral"));
+  }
+  if (libraryEnrichmentStatus.value) {
+    chips.push(
+      renderStatusChip(`enrichment: ${escapeHtml(libraryEnrichmentStatus.value)}`, "warning")
+    );
+  }
+  if (libraryWatched.value) {
+    chips.push(renderStatusChip(`watched: ${libraryWatched.value}`, "success"));
+  }
+  libraryFilterSummary.innerHTML = `Active filters: ${chips.join(" ")}`;
+}
+
+function setLibraryPagination(rowsLoaded) {
+  const page = Math.floor(libraryOffset / libraryLimit) + 1;
+  libraryPage.textContent = `Page ${page}`;
+  libraryPrev.disabled = libraryOffset === 0;
+  libraryNext.disabled = rowsLoaded < libraryLimit;
+}
+
+function buildLibraryQuery() {
+  const params = new URLSearchParams();
+  params.set("limit", String(libraryLimit));
+  params.set("offset", String(libraryOffset));
+  if (libraryQuery.value.trim()) {
+    params.set("query", libraryQuery.value.trim());
+  }
+  if (libraryEnrichmentStatus.value && libraryMode !== "shows") {
+    params.set("enrichment_status", libraryEnrichmentStatus.value);
+  }
+  if (libraryWatched.value) {
+    params.set("watched", libraryWatched.value);
+  }
+  if (libraryMode === "movies" && libraryYear.value.trim()) {
+    params.set("year", libraryYear.value.trim());
+  }
+  if (libraryMode === "episodes" && libraryShowQuery.value.trim()) {
+    params.set("show_query", libraryShowQuery.value.trim());
+  }
+  return params.toString();
+}
+
+function renderLibraryHeader() {
+  if (libraryMode === "movies") {
+    libraryHead.innerHTML =
+      "<th>Title</th><th>Year</th><th>Watches</th><th>Latest Rating</th><th>Enrichment</th>";
+    return;
+  }
+  if (libraryMode === "episodes") {
+    libraryHead.innerHTML =
+      "<th>Episode</th><th>Show</th><th>Season/Episode</th><th>Watches</th><th>Enrichment</th>";
+    return;
+  }
+  libraryHead.innerHTML =
+    "<th>Show</th><th>Year</th><th>Watched Episodes</th><th>Total Episodes</th><th>Percent</th><th>Actions</th>";
+}
+
+function renderLibraryEmpty(message) {
+  libraryBody.innerHTML = "";
+  const tr = document.createElement("tr");
+  const columnCount = libraryMode === "shows" ? 6 : 5;
+  tr.innerHTML = `<td colspan="${columnCount}">${message}</td>`;
+  libraryBody.appendChild(tr);
+}
+
+function renderLibraryRows() {
+  libraryBody.innerHTML = "";
+  if (!libraryRows.length) {
+    renderLibraryEmpty("No watched media rows for the current filter.");
+    return;
+  }
+  for (const row of libraryRows) {
+    const tr = document.createElement("tr");
+    tr.classList.add("history-row-clickable");
+    if (libraryMode === "movies") {
+      tr.innerHTML = `
+        <td>
+          ${
+            row.media_item_id
+              ? `<button class="media-link-button" data-media-item-open="${row.media_item_id}" type="button">${escapeHtml(row.title)}</button>`
+              : escapeHtml(row.title)
+          }
+        </td>
+        <td>${escapeHtml(row.year || "-")}</td>
+        <td>${escapeHtml(row.watch_count)}</td>
+        <td>${row.latest_rating_value ? renderStatusChip(`${row.latest_rating_value}/${row.latest_rating_scale || 10}`, "info") : renderStatusChip("unrated", "neutral")}</td>
+        <td>${renderStatusChip(escapeHtml(row.enrichment_status), row.enrichment_status === "enriched" ? "success" : row.enrichment_status === "failed" ? "danger" : "warning")}</td>
+      `;
+    } else if (libraryMode === "episodes") {
+      tr.innerHTML = `
+        <td>
+          ${
+            row.media_item_id
+              ? `<button class="media-link-button" data-media-item-open="${row.media_item_id}" type="button">${escapeHtml(row.title)}</button>`
+              : escapeHtml(row.title)
+          }
+        </td>
+        <td>${escapeHtml(row.show_title || "-")}</td>
+        <td>${row.season_number ?? "-"} / ${row.episode_number ?? "-"}</td>
+        <td>${escapeHtml(row.watch_count)}</td>
+        <td>${renderStatusChip(escapeHtml(row.enrichment_status), row.enrichment_status === "enriched" ? "success" : row.enrichment_status === "failed" ? "danger" : "warning")}</td>
+      `;
+    } else {
+      tr.innerHTML = `
+        <td>
+          <button class="media-link-button" data-library-show-open="${row.show_id}" type="button">${escapeHtml(row.title)}</button>
+        </td>
+        <td>${escapeHtml(row.year || "-")}</td>
+        <td>${escapeHtml(row.watched_episodes)}</td>
+        <td>${escapeHtml(row.total_episodes)}</td>
+        <td>${renderStatusChip(`${row.watched_percent}%`, Number(row.watched_percent) >= 100 ? "success" : Number(row.watched_percent) > 0 ? "warning" : "neutral")}</td>
+        <td>
+          ${
+            row.media_item_id
+              ? `<button class="secondary library-inline-button" data-media-item-open="${row.media_item_id}" type="button">Open Media</button>`
+              : '<span class="muted">No media row</span>'
+          }
+        </td>
+      `;
+    }
+    libraryBody.appendChild(tr);
+  }
+}
+
+async function openLibraryShow(showId) {
+  if (!showId) {
+    return;
+  }
+  setActiveView("shows");
+  await Promise.all([loadShows(), loadProgress()]);
+  await loadShowDetail(showId);
+}
+
+async function loadLibrary() {
+  renderLibraryHeader();
+  renderLibraryFilterSummary();
+  libraryStatus.textContent = "Loading watched library...";
+  libraryBody.innerHTML = "";
+  try {
+    const response = await api(`/api/v1/library/${libraryMode}?${buildLibraryQuery()}`);
+    if (!response.ok) {
+      libraryStatus.textContent = "Failed to load watched library";
+      renderLibraryEmpty("Watched library unavailable right now.");
+      setLibraryPagination(0);
+      return;
+    }
+    libraryRows = await response.json();
+    if (!libraryRows.length) {
+      libraryStatus.textContent = "No watched media rows for the current filter";
+      renderLibraryEmpty("No watched media rows for the current filter.");
+      setLibraryPagination(0);
+      return;
+    }
+    renderLibraryRows();
+    libraryStatus.textContent = `Loaded ${libraryRows.length} ${libraryMode} row(s)`;
+    setLibraryPagination(libraryRows.length);
+  } catch (_error) {
+    libraryStatus.textContent = "Failed to load watched library";
+    renderLibraryEmpty("Watched library unavailable right now.");
+    setLibraryPagination(0);
+  }
 }
 
 async function loadDashboardRecentHistoryPreview() {
@@ -2965,6 +3191,8 @@ for (const button of navButtons) {
     setActiveView(targetView);
     if (targetView === "dashboard") {
       await Promise.all([loadStats(), loadDashboardPreviews()]);
+    } else if (targetView === "library") {
+      await loadLibrary();
     } else if (targetView === "history") {
       await Promise.all([loadHistory(), loadUnratedWatches()]);
     } else if (targetView === "horrorfest") {
@@ -3010,6 +3238,8 @@ for (const button of jumpButtons) {
     }
     if (targetView === "history") {
       await Promise.all([loadHistory(), loadUnratedWatches()]);
+    } else if (targetView === "library") {
+      await loadLibrary();
     } else if (targetView === "horrorfest") {
       await loadHorrorfest();
     } else if (targetView === "admin") {
@@ -3187,6 +3417,60 @@ logoutBtn.addEventListener("click", async () => {
   await api("/api/v1/session/logout", { method: "DELETE" });
   detailCard.classList.add("hidden");
   await checkSession();
+});
+
+for (const button of libraryModeButtons) {
+  button.addEventListener("click", async () => {
+    const mode = button.dataset.libraryMode;
+    if (!mode) {
+      return;
+    }
+    setLibraryMode(mode);
+    libraryOffset = 0;
+    await loadLibrary();
+  });
+}
+
+libraryApply.addEventListener("click", async () => {
+  libraryLimit = Number.parseInt(libraryLimitSelect.value, 10);
+  libraryOffset = 0;
+  window.localStorage.setItem(UI_PREF_KEYS.libraryQuery, libraryQuery.value.trim());
+  window.localStorage.setItem(UI_PREF_KEYS.libraryShowQuery, libraryShowQuery.value.trim());
+  window.localStorage.setItem(UI_PREF_KEYS.libraryYear, libraryYear.value.trim());
+  renderLibraryFilterSummary();
+  await loadLibrary();
+});
+
+libraryPrev.addEventListener("click", async () => {
+  libraryOffset = Math.max(0, libraryOffset - libraryLimit);
+  await loadLibrary();
+});
+
+libraryNext.addEventListener("click", async () => {
+  libraryOffset += libraryLimit;
+  await loadLibrary();
+});
+
+libraryBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const mediaButton = target.closest("button[data-media-item-open]");
+  if (mediaButton instanceof HTMLButtonElement) {
+    const mediaItemId = mediaButton.dataset.mediaItemOpen;
+    if (mediaItemId) {
+      await openMediaDetail(mediaItemId);
+    }
+    return;
+  }
+  const showButton = target.closest("button[data-library-show-open]");
+  if (showButton instanceof HTMLButtonElement) {
+    const showId = showButton.dataset.libraryShowOpen;
+    if (showId) {
+      await openLibraryShow(showId);
+    }
+  }
 });
 
 initializeUiShell();
