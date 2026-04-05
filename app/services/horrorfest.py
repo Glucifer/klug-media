@@ -160,6 +160,61 @@ class HorrorfestService:
         )
 
     @staticmethod
+    def get_analytics_comparison(
+        session: Session,
+        *,
+        left_year: int,
+        right_year: int,
+        user_id: UUID | None = None,
+    ) -> dict[str, object]:
+        if left_year == right_year:
+            raise ValueError("left_year and right_year must be different")
+        detail = horrorfest_repository.get_horrorfest_analytics_comparison(
+            session,
+            left_year=left_year,
+            right_year=right_year,
+            user_id=user_id,
+        )
+        if detail is None:
+            raise ValueError("One or both Horrorfest years were not found")
+        return detail
+
+    @staticmethod
+    def get_analytics_repeated_titles(
+        session: Session,
+        *,
+        user_id: UUID | None = None,
+    ) -> dict[str, object]:
+        return horrorfest_repository.list_horrorfest_analytics_repeated_titles(
+            session,
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def get_analytics_highest_rated_titles(
+        session: Session,
+        *,
+        user_id: UUID | None = None,
+        minimum_repeat_count: int = 2,
+    ) -> list[dict[str, object]]:
+        return horrorfest_repository.list_horrorfest_analytics_highest_rated_titles(
+            session,
+            user_id=user_id,
+            minimum_repeat_count=minimum_repeat_count,
+        )
+
+    @staticmethod
+    def get_analytics_rewatch_leaderboard(
+        session: Session,
+        *,
+        user_id: UUID | None = None,
+    ) -> list[dict[str, object]]:
+        return horrorfest_repository.list_horrorfest_analytics_rewatch_leaderboard(
+            session,
+            user_id=user_id,
+        )
+
+    @staticmethod
     def list_analytics_title_entries(
         session: Session,
         *,

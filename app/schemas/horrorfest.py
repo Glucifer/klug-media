@@ -137,3 +137,78 @@ class HorrorfestAnalyticsTitleMatrixRead(KlugORMModel):
 class HorrorfestAnalyticsDecadeMatrixRead(KlugORMModel):
     years: list[int]
     rows: list[HorrorfestAnalyticsDecadeMatrixRowRead]
+
+
+class HorrorfestAnalyticsComparisonDeltaRead(KlugORMModel):
+    watch_count: int
+    watch_days: int
+    new_watch_count: int
+    rewatch_count: int
+    total_runtime_seconds: int
+    total_runtime_hours: Decimal
+    average_watches_per_day: Decimal
+    average_runtime_hours_per_day: Decimal
+    average_runtime_minutes_per_watch: Decimal
+    average_rating_value: Decimal | None = None
+    rated_watch_count: int
+
+
+class HorrorfestAnalyticsComparisonSourceRead(KlugORMModel):
+    playback_source: str
+    left_watch_count: int
+    right_watch_count: int
+    delta_watch_count: int
+    left_total_runtime_hours: Decimal
+    right_total_runtime_hours: Decimal
+    delta_total_runtime_hours: Decimal
+
+
+class HorrorfestAnalyticsComparisonRatingRead(KlugORMModel):
+    rating_value: Decimal
+    left_watch_count: int
+    right_watch_count: int
+    delta_watch_count: int
+
+
+class HorrorfestAnalyticsComparisonRepeatedTitleRead(KlugORMModel):
+    media_item_id: UUID | None = None
+    title: str
+    total_count: int
+    left_year_count: int
+    right_year_count: int
+    delta_count: int
+
+
+class HorrorfestAnalyticsComparisonRead(KlugORMModel):
+    left_year: int
+    right_year: int
+    left_summary: HorrorfestAnalyticsYearRead
+    right_summary: HorrorfestAnalyticsYearRead
+    delta: HorrorfestAnalyticsComparisonDeltaRead
+    source_rows: list[HorrorfestAnalyticsComparisonSourceRead]
+    rating_rows: list[HorrorfestAnalyticsComparisonRatingRead]
+    repeated_title_rows: list[HorrorfestAnalyticsComparisonRepeatedTitleRead]
+
+
+class HorrorfestAnalyticsHighestRatedRowRead(KlugORMModel):
+    media_item_id: UUID | None = None
+    title: str
+    total_count: int
+    average_rating_value: Decimal | None = None
+    rated_watch_count: int
+
+
+class HorrorfestAnalyticsHighestRatedLeaderboardRead(KlugORMModel):
+    rows: list[HorrorfestAnalyticsHighestRatedRowRead]
+
+
+class HorrorfestAnalyticsRewatchRowRead(KlugORMModel):
+    media_item_id: UUID | None = None
+    title: str
+    total_count: int
+    rewatch_count: int
+    new_watch_count: int
+
+
+class HorrorfestAnalyticsRewatchLeaderboardRead(KlugORMModel):
+    rows: list[HorrorfestAnalyticsRewatchRowRead]

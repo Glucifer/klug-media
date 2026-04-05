@@ -267,6 +267,7 @@
                   </div>
                   <div class="button-cluster">
                     <button id="horrorfest-analytics-refresh" class="secondary" type="button">Refresh Analytics</button>
+                    <button id="horrorfest-export-years" class="secondary" type="button">Export CSV</button>
                     <button id="horrorfest-analytics-open-log" class="secondary" type="button">Open Selected Year Log</button>
                   </div>
                 </div>
@@ -295,6 +296,11 @@
                     <h3>Selected Year Drilldown</h3>
                     <p id="horrorfest-analytics-detail-status" class="muted">Select a Horrorfest year to inspect its analytics.</p>
                   </div>
+                  <div class="button-cluster">
+                    <button id="horrorfest-export-daily" class="secondary" type="button">Export Daily CSV</button>
+                    <button id="horrorfest-export-sources" class="secondary" type="button">Export Sources CSV</button>
+                    <button id="horrorfest-export-ratings" class="secondary" type="button">Export Ratings CSV</button>
+                  </div>
                 </div>
                 <div id="horrorfest-analytics-summary-cards" class="stats-grid compact-stats"></div>
                 <div class="dashboard-grid">
@@ -315,6 +321,47 @@
               <section class="section-card">
                 <div class="section-headline">
                   <div>
+                    <h3>Year Comparison</h3>
+                    <p id="horrorfest-comparison-status" class="muted">Select two years to compare Horrorfest performance side by side.</p>
+                  </div>
+                  <div class="button-cluster">
+                    <button id="horrorfest-compare-export" class="secondary" type="button">Export Compare CSV</button>
+                    <button id="horrorfest-compare-inspect-left" class="secondary" type="button">Inspect Year A</button>
+                    <button id="horrorfest-compare-inspect-right" class="secondary" type="button">Inspect Year B</button>
+                    <button id="horrorfest-compare-open-left-log" class="secondary" type="button">Open Year A Log</button>
+                    <button id="horrorfest-compare-open-right-log" class="secondary" type="button">Open Year B Log</button>
+                  </div>
+                </div>
+                <div class="toolbar-inline">
+                  <label for="horrorfest-compare-left-year">Compare Year A</label>
+                  <select id="horrorfest-compare-left-year"></select>
+                  <label for="horrorfest-compare-right-year">Compare Year B</label>
+                  <select id="horrorfest-compare-right-year"></select>
+                </div>
+                <table class="horrorfest-table">
+                  <thead><tr><th>Metric</th><th>Year A</th><th>Year B</th><th>Delta</th></tr></thead>
+                  <tbody id="horrorfest-comparison-summary-body"></tbody>
+                </table>
+                <div class="dashboard-grid">
+                  <section class="section-card">
+                    <h3>Source Comparison</h3>
+                    <table><thead><tr><th>Source</th><th>Year A</th><th>Year B</th><th>Delta</th></tr></thead><tbody id="horrorfest-comparison-sources-body"></tbody></table>
+                  </section>
+                  <section class="section-card">
+                    <h3>Rating Comparison</h3>
+                    <table><thead><tr><th>Rating</th><th>Year A</th><th>Year B</th><th>Delta</th></tr></thead><tbody id="horrorfest-comparison-ratings-body"></tbody></table>
+                  </section>
+                  <section class="section-card">
+                    <div class="section-headline">
+                      <h3>Repeated Title Differences</h3>
+                    </div>
+                    <table><thead><tr><th>Title</th><th>Year A</th><th>Year B</th><th>Delta</th><th>Total</th></tr></thead><tbody id="horrorfest-comparison-repeated-body"></tbody></table>
+                  </section>
+                </div>
+              </section>
+              <section class="section-card">
+                <div class="section-headline">
+                  <div>
                     <h3>Title Matrix</h3>
                     <p class="muted">Cross-year counts for repeated Horrorfest titles.</p>
                     <p class="detail-subtitle">Click any non-zero count to inspect the matching Horrorfest watches.</p>
@@ -328,6 +375,7 @@
                       <option value="total_count">Total Count</option>
                       <option value="selected_year_count">Selected Year Count</option>
                     </select>
+                    <button id="horrorfest-export-titles" class="secondary" type="button">Export CSV</button>
                     <button id="horrorfest-title-matrix-direction" class="secondary" type="button">Desc</button>
                   </div>
                 </div>
@@ -342,9 +390,60 @@
                     <p class="muted">Release decades counted across Horrorfest years.</p>
                     <p class="detail-subtitle">Decade labels and non-zero cells open the same shared drilldown panel.</p>
                   </div>
+                  <div class="button-cluster">
+                    <button id="horrorfest-export-decades" class="secondary" type="button">Export CSV</button>
+                  </div>
                 </div>
                 <div class="table-scroll">
                   <table class="horrorfest-table"><thead id="horrorfest-decade-matrix-head"></thead><tbody id="horrorfest-decade-matrix-body"></tbody></table>
+                </div>
+              </section>
+              <section class="section-card">
+                <div class="section-headline">
+                  <div>
+                    <h3>Leaderboards</h3>
+                    <p class="muted">Repeated titles and reliable Horrorfest staples.</p>
+                  </div>
+                </div>
+                <section class="section-card embedded-card">
+                  <div class="section-headline">
+                    <div>
+                      <h3>Most Repeated Titles</h3>
+                      <p class="detail-subtitle">Sorted by total Horrorfest appearances across all years.</p>
+                    </div>
+                    <div class="button-cluster">
+                      <button id="horrorfest-export-repeated-titles" class="secondary" type="button">Export CSV</button>
+                    </div>
+                  </div>
+                  <div class="table-scroll">
+                    <table class="horrorfest-table"><thead id="horrorfest-repeated-titles-head"></thead><tbody id="horrorfest-repeated-titles-body"></tbody></table>
+                  </div>
+                </section>
+                <div class="dashboard-grid">
+                  <section class="section-card">
+                    <div class="section-headline">
+                      <div>
+                        <h3>Highest Rated Repeats</h3>
+                        <p class="detail-subtitle">Repeat count 2+ by default.</p>
+                      </div>
+                      <div class="button-cluster">
+                        <button id="horrorfest-export-highest-rated" class="secondary" type="button">Export CSV</button>
+                      </div>
+                    </div>
+                    <table><thead><tr><th>Title</th><th>Total</th><th>Avg Rating</th><th>Rated</th><th>Action</th></tr></thead><tbody id="horrorfest-highest-rated-body"></tbody></table>
+                  </section>
+                  <section class="section-card">
+                    <div class="section-headline">
+                      <div>
+                        <h3>Most Rewatched Titles</h3>
+                        <p class="detail-subtitle">Titles that recur most often as rewatches.</p>
+                      </div>
+                      <div class="button-cluster">
+                        <button id="horrorfest-export-rewatches" class="secondary" type="button">Export CSV</button>
+                      </div>
+                    </div>
+                    <table><thead><tr><th>Title</th><th>Total</th><th>Rewatch</th><th>New</th><th>Action</th></tr></thead><tbody id="horrorfest-rewatch-body"></tbody></table>
+                  </section>
                 </div>
               </section>
               <aside id="horrorfest-drilldown-panel" class="side-panel hidden" aria-live="polite">
@@ -359,6 +458,7 @@
                 <div id="horrorfest-drilldown-actions" class="button-cluster hidden">
                   <button id="horrorfest-drilldown-open-history" class="secondary" type="button">Open History</button>
                   <button id="horrorfest-drilldown-open-log" class="secondary" type="button">Open Log Year</button>
+                  <button id="horrorfest-drilldown-export" class="secondary" type="button">Export CSV</button>
                   <button id="horrorfest-drilldown-clear" class="secondary" type="button">Clear Drilldown</button>
                 </div>
                 <div id="horrorfest-drilldown-body" class="detail-stack"></div>

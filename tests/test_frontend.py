@@ -25,10 +25,20 @@ def test_root_frontend_serves_index() -> None:
     assert "Filter titles" in response.text
     assert "Selected Year Count" in response.text
     assert "Decade Matrix" in response.text
+    assert "Year Comparison" in response.text
+    assert "Compare Year A" in response.text
+    assert "Compare Year B" in response.text
+    assert "Repeated Title Differences" in response.text
+    assert "Leaderboards" in response.text
+    assert "Most Repeated Titles" in response.text
+    assert "Highest Rated Repeats" in response.text
+    assert "Most Rewatched Titles" in response.text
+    assert "Export CSV" in response.text
     assert "Analytics Drilldown" in response.text
     assert "Click any non-zero count to inspect the matching Horrorfest watches." in response.text
     assert "Decade labels and non-zero cells open the same shared drilldown panel." in response.text
     assert "Open Log Year" in response.text
+    assert "Export Compare CSV" in response.text
     assert "Clear Drilldown" in response.text
     assert "Select a title, decade, or breakdown count to inspect the matching Horrorfest watches." in response.text
     assert "Recent Watch History" in response.text

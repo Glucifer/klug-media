@@ -153,6 +153,47 @@ def _build_cross_year_matrix(
     }
 
 
+def _quantize_decimal(value: Decimal | int | float | None) -> Decimal:
+    return Decimal(value or 0).quantize(Decimal("0.01"))
+
+
+def _build_comparison_delta(
+    left_summary: dict[str, object],
+    right_summary: dict[str, object],
+) -> dict[str, object]:
+    return {
+        "watch_count": int(left_summary["watch_count"]) - int(right_summary["watch_count"]),
+        "watch_days": int(left_summary["watch_days"]) - int(right_summary["watch_days"]),
+        "new_watch_count": int(left_summary["new_watch_count"]) - int(right_summary["new_watch_count"]),
+        "rewatch_count": int(left_summary["rewatch_count"]) - int(right_summary["rewatch_count"]),
+        "total_runtime_seconds": int(left_summary["total_runtime_seconds"]) - int(
+            right_summary["total_runtime_seconds"]
+        ),
+        "total_runtime_hours": _quantize_decimal(left_summary["total_runtime_hours"])
+        - _quantize_decimal(right_summary["total_runtime_hours"]),
+        "average_watches_per_day": _quantize_decimal(left_summary["average_watches_per_day"])
+        - _quantize_decimal(right_summary["average_watches_per_day"]),
+        "average_runtime_hours_per_day": _quantize_decimal(
+            left_summary["average_runtime_hours_per_day"]
+        )
+        - _quantize_decimal(right_summary["average_runtime_hours_per_day"]),
+        "average_runtime_minutes_per_watch": _quantize_decimal(
+            left_summary["average_runtime_minutes_per_watch"]
+        )
+        - _quantize_decimal(right_summary["average_runtime_minutes_per_watch"]),
+        "average_rating_value": (
+            _quantize_decimal(left_summary["average_rating_value"])
+            - _quantize_decimal(right_summary["average_rating_value"])
+            if left_summary.get("average_rating_value") is not None
+            or right_summary.get("average_rating_value") is not None
+            else None
+        ),
+        "rated_watch_count": int(left_summary["rated_watch_count"]) - int(
+            right_summary["rated_watch_count"]
+        ),
+    }
+
+
 def get_horrorfest_year(
     session: Session,
     *,
@@ -482,6 +523,233 @@ def get_horrorfest_analytics_year_detail(
             for row in rating_rows
         ],
     }
+
+
+def get_horrorfest_analytics_comparison(
+    session: Session,
+    *,
+    left_year: int,
+    right_year: int,
+    user_id: UUID | None = None,
+) -> dict[str, object] | None:
+    left_detail = get_horrorfest_analytics_year_detail(
+        session,
+        horrorfest_year=left_year,
+        user_id=user_id,
+    )
+    right_detail = get_horrorfest_analytics_year_detail(
+        session,
+        horrorfest_year=right_year,
+        user_id=user_id,
+    )
+    if left_detail is None or right_detail is None:
+        return None
+
+    left_sources = {
+        str(row["playback_source"]): row for row in left_detail["source_rows"]
+    }
+    right_sources = {
+        str(row["playback_source"]): row for row in right_detail["source_rows"]
+    }
+    source_rows: list[dict[str, object]] = []
+    for playback_source in sorted(set(left_sources) | set(right_sources)):
+        left_row = left_sources.get(playback_source, {})
+        right_row = right_sources.get(playback_source, {})
+        left_hours = _quantize_decimal(left_row.get("total_runtime_hours"))
+        right_hours = _quantize_decimal(right_row.get("total_runtime_hours"))
+        source_rows.append(
+            {
+                "playback_source": playback_source,
+                "left_watch_count": int(left_row.get("watch_count") or 0),
+                "right_watch_count": int(right_row.get("watch_count") or 0),
+                "delta_watch_count": int(left_row.get("watch_count") or 0)
+                - int(right_row.get("watch_count") or 0),
+                "left_total_runtime_hours": left_hours,
+                "right_total_runtime_hours": right_hours,
+                "delta_total_runtime_hours": left_hours - right_hours,
+            }
+        )
+    source_rows.sort(
+        key=lambda row: (
+            abs(int(row["delta_watch_count"])),
+            int(row["left_watch_count"]) + int(row["right_watch_count"]),
+            str(row["playback_source"]).lower(),
+        ),
+        reverse=True,
+    )
+
+    left_ratings = {
+        Decimal(str(row["rating_value"])): row for row in left_detail["rating_rows"]
+    }
+    right_ratings = {
+        Decimal(str(row["rating_value"])): row for row in right_detail["rating_rows"]
+    }
+    rating_rows: list[dict[str, object]] = []
+    for rating_value in sorted(set(left_ratings) | set(right_ratings), reverse=True):
+        left_row = left_ratings.get(rating_value, {})
+        right_row = right_ratings.get(rating_value, {})
+        rating_rows.append(
+            {
+                "rating_value": rating_value,
+                "left_watch_count": int(left_row.get("watch_count") or 0),
+                "right_watch_count": int(right_row.get("watch_count") or 0),
+                "delta_watch_count": int(left_row.get("watch_count") or 0)
+                - int(right_row.get("watch_count") or 0),
+            }
+        )
+
+    title_matrix = list_horrorfest_analytics_title_matrix(session, user_id=user_id)
+    repeated_title_rows: list[dict[str, object]] = []
+    for row in title_matrix["rows"]:
+        left_count = int(row["year_counts"].get(str(left_year), 0))
+        right_count = int(row["year_counts"].get(str(right_year), 0))
+        if left_count == 0 and right_count == 0:
+            continue
+        repeated_title_rows.append(
+            {
+                "media_item_id": row.get("media_item_id"),
+                "title": row["title"],
+                "total_count": int(row["total_count"]),
+                "left_year_count": left_count,
+                "right_year_count": right_count,
+                "delta_count": left_count - right_count,
+            }
+        )
+    repeated_title_rows.sort(
+        key=lambda row: (
+            abs(int(row["delta_count"])),
+            int(row["total_count"]),
+            str(row["title"]).lower(),
+        ),
+        reverse=True,
+    )
+
+    return {
+        "left_year": left_year,
+        "right_year": right_year,
+        "left_summary": left_detail["summary"],
+        "right_summary": right_detail["summary"],
+        "delta": _build_comparison_delta(
+            left_detail["summary"],
+            right_detail["summary"],
+        ),
+        "source_rows": source_rows,
+        "rating_rows": rating_rows,
+        "repeated_title_rows": repeated_title_rows,
+    }
+
+
+def list_horrorfest_analytics_repeated_titles(
+    session: Session,
+    *,
+    user_id: UUID | None = None,
+) -> dict[str, object]:
+    payload = list_horrorfest_analytics_title_matrix(session, user_id=user_id)
+    payload["rows"] = sorted(
+        payload["rows"],
+        key=lambda row: (-int(row["total_count"]), str(row["title"]).lower()),
+    )
+    return payload
+
+
+def list_horrorfest_analytics_highest_rated_titles(
+    session: Session,
+    *,
+    user_id: UUID | None = None,
+    minimum_repeat_count: int = 2,
+) -> list[dict[str, object]]:
+    analytics_rows = _horrorfest_analytics_base_statement(user_id=user_id).subquery()
+    statement = (
+        select(
+            analytics_rows.c.media_item_id,
+            analytics_rows.c.media_item_title,
+            analytics_rows.c.media_item_year,
+            func.count().label("total_count"),
+            func.avg(analytics_rows.c.rating_value).label("average_rating_value"),
+            func.sum(
+                case((analytics_rows.c.rating_value.is_not(None), 1), else_=0)
+            ).label("rated_watch_count"),
+        )
+        .group_by(
+            analytics_rows.c.media_item_id,
+            analytics_rows.c.media_item_title,
+            analytics_rows.c.media_item_year,
+        )
+        .having(func.count() >= minimum_repeat_count)
+        .order_by(
+            func.avg(analytics_rows.c.rating_value).desc().nulls_last(),
+            func.count().desc(),
+            analytics_rows.c.media_item_title.asc(),
+            analytics_rows.c.media_item_year.asc().nulls_last(),
+        )
+    )
+    rows = session.execute(statement).all()
+    return [
+        {
+            "media_item_id": row.media_item_id,
+            "title": _format_display_title(
+                item_type="movie",
+                item_title=row.media_item_title,
+                item_year=row.media_item_year,
+                season_number=None,
+                episode_number=None,
+            ),
+            "total_count": int(row.total_count or 0),
+            "average_rating_value": row.average_rating_value,
+            "rated_watch_count": int(row.rated_watch_count or 0),
+        }
+        for row in rows
+    ]
+
+
+def list_horrorfest_analytics_rewatch_leaderboard(
+    session: Session,
+    *,
+    user_id: UUID | None = None,
+) -> list[dict[str, object]]:
+    analytics_rows = _horrorfest_analytics_base_statement(user_id=user_id).subquery()
+    statement = (
+        select(
+            analytics_rows.c.media_item_id,
+            analytics_rows.c.media_item_title,
+            analytics_rows.c.media_item_year,
+            func.count().label("total_count"),
+            func.sum(case((analytics_rows.c.rewatch.is_(True), 1), else_=0)).label(
+                "rewatch_count"
+            ),
+            func.sum(case((analytics_rows.c.rewatch.is_(False), 1), else_=0)).label(
+                "new_watch_count"
+            ),
+        )
+        .group_by(
+            analytics_rows.c.media_item_id,
+            analytics_rows.c.media_item_title,
+            analytics_rows.c.media_item_year,
+        )
+        .order_by(
+            func.sum(case((analytics_rows.c.rewatch.is_(True), 1), else_=0)).desc(),
+            func.count().desc(),
+            analytics_rows.c.media_item_title.asc(),
+            analytics_rows.c.media_item_year.asc().nulls_last(),
+        )
+    )
+    rows = session.execute(statement).all()
+    return [
+        {
+            "media_item_id": row.media_item_id,
+            "title": _format_display_title(
+                item_type="movie",
+                item_title=row.media_item_title,
+                item_year=row.media_item_year,
+                season_number=None,
+                episode_number=None,
+            ),
+            "total_count": int(row.total_count or 0),
+            "rewatch_count": int(row.rewatch_count or 0),
+            "new_watch_count": int(row.new_watch_count or 0),
+        }
+        for row in rows
+    ]
 
 
 def _build_horrorfest_entry_payload(

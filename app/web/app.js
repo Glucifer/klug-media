@@ -193,11 +193,36 @@ const horrorfestAnalyticsSummaryCards = document.getElementById("horrorfest-anal
 const horrorfestAnalyticsDailyBody = document.getElementById("horrorfest-analytics-daily-body");
 const horrorfestAnalyticsSourcesBody = document.getElementById("horrorfest-analytics-sources-body");
 const horrorfestAnalyticsRatingsBody = document.getElementById("horrorfest-analytics-ratings-body");
+const horrorfestExportYears = document.getElementById("horrorfest-export-years");
+const horrorfestExportDaily = document.getElementById("horrorfest-export-daily");
+const horrorfestExportSources = document.getElementById("horrorfest-export-sources");
+const horrorfestExportRatings = document.getElementById("horrorfest-export-ratings");
+const horrorfestCompareLeftYear = document.getElementById("horrorfest-compare-left-year");
+const horrorfestCompareRightYear = document.getElementById("horrorfest-compare-right-year");
+const horrorfestComparisonStatus = document.getElementById("horrorfest-comparison-status");
+const horrorfestComparisonSummaryBody = document.getElementById("horrorfest-comparison-summary-body");
+const horrorfestComparisonSourcesBody = document.getElementById("horrorfest-comparison-sources-body");
+const horrorfestComparisonRatingsBody = document.getElementById("horrorfest-comparison-ratings-body");
+const horrorfestComparisonRepeatedBody = document.getElementById("horrorfest-comparison-repeated-body");
+const horrorfestCompareExport = document.getElementById("horrorfest-compare-export");
+const horrorfestCompareInspectLeft = document.getElementById("horrorfest-compare-inspect-left");
+const horrorfestCompareInspectRight = document.getElementById("horrorfest-compare-inspect-right");
+const horrorfestCompareOpenLeftLog = document.getElementById("horrorfest-compare-open-left-log");
+const horrorfestCompareOpenRightLog = document.getElementById("horrorfest-compare-open-right-log");
 const horrorfestTitleMatrixQuery = document.getElementById("horrorfest-title-matrix-query");
 const horrorfestTitleMatrixSort = document.getElementById("horrorfest-title-matrix-sort");
 const horrorfestTitleMatrixDirection = document.getElementById("horrorfest-title-matrix-direction");
+const horrorfestExportTitles = document.getElementById("horrorfest-export-titles");
 const horrorfestTitleMatrixHead = document.getElementById("horrorfest-title-matrix-head");
 const horrorfestTitleMatrixBody = document.getElementById("horrorfest-title-matrix-body");
+const horrorfestRepeatedTitlesHead = document.getElementById("horrorfest-repeated-titles-head");
+const horrorfestRepeatedTitlesBody = document.getElementById("horrorfest-repeated-titles-body");
+const horrorfestHighestRatedBody = document.getElementById("horrorfest-highest-rated-body");
+const horrorfestRewatchBody = document.getElementById("horrorfest-rewatch-body");
+const horrorfestExportRepeatedTitles = document.getElementById("horrorfest-export-repeated-titles");
+const horrorfestExportHighestRated = document.getElementById("horrorfest-export-highest-rated");
+const horrorfestExportRewatches = document.getElementById("horrorfest-export-rewatches");
+const horrorfestExportDecades = document.getElementById("horrorfest-export-decades");
 const horrorfestDecadeMatrixHead = document.getElementById("horrorfest-decade-matrix-head");
 const horrorfestDecadeMatrixBody = document.getElementById("horrorfest-decade-matrix-body");
 const horrorfestDrilldownPanel = document.getElementById("horrorfest-drilldown-panel");
@@ -206,6 +231,7 @@ const horrorfestDrilldownStatus = document.getElementById("horrorfest-drilldown-
 const horrorfestDrilldownActions = document.getElementById("horrorfest-drilldown-actions");
 const horrorfestDrilldownOpenHistory = document.getElementById("horrorfest-drilldown-open-history");
 const horrorfestDrilldownOpenLog = document.getElementById("horrorfest-drilldown-open-log");
+const horrorfestDrilldownExport = document.getElementById("horrorfest-drilldown-export");
 const horrorfestDrilldownClear = document.getElementById("horrorfest-drilldown-clear");
 const horrorfestDrilldownBody = document.getElementById("horrorfest-drilldown-body");
 const horrorfestDrilldownClose = document.getElementById("horrorfest-drilldown-close");
@@ -255,6 +281,8 @@ const UI_PREF_KEYS = {
   dashboardAdminContext: "klug.dashboard_admin_context",
   dashboardHorrorfestContext: "klug.dashboard_horrorfest_context",
   horrorfestMode: "klug.horrorfest_mode",
+  horrorfestCompareLeft: "klug.horrorfest_compare_left",
+  horrorfestCompareRight: "klug.horrorfest_compare_right",
 };
 const IMPORT_UPLOAD_MAX_MB = 25;
 const IMPORT_UPLOAD_MAX_BYTES = IMPORT_UPLOAD_MAX_MB * 1024 * 1024;
@@ -276,6 +304,10 @@ let horrorfestRows = [];
 let horrorfestAnalyticsYears = [];
 let horrorfestTitleMatrix = null;
 let horrorfestDecadeMatrix = null;
+let horrorfestComparison = null;
+let horrorfestRepeatedTitles = null;
+let horrorfestHighestRated = [];
+let horrorfestRewatchLeaderboard = [];
 let selectedHorrorfestEntryId = null;
 let selectedHorrorfestAnalyticsYear = null;
 let horrorfestMode = window.localStorage.getItem(UI_PREF_KEYS.horrorfestMode) || "log";
@@ -284,6 +316,8 @@ let horrorfestAnalyticsSortDirection = "desc";
 let horrorfestTitleMatrixSortKey = "title";
 let horrorfestTitleMatrixSortDirection = "asc";
 let horrorfestDrilldownState = null;
+let horrorfestCompareLeftValue = null;
+let horrorfestCompareRightValue = null;
 let activityOffset = 0;
 let activityLimit = Number.parseInt(activityLimitSelect.value, 10);
 let selectedActivityId = null;
@@ -725,6 +759,14 @@ function initializeUiShell() {
   setActiveAdminView(window.localStorage.getItem(UI_PREF_KEYS.activeAdminView) || "imports");
   setLibraryMode(window.localStorage.getItem(UI_PREF_KEYS.libraryMode) || "movies");
   setHorrorfestMode(window.localStorage.getItem(UI_PREF_KEYS.horrorfestMode) || "log");
+  horrorfestCompareLeftValue = Number.parseInt(
+    window.localStorage.getItem(UI_PREF_KEYS.horrorfestCompareLeft) || "",
+    10
+  );
+  horrorfestCompareRightValue = Number.parseInt(
+    window.localStorage.getItem(UI_PREF_KEYS.horrorfestCompareRight) || "",
+    10
+  );
   syncHistorySortUi();
   syncHorrorfestAnalyticsSortUi();
   syncHorrorfestTitleMatrixControls();
@@ -879,6 +921,31 @@ function renderDashboardEmptyRow(body, colspan, message) {
   const tr = document.createElement("tr");
   tr.innerHTML = `<td colspan="${colspan}">${message}</td>`;
   body.appendChild(tr);
+}
+
+async function downloadApiFile(path, fallbackFilename, onSuccess, onFailure) {
+  try {
+    const response = await fetch(path, { credentials: "include" });
+    if (!response.ok) {
+      onFailure?.();
+      return;
+    }
+    const blob = await response.blob();
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const filenameMatch = disposition.match(/filename="([^"]+)"/i);
+    const filename = filenameMatch?.[1] || fallbackFilename;
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(downloadUrl);
+    onSuccess?.(filename);
+  } catch (_error) {
+    onFailure?.();
+  }
 }
 
 async function openHistoryForMedia({
@@ -2722,6 +2789,175 @@ function renderHorrorfestAnalyticsDetail(detail) {
   }
 }
 
+function formatComparisonDeltaCell(value) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) {
+    return escapeHtml(value);
+  }
+  const tone = numeric > 0 ? "success" : numeric < 0 ? "danger" : "neutral";
+  const prefix = numeric > 0 ? "+" : "";
+  return renderStatusChip(`${prefix}${formatDecimalValue(numeric)}`, tone);
+}
+
+function normalizeComparisonMetricRows(comparison) {
+  if (!comparison) {
+    return [];
+  }
+  return [
+    ["Watches", comparison.left_summary.watch_count, comparison.right_summary.watch_count, comparison.delta.watch_count],
+    ["Watch Days", comparison.left_summary.watch_days, comparison.right_summary.watch_days, comparison.delta.watch_days],
+    ["New", comparison.left_summary.new_watch_count, comparison.right_summary.new_watch_count, comparison.delta.new_watch_count],
+    ["Rewatch", comparison.left_summary.rewatch_count, comparison.right_summary.rewatch_count, comparison.delta.rewatch_count],
+    ["Runtime (hrs)", comparison.left_summary.total_runtime_hours, comparison.right_summary.total_runtime_hours, comparison.delta.total_runtime_hours],
+    ["Avg/Day", comparison.left_summary.average_watches_per_day, comparison.right_summary.average_watches_per_day, comparison.delta.average_watches_per_day],
+    ["Avg Hrs/Day", comparison.left_summary.average_runtime_hours_per_day, comparison.right_summary.average_runtime_hours_per_day, comparison.delta.average_runtime_hours_per_day],
+    ["Avg Min/Watch", comparison.left_summary.average_runtime_minutes_per_watch, comparison.right_summary.average_runtime_minutes_per_watch, comparison.delta.average_runtime_minutes_per_watch],
+    ["Avg Rating", comparison.left_summary.average_rating_value ?? "-", comparison.right_summary.average_rating_value ?? "-", comparison.delta.average_rating_value ?? "-"],
+    ["First Watch", comparison.left_summary.first_watch_at ? new Date(comparison.left_summary.first_watch_at).toLocaleDateString() : "-", comparison.right_summary.first_watch_at ? new Date(comparison.right_summary.first_watch_at).toLocaleDateString() : "-", "-"],
+    ["Latest Watch", comparison.left_summary.latest_watch_at ? new Date(comparison.left_summary.latest_watch_at).toLocaleDateString() : "-", comparison.right_summary.latest_watch_at ? new Date(comparison.right_summary.latest_watch_at).toLocaleDateString() : "-", "-"],
+  ];
+}
+
+function renderHorrorfestComparison() {
+  const years = horrorfestAnalyticsYears.map((row) => row.horrorfest_year);
+  const currentLeft = Number.isInteger(horrorfestCompareLeftValue) ? horrorfestCompareLeftValue : null;
+  const currentRight = Number.isInteger(horrorfestCompareRightValue) ? horrorfestCompareRightValue : null;
+  horrorfestCompareLeftYear.innerHTML = years
+    .map((year) => `<option value="${year}"${year === currentLeft ? " selected" : ""}>${year}</option>`)
+    .join("");
+  horrorfestCompareRightYear.innerHTML = years
+    .map((year) => `<option value="${year}"${year === currentRight ? " selected" : ""}>${year}</option>`)
+    .join("");
+  if (!horrorfestComparison) {
+    renderDashboardEmptyRow(
+      horrorfestComparisonSummaryBody,
+      4,
+      "Select two different Horrorfest years to compare."
+    );
+    renderDashboardEmptyRow(
+      horrorfestComparisonSourcesBody,
+      4,
+      "Source comparison appears here."
+    );
+    renderDashboardEmptyRow(
+      horrorfestComparisonRatingsBody,
+      4,
+      "Rating comparison appears here."
+    );
+    renderDashboardEmptyRow(
+      horrorfestComparisonRepeatedBody,
+      5,
+      "Repeated-title differences appear here."
+    );
+    return;
+  }
+  const metricRows = normalizeComparisonMetricRows(horrorfestComparison);
+  horrorfestComparisonSummaryBody.innerHTML = metricRows
+    .map(
+      ([label, leftValue, rightValue, deltaValue]) => `
+        <tr>
+          <td>${escapeHtml(label)}</td>
+          <td>${escapeHtml(leftValue)}</td>
+          <td>${escapeHtml(rightValue)}</td>
+          <td>${formatComparisonDeltaCell(deltaValue)}</td>
+        </tr>
+      `
+    )
+    .join("");
+  horrorfestComparisonSourcesBody.innerHTML = horrorfestComparison.source_rows.length
+    ? horrorfestComparison.source_rows
+        .map(
+          (row) => `
+            <tr>
+              <td>${escapeHtml(row.playback_source)}</td>
+              <td>${row.left_watch_count}</td>
+              <td>${row.right_watch_count}</td>
+              <td>${formatComparisonDeltaCell(row.delta_watch_count)}</td>
+            </tr>
+          `
+        )
+        .join("")
+    : '<tr><td colspan="4">No source differences found.</td></tr>';
+  horrorfestComparisonRatingsBody.innerHTML = horrorfestComparison.rating_rows.length
+    ? horrorfestComparison.rating_rows
+        .map(
+          (row) => `
+            <tr>
+              <td>${formatDecimalValue(row.rating_value)}</td>
+              <td>${row.left_watch_count}</td>
+              <td>${row.right_watch_count}</td>
+              <td>${formatComparisonDeltaCell(row.delta_watch_count)}</td>
+            </tr>
+          `
+        )
+        .join("")
+    : '<tr><td colspan="4">No rating differences found.</td></tr>';
+  const repeatedRows = horrorfestComparison.repeated_title_rows.slice(0, 15);
+  horrorfestComparisonRepeatedBody.innerHTML = repeatedRows.length
+    ? repeatedRows
+        .map(
+          (row) => `
+            <tr>
+              <td>
+                ${
+                  row.media_item_id
+                    ? `<button class="matrix-cell-button" data-horrorfest-title-drilldown-media-item="${row.media_item_id}" data-horrorfest-title-drilldown-label="${escapeHtml(row.title)}" type="button">${escapeHtml(row.title)}</button>`
+                    : escapeHtml(row.title)
+                }
+              </td>
+              <td>${row.left_year_count}</td>
+              <td>${row.right_year_count}</td>
+              <td>${formatComparisonDeltaCell(row.delta_count)}</td>
+              <td>${row.total_count}</td>
+            </tr>
+          `
+        )
+        .join("")
+    : '<tr><td colspan="5">No repeated-title differences found.</td></tr>';
+}
+
+function renderHorrorfestRepeatedTitlesLeaderboard() {
+  horrorfestRepeatedTitlesHead.innerHTML = "";
+  horrorfestRepeatedTitlesBody.innerHTML = "";
+  if (!horrorfestRepeatedTitles || !horrorfestRepeatedTitles.years?.length) {
+    horrorfestRepeatedTitlesHead.innerHTML = "<tr><th>Title</th><th>Total</th></tr>";
+    horrorfestRepeatedTitlesBody.innerHTML =
+      '<tr><td colspan="2">No repeated-title leaderboard data available yet</td></tr>';
+    return;
+  }
+  const yearHeaders = horrorfestRepeatedTitles.years
+    .map((year) => `<th>${escapeHtml(String(year))}</th>`)
+    .join("");
+  horrorfestRepeatedTitlesHead.innerHTML =
+    `<tr><th>Title</th><th>Total</th>${yearHeaders}</tr>`;
+  horrorfestRepeatedTitlesBody.innerHTML = horrorfestRepeatedTitles.rows
+    .map((row) => {
+      const yearCells = horrorfestRepeatedTitles.years
+        .map((year) => {
+          const count = Number(row.year_counts?.[String(year)] || 0);
+          if (!count || !row.media_item_id) {
+            return `<td>${count}</td>`;
+          }
+          return `<td><button class="matrix-cell-button" data-horrorfest-title-drilldown-media-item="${row.media_item_id}" data-horrorfest-title-drilldown-year="${year}" data-horrorfest-title-drilldown-label="${escapeHtml(row.title)}" type="button">${count}</button></td>`;
+        })
+        .join("");
+      const titleCell = row.media_item_id
+        ? `<button class="matrix-cell-button" data-horrorfest-title-drilldown-media-item="${row.media_item_id}" data-horrorfest-title-drilldown-label="${escapeHtml(row.title)}" type="button">${escapeHtml(row.title)}</button>`
+        : escapeHtml(row.title);
+      return `<tr><td>${titleCell}</td><td>${row.total_count}</td>${yearCells}</tr>`;
+    })
+    .join("");
+}
+
+function renderHorrorfestSimpleLeaderboardRows(body, rows, emptyMessage, valueRenderer) {
+  body.innerHTML = rows.length
+    ? rows.map(valueRenderer).join("")
+    : `<tr><td colspan="5">${emptyMessage}</td></tr>`;
+}
+
 function renderHorrorfestAnalyticsYears() {
   syncHorrorfestAnalyticsSortUi();
   horrorfestAnalyticsYearsBody.innerHTML = "";
@@ -2831,6 +3067,38 @@ function getHorrorfestDrilldownHistoryTarget(state) {
   return null;
 }
 
+function buildHorrorfestDrilldownExportPath(state) {
+  if (!state) {
+    return null;
+  }
+  const params = new URLSearchParams();
+  if (state.kind === "title" && state.mediaItemId) {
+    params.set("kind", "title");
+    params.set("media_item_id", state.mediaItemId);
+  } else if (state.kind === "decade" && state.decadeStart !== null) {
+    params.set("kind", "decade");
+    params.set("decade_start", String(state.decadeStart));
+  } else if (state.kind === "year_detail" && state.horrorfestYear) {
+    params.set("kind", "year");
+    params.set("horrorfest_year", String(state.horrorfestYear));
+  } else {
+    return null;
+  }
+  if (state.horrorfestYear && state.kind !== "year_detail") {
+    params.set("horrorfest_year", String(state.horrorfestYear));
+  }
+  if (state.watchDate) {
+    params.set("watch_date", state.watchDate);
+  }
+  if (state.playbackSource) {
+    params.set("playback_source", state.playbackSource);
+  }
+  if (state.ratingValue !== null && state.ratingValue !== undefined) {
+    params.set("rating_value", String(state.ratingValue));
+  }
+  return `/api/v1/horrorfest/analytics/export/drilldown?${params.toString()}`;
+}
+
 function renderHorrorfestDrilldownRow(row) {
   const title = row.display_title || row.media_item_title || row.watch_id;
   const yearLabel = `Horrorfest ${row.horrorfest_year}`;
@@ -2879,6 +3147,7 @@ function closeHorrorfestDrilldownPanel({ resetState = false } = {}) {
   horrorfestDrilldownActions.classList.add("hidden");
   horrorfestDrilldownOpenHistory.disabled = true;
   horrorfestDrilldownOpenLog.disabled = true;
+  horrorfestDrilldownExport.disabled = true;
   delete horrorfestDrilldownOpenLog.dataset.horrorfestAnalyticsOpenLog;
   horrorfestDrilldownBody.innerHTML = "";
   if (resetState) {
@@ -2896,10 +3165,12 @@ function renderHorrorfestDrilldownPanel() {
   const rows = horrorfestDrilldownState.rows || [];
   const singleYear = getSingleHorrorfestYearFromRows(rows);
   const historyTarget = getHorrorfestDrilldownHistoryTarget(horrorfestDrilldownState);
+  const exportPath = buildHorrorfestDrilldownExportPath(horrorfestDrilldownState);
   horrorfestDrilldownStatus.textContent = formatHorrorfestDrilldownStatus(horrorfestDrilldownState);
   horrorfestDrilldownActions.classList.remove("hidden");
   horrorfestDrilldownOpenHistory.disabled = !historyTarget;
   horrorfestDrilldownOpenLog.disabled = !singleYear;
+  horrorfestDrilldownExport.disabled = !exportPath || !rows.length;
   if (singleYear) {
     horrorfestDrilldownOpenLog.dataset.horrorfestAnalyticsOpenLog = String(singleYear);
   } else {
@@ -3133,6 +3404,11 @@ async function loadHorrorfestAnalyticsDetail(year) {
   }
   const detail = await response.json();
   selectedHorrorfestAnalyticsYear = detail.summary.horrorfest_year;
+  horrorfestCompareLeftValue = detail.summary.horrorfest_year;
+  window.localStorage.setItem(
+    UI_PREF_KEYS.horrorfestCompareLeft,
+    String(horrorfestCompareLeftValue)
+  );
   if (horrorfestYears.find((row) => row.horrorfest_year === selectedHorrorfestAnalyticsYear)) {
     horrorfestYearSelect.value = String(selectedHorrorfestAnalyticsYear);
   }
@@ -3141,6 +3417,7 @@ async function loadHorrorfestAnalyticsDetail(year) {
   renderHorrorfestTitleMatrix();
   renderHorrorfestDecadeMatrix();
   renderHorrorfestAnalyticsDetail(detail);
+  renderHorrorfestComparison();
 }
 
 async function loadHorrorfestAnalyticsMatrices() {
@@ -3159,6 +3436,103 @@ async function loadHorrorfestAnalyticsMatrices() {
   renderHorrorfestDecadeMatrix();
 }
 
+function syncHorrorfestComparisonSelection() {
+  const years = horrorfestAnalyticsYears.map((row) => row.horrorfest_year);
+  if (!years.length) {
+    horrorfestCompareLeftValue = null;
+    horrorfestCompareRightValue = null;
+    return;
+  }
+  if (!years.includes(horrorfestCompareLeftValue)) {
+    horrorfestCompareLeftValue = selectedHorrorfestAnalyticsYear || years[0];
+  }
+  const fallbackRight = years.find((year) => year !== horrorfestCompareLeftValue) || years[0];
+  if (!years.includes(horrorfestCompareRightValue) || horrorfestCompareRightValue === horrorfestCompareLeftValue) {
+    horrorfestCompareRightValue = fallbackRight;
+  }
+  window.localStorage.setItem(
+    UI_PREF_KEYS.horrorfestCompareLeft,
+    String(horrorfestCompareLeftValue || "")
+  );
+  window.localStorage.setItem(
+    UI_PREF_KEYS.horrorfestCompareRight,
+    String(horrorfestCompareRightValue || "")
+  );
+}
+
+async function loadHorrorfestComparison() {
+  syncHorrorfestComparisonSelection();
+  renderHorrorfestComparison();
+  if (!horrorfestCompareLeftValue || !horrorfestCompareRightValue) {
+    horrorfestComparisonStatus.textContent = "Select two different years to compare.";
+    horrorfestComparison = null;
+    renderHorrorfestComparison();
+    return;
+  }
+  if (horrorfestCompareLeftValue === horrorfestCompareRightValue) {
+    horrorfestComparisonStatus.textContent = "Choose two different Horrorfest years.";
+    horrorfestComparison = null;
+    renderHorrorfestComparison();
+    return;
+  }
+  horrorfestComparisonStatus.textContent = `Comparing Horrorfest ${horrorfestCompareLeftValue} vs ${horrorfestCompareRightValue}...`;
+  const response = await api(
+    `/api/v1/horrorfest/analytics/compare?left_year=${horrorfestCompareLeftValue}&right_year=${horrorfestCompareRightValue}`
+  );
+  if (!response.ok) {
+    horrorfestComparison = null;
+    renderHorrorfestComparison();
+    horrorfestComparisonStatus.textContent = "Failed to load Horrorfest comparison.";
+    return;
+  }
+  horrorfestComparison = await response.json();
+  renderHorrorfestComparison();
+  horrorfestComparisonStatus.textContent = `Comparing Horrorfest ${horrorfestComparison.left_year} vs ${horrorfestComparison.right_year}.`;
+}
+
+async function loadHorrorfestLeaderboards() {
+  const [repeatedResponse, highestRatedResponse, rewatchResponse] = await Promise.all([
+    api("/api/v1/horrorfest/analytics/leaderboards/repeated-titles"),
+    api("/api/v1/horrorfest/analytics/leaderboards/highest-rated"),
+    api("/api/v1/horrorfest/analytics/leaderboards/rewatches"),
+  ]);
+  if (!repeatedResponse.ok || !highestRatedResponse.ok || !rewatchResponse.ok) {
+    throw new Error("Failed to load Horrorfest leaderboards");
+  }
+  horrorfestRepeatedTitles = await repeatedResponse.json();
+  horrorfestHighestRated = (await highestRatedResponse.json()).rows || [];
+  horrorfestRewatchLeaderboard = (await rewatchResponse.json()).rows || [];
+  renderHorrorfestRepeatedTitlesLeaderboard();
+  renderHorrorfestSimpleLeaderboardRows(
+    horrorfestHighestRatedBody,
+    horrorfestHighestRated,
+    "No highest-rated repeated titles yet.",
+    (row) => `
+      <tr>
+        <td>${row.media_item_id ? `<button class="matrix-cell-button" data-horrorfest-title-drilldown-media-item="${row.media_item_id}" data-horrorfest-title-drilldown-label="${escapeHtml(row.title)}" type="button">${escapeHtml(row.title)}</button>` : escapeHtml(row.title)}</td>
+        <td>${row.total_count}</td>
+        <td>${row.average_rating_value ? formatDecimalValue(row.average_rating_value) : "-"}</td>
+        <td>${row.rated_watch_count}</td>
+        <td>${row.media_item_id ? `<button class="secondary library-inline-button" data-media-item-open="${row.media_item_id}" type="button">Media Detail</button>` : "-"}</td>
+      </tr>
+    `
+  );
+  renderHorrorfestSimpleLeaderboardRows(
+    horrorfestRewatchBody,
+    horrorfestRewatchLeaderboard,
+    "No rewatch leaderboard data yet.",
+    (row) => `
+      <tr>
+        <td>${row.media_item_id ? `<button class="matrix-cell-button" data-horrorfest-title-drilldown-media-item="${row.media_item_id}" data-horrorfest-title-drilldown-label="${escapeHtml(row.title)}" type="button">${escapeHtml(row.title)}</button>` : escapeHtml(row.title)}</td>
+        <td>${row.total_count}</td>
+        <td>${row.rewatch_count}</td>
+        <td>${row.new_watch_count}</td>
+        <td>${row.media_item_id ? `<button class="secondary library-inline-button" data-media-item-open="${row.media_item_id}" type="button">Media Detail</button>` : "-"}</td>
+      </tr>
+    `
+  );
+}
+
 async function loadHorrorfestAnalytics(preferredYear = null) {
   horrorfestAnalyticsStatus.textContent = "Loading Horrorfest analytics...";
   horrorfestAnalyticsYearsBody.innerHTML = "";
@@ -3166,8 +3540,16 @@ async function loadHorrorfestAnalytics(preferredYear = null) {
   horrorfestAnalyticsDailyBody.innerHTML = "";
   horrorfestAnalyticsSourcesBody.innerHTML = "";
   horrorfestAnalyticsRatingsBody.innerHTML = "";
+  horrorfestComparisonSummaryBody.innerHTML = "";
+  horrorfestComparisonSourcesBody.innerHTML = "";
+  horrorfestComparisonRatingsBody.innerHTML = "";
+  horrorfestComparisonRepeatedBody.innerHTML = "";
   horrorfestTitleMatrixHead.innerHTML = "";
   horrorfestTitleMatrixBody.innerHTML = "";
+  horrorfestRepeatedTitlesHead.innerHTML = "";
+  horrorfestRepeatedTitlesBody.innerHTML = "";
+  horrorfestHighestRatedBody.innerHTML = "";
+  horrorfestRewatchBody.innerHTML = "";
   horrorfestDecadeMatrixHead.innerHTML = "";
   horrorfestDecadeMatrixBody.innerHTML = "";
   horrorfestAnalyticsOpenLog.disabled = true;
@@ -3187,12 +3569,14 @@ async function loadHorrorfestAnalytics(preferredYear = null) {
       return;
     }
     await loadHorrorfestAnalyticsMatrices();
+    await loadHorrorfestLeaderboards();
     const selectedYear =
       Number.parseInt(preferredYear || "", 10) ||
       selectedHorrorfestAnalyticsYear ||
       horrorfestYears.find((row) => row.is_active)?.horrorfest_year ||
       horrorfestAnalyticsYears[0].horrorfest_year;
     await loadHorrorfestAnalyticsDetail(selectedYear);
+    await loadHorrorfestComparison();
     await refreshHorrorfestDrilldownPanel();
     horrorfestAnalyticsStatus.textContent = `Loaded analytics for ${horrorfestAnalyticsYears.length} Horrorfest year(s).`;
   } catch (_error) {
@@ -4517,6 +4901,76 @@ horrorfestAnalyticsRatingsBody.addEventListener("click", async (event) => {
   });
 });
 
+horrorfestCompareLeftYear.addEventListener("change", async () => {
+  horrorfestCompareLeftValue = Number.parseInt(horrorfestCompareLeftYear.value || "", 10);
+  window.localStorage.setItem(
+    UI_PREF_KEYS.horrorfestCompareLeft,
+    String(horrorfestCompareLeftValue || "")
+  );
+  await loadHorrorfestComparison();
+});
+
+horrorfestCompareRightYear.addEventListener("change", async () => {
+  horrorfestCompareRightValue = Number.parseInt(horrorfestCompareRightYear.value || "", 10);
+  window.localStorage.setItem(
+    UI_PREF_KEYS.horrorfestCompareRight,
+    String(horrorfestCompareRightValue || "")
+  );
+  await loadHorrorfestComparison();
+});
+
+horrorfestCompareInspectLeft.addEventListener("click", async () => {
+  if (!horrorfestCompareLeftValue) {
+    return;
+  }
+  await loadHorrorfestAnalyticsDetail(horrorfestCompareLeftValue);
+});
+
+horrorfestCompareInspectRight.addEventListener("click", async () => {
+  if (!horrorfestCompareRightValue) {
+    return;
+  }
+  await loadHorrorfestAnalyticsDetail(horrorfestCompareRightValue);
+});
+
+horrorfestCompareOpenLeftLog.addEventListener("click", async () => {
+  if (!horrorfestCompareLeftValue) {
+    return;
+  }
+  horrorfestYearSelect.value = String(horrorfestCompareLeftValue);
+  setHorrorfestMode("log");
+  await loadHorrorfest(String(horrorfestCompareLeftValue));
+});
+
+horrorfestCompareOpenRightLog.addEventListener("click", async () => {
+  if (!horrorfestCompareRightValue) {
+    return;
+  }
+  horrorfestYearSelect.value = String(horrorfestCompareRightValue);
+  setHorrorfestMode("log");
+  await loadHorrorfest(String(horrorfestCompareRightValue));
+});
+
+horrorfestComparisonRepeatedBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const drilldownButton = target.closest("button[data-horrorfest-title-drilldown-media-item]");
+  if (!(drilldownButton instanceof HTMLButtonElement)) {
+    return;
+  }
+  const mediaItemId = drilldownButton.dataset.horrorfestTitleDrilldownMediaItem;
+  if (!mediaItemId) {
+    return;
+  }
+  await loadHorrorfestDrilldown({
+    kind: "title",
+    label: drilldownButton.dataset.horrorfestTitleDrilldownLabel || "selected title",
+    mediaItemId,
+  });
+});
+
 horrorfestTitleMatrixBody.addEventListener("click", async (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) {
@@ -4586,6 +5040,61 @@ horrorfestDecadeMatrixBody.addEventListener("click", async (event) => {
   });
 });
 
+horrorfestRepeatedTitlesBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const drilldownButton = target.closest("button[data-horrorfest-title-drilldown-media-item]");
+  if (!(drilldownButton instanceof HTMLButtonElement)) {
+    return;
+  }
+  const mediaItemId = drilldownButton.dataset.horrorfestTitleDrilldownMediaItem;
+  if (!mediaItemId) {
+    return;
+  }
+  const yearValue = Number.parseInt(
+    drilldownButton.dataset.horrorfestTitleDrilldownYear || "",
+    10
+  );
+  await loadHorrorfestDrilldown({
+    kind: "title",
+    label: drilldownButton.dataset.horrorfestTitleDrilldownLabel || "selected title",
+    mediaItemId,
+    horrorfestYear: Number.isInteger(yearValue) ? yearValue : null,
+  });
+});
+
+for (const body of [horrorfestHighestRatedBody, horrorfestRewatchBody]) {
+  body.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    const mediaButton = target.closest("button[data-media-item-open]");
+    if (mediaButton instanceof HTMLButtonElement) {
+      const mediaItemId = mediaButton.dataset.mediaItemOpen;
+      if (mediaItemId) {
+        await openMediaDetail(mediaItemId);
+      }
+      return;
+    }
+    const drilldownButton = target.closest("button[data-horrorfest-title-drilldown-media-item]");
+    if (!(drilldownButton instanceof HTMLButtonElement)) {
+      return;
+    }
+    const mediaItemId = drilldownButton.dataset.horrorfestTitleDrilldownMediaItem;
+    if (!mediaItemId) {
+      return;
+    }
+    await loadHorrorfestDrilldown({
+      kind: "title",
+      label: drilldownButton.dataset.horrorfestTitleDrilldownLabel || "selected title",
+      mediaItemId,
+    });
+  });
+}
+
 horrorfestDrilldownBody.addEventListener("click", async (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) {
@@ -4647,6 +5156,157 @@ horrorfestDrilldownClose.addEventListener("click", () => {
 
 horrorfestDrilldownClear.addEventListener("click", () => {
   closeHorrorfestDrilldownPanel({ resetState: true });
+});
+
+horrorfestDrilldownExport.addEventListener("click", async () => {
+  const exportPath = buildHorrorfestDrilldownExportPath(horrorfestDrilldownState);
+  if (!exportPath) {
+    return;
+  }
+  horrorfestDrilldownStatus.textContent = "Preparing drilldown CSV export...";
+  await downloadApiFile(
+    exportPath,
+    "horrorfest_drilldown.csv",
+    () => {
+      horrorfestDrilldownStatus.textContent = formatHorrorfestDrilldownStatus(
+        horrorfestDrilldownState
+      );
+    },
+    () => {
+      horrorfestDrilldownStatus.textContent = "Failed to export Horrorfest drilldown.";
+    }
+  );
+});
+
+horrorfestExportYears.addEventListener("click", async () => {
+  horrorfestAnalyticsStatus.textContent = "Preparing year summary CSV export...";
+  await downloadApiFile(
+    "/api/v1/horrorfest/analytics/export/years",
+    "horrorfest_year_summary.csv",
+    () => {
+      horrorfestAnalyticsStatus.textContent = `Loaded analytics for ${horrorfestAnalyticsYears.length} Horrorfest year(s).`;
+    },
+    () => {
+      horrorfestAnalyticsStatus.textContent = "Failed to export year summary CSV.";
+    }
+  );
+});
+
+horrorfestExportDaily.addEventListener("click", async () => {
+  if (!selectedHorrorfestAnalyticsYear) {
+    return;
+  }
+  horrorfestAnalyticsDetailStatus.textContent = "Preparing daily activity CSV export...";
+  await downloadApiFile(
+    `/api/v1/horrorfest/analytics/export/years/${selectedHorrorfestAnalyticsYear}/daily`,
+    `horrorfest_${selectedHorrorfestAnalyticsYear}_daily_activity.csv`,
+    () => {
+      horrorfestAnalyticsDetailStatus.textContent = `Showing analytics for Horrorfest ${selectedHorrorfestAnalyticsYear}.`;
+    },
+    () => {
+      horrorfestAnalyticsDetailStatus.textContent = "Failed to export daily activity CSV.";
+    }
+  );
+});
+
+horrorfestExportSources.addEventListener("click", async () => {
+  if (!selectedHorrorfestAnalyticsYear) {
+    return;
+  }
+  horrorfestAnalyticsDetailStatus.textContent = "Preparing playback source CSV export...";
+  await downloadApiFile(
+    `/api/v1/horrorfest/analytics/export/years/${selectedHorrorfestAnalyticsYear}/sources`,
+    `horrorfest_${selectedHorrorfestAnalyticsYear}_playback_sources.csv`,
+    () => {
+      horrorfestAnalyticsDetailStatus.textContent = `Showing analytics for Horrorfest ${selectedHorrorfestAnalyticsYear}.`;
+    },
+    () => {
+      horrorfestAnalyticsDetailStatus.textContent = "Failed to export playback source CSV.";
+    }
+  );
+});
+
+horrorfestExportRatings.addEventListener("click", async () => {
+  if (!selectedHorrorfestAnalyticsYear) {
+    return;
+  }
+  horrorfestAnalyticsDetailStatus.textContent = "Preparing rating distribution CSV export...";
+  await downloadApiFile(
+    `/api/v1/horrorfest/analytics/export/years/${selectedHorrorfestAnalyticsYear}/ratings`,
+    `horrorfest_${selectedHorrorfestAnalyticsYear}_rating_distribution.csv`,
+    () => {
+      horrorfestAnalyticsDetailStatus.textContent = `Showing analytics for Horrorfest ${selectedHorrorfestAnalyticsYear}.`;
+    },
+    () => {
+      horrorfestAnalyticsDetailStatus.textContent = "Failed to export rating distribution CSV.";
+    }
+  );
+});
+
+horrorfestCompareExport.addEventListener("click", async () => {
+  if (!horrorfestCompareLeftValue || !horrorfestCompareRightValue) {
+    return;
+  }
+  horrorfestComparisonStatus.textContent = "Preparing comparison CSV export...";
+  await downloadApiFile(
+    `/api/v1/horrorfest/analytics/export/compare?left_year=${horrorfestCompareLeftValue}&right_year=${horrorfestCompareRightValue}`,
+    `horrorfest_compare_${horrorfestCompareLeftValue}_vs_${horrorfestCompareRightValue}.csv`,
+    () => {
+      horrorfestComparisonStatus.textContent = `Comparing Horrorfest ${horrorfestCompareLeftValue} vs ${horrorfestCompareRightValue}.`;
+    },
+    () => {
+      horrorfestComparisonStatus.textContent = "Failed to export Horrorfest comparison CSV.";
+    }
+  );
+});
+
+horrorfestExportTitles.addEventListener("click", async () => {
+  horrorfestAnalyticsStatus.textContent = "Preparing title matrix CSV export...";
+  await downloadApiFile(
+    "/api/v1/horrorfest/analytics/export/titles",
+    "horrorfest_title_matrix.csv",
+    () => {
+      horrorfestAnalyticsStatus.textContent = `Loaded analytics for ${horrorfestAnalyticsYears.length} Horrorfest year(s).`;
+    },
+    () => {
+      horrorfestAnalyticsStatus.textContent = "Failed to export title matrix CSV.";
+    }
+  );
+});
+
+horrorfestExportDecades.addEventListener("click", async () => {
+  horrorfestAnalyticsStatus.textContent = "Preparing decade matrix CSV export...";
+  await downloadApiFile(
+    "/api/v1/horrorfest/analytics/export/decades",
+    "horrorfest_decade_matrix.csv",
+    () => {
+      horrorfestAnalyticsStatus.textContent = `Loaded analytics for ${horrorfestAnalyticsYears.length} Horrorfest year(s).`;
+    },
+    () => {
+      horrorfestAnalyticsStatus.textContent = "Failed to export decade matrix CSV.";
+    }
+  );
+});
+
+horrorfestExportRepeatedTitles.addEventListener("click", async () => {
+  await downloadApiFile(
+    "/api/v1/horrorfest/analytics/export/leaderboards/repeated-titles",
+    "horrorfest_repeated_titles.csv"
+  );
+});
+
+horrorfestExportHighestRated.addEventListener("click", async () => {
+  await downloadApiFile(
+    "/api/v1/horrorfest/analytics/export/leaderboards/highest-rated",
+    "horrorfest_highest_rated_titles.csv"
+  );
+});
+
+horrorfestExportRewatches.addEventListener("click", async () => {
+  await downloadApiFile(
+    "/api/v1/horrorfest/analytics/export/leaderboards/rewatches",
+    "horrorfest_rewatch_titles.csv"
+  );
 });
 
 horrorfestDrilldownOpenLog.addEventListener("click", async () => {

@@ -517,3 +517,209 @@ def test_list_horrorfest_analytics_decade_entries_returns_422_for_invalid_decade
 
     assert response.status_code == 422
     assert response.json()["detail"] == "decade_start must be a decade boundary"
+
+
+def test_get_horrorfest_analytics_comparison_returns_payload(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    monkeypatch.setattr(
+        HorrorfestService,
+        "get_analytics_comparison",
+        lambda *_args, **_kwargs: {
+            "left_year": 2025,
+            "right_year": 2024,
+            "left_summary": {
+                "horrorfest_year": 2025,
+                "watch_count": 206,
+                "watch_days": 43,
+                "new_watch_count": 131,
+                "rewatch_count": 75,
+                "total_runtime_seconds": 1245240,
+                "total_runtime_hours": Decimal("345.90"),
+                "average_watches_per_day": Decimal("4.79"),
+                "average_runtime_hours_per_day": Decimal("8.04"),
+                "average_runtime_minutes_per_watch": Decimal("100.70"),
+                "average_rating_value": Decimal("7.60"),
+                "rated_watch_count": 206,
+                "first_watch_at": datetime.now(UTC),
+                "latest_watch_at": datetime.now(UTC),
+            },
+            "right_summary": {
+                "horrorfest_year": 2024,
+                "watch_count": 203,
+                "watch_days": 43,
+                "new_watch_count": 125,
+                "rewatch_count": 78,
+                "total_runtime_seconds": 1227960,
+                "total_runtime_hours": Decimal("341.10"),
+                "average_watches_per_day": Decimal("4.72"),
+                "average_runtime_hours_per_day": Decimal("7.93"),
+                "average_runtime_minutes_per_watch": Decimal("100.80"),
+                "average_rating_value": Decimal("7.46"),
+                "rated_watch_count": 203,
+                "first_watch_at": datetime.now(UTC),
+                "latest_watch_at": datetime.now(UTC),
+            },
+            "delta": {
+                "watch_count": 3,
+                "watch_days": 0,
+                "new_watch_count": 6,
+                "rewatch_count": -3,
+                "total_runtime_seconds": 17280,
+                "total_runtime_hours": Decimal("4.80"),
+                "average_watches_per_day": Decimal("0.07"),
+                "average_runtime_hours_per_day": Decimal("0.11"),
+                "average_runtime_minutes_per_watch": Decimal("-0.10"),
+                "average_rating_value": Decimal("0.14"),
+                "rated_watch_count": 3,
+            },
+            "source_rows": [
+                {
+                    "playback_source": "kodi",
+                    "left_watch_count": 150,
+                    "right_watch_count": 120,
+                    "delta_watch_count": 30,
+                    "left_total_runtime_hours": Decimal("250.00"),
+                    "right_total_runtime_hours": Decimal("220.00"),
+                    "delta_total_runtime_hours": Decimal("30.00"),
+                }
+            ],
+            "rating_rows": [
+                {
+                    "rating_value": Decimal("8.00"),
+                    "left_watch_count": 42,
+                    "right_watch_count": 39,
+                    "delta_watch_count": 3,
+                }
+            ],
+            "repeated_title_rows": [
+                {
+                    "media_item_id": uuid4(),
+                    "title": "In the Mouth of Madness",
+                    "total_count": 7,
+                    "left_year_count": 0,
+                    "right_year_count": 1,
+                    "delta_count": -1,
+                }
+            ],
+        },
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/horrorfest/analytics/compare?left_year=2025&right_year=2024")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["left_year"] == 2025
+    assert payload["delta"]["watch_count"] == 3
+    assert payload["source_rows"][0]["playback_source"] == "kodi"
+
+
+def test_get_horrorfest_repeated_titles_leaderboard_returns_payload(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    monkeypatch.setattr(
+        HorrorfestService,
+        "get_analytics_repeated_titles",
+        lambda *_args, **_kwargs: {
+            "years": [2025, 2024],
+            "rows": [
+                {
+                    "media_item_id": uuid4(),
+                    "title": "In the Mouth of Madness",
+                    "total_count": 7,
+                    "year_counts": {"2025": 0, "2024": 1},
+                }
+            ],
+        },
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/horrorfest/analytics/leaderboards/repeated-titles")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["rows"][0]["total_count"] == 7
+
+
+def test_export_horrorfest_analytics_years_returns_csv(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    monkeypatch.setattr(
+        HorrorfestService,
+        "list_analytics_years",
+        lambda *_args, **_kwargs: [
+            {
+                "horrorfest_year": 2025,
+                "watch_count": 206,
+                "watch_days": 43,
+                "new_watch_count": 131,
+                "rewatch_count": 75,
+                "total_runtime_seconds": 1245240,
+                "total_runtime_hours": Decimal("345.90"),
+                "average_watches_per_day": Decimal("4.79"),
+                "average_runtime_hours_per_day": Decimal("8.04"),
+                "average_runtime_minutes_per_watch": Decimal("100.70"),
+                "average_rating_value": Decimal("7.60"),
+                "rated_watch_count": 206,
+                "first_watch_at": datetime.now(UTC),
+                "latest_watch_at": datetime.now(UTC),
+            }
+        ],
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/horrorfest/analytics/export/years")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert "attachment; filename=\"horrorfest_year_summary.csv\"" == response.headers["content-disposition"]
+    assert "horrorfest_year,watch_count" in response.text
+
+
+def test_export_horrorfest_comparison_returns_csv(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    monkeypatch.setattr(
+        HorrorfestService,
+        "get_analytics_comparison",
+        lambda *_args, **_kwargs: {
+            "left_year": 2025,
+            "right_year": 2024,
+            "left_summary": {
+                "watch_count": 206,
+                "watch_days": 43,
+                "new_watch_count": 131,
+                "rewatch_count": 75,
+                "total_runtime_hours": Decimal("345.90"),
+                "average_rating_value": Decimal("7.60"),
+            },
+            "right_summary": {
+                "watch_count": 203,
+                "watch_days": 43,
+                "new_watch_count": 125,
+                "rewatch_count": 78,
+                "total_runtime_hours": Decimal("341.10"),
+                "average_rating_value": Decimal("7.46"),
+            },
+            "delta": {
+                "watch_count": 3,
+                "watch_days": 0,
+                "new_watch_count": 6,
+                "rewatch_count": -3,
+                "total_runtime_seconds": 0,
+                "total_runtime_hours": Decimal("4.80"),
+                "average_watches_per_day": Decimal("0.07"),
+                "average_runtime_hours_per_day": Decimal("0.11"),
+                "average_runtime_minutes_per_watch": Decimal("-0.10"),
+                "average_rating_value": Decimal("0.14"),
+                "rated_watch_count": 3,
+            },
+            "source_rows": [],
+            "rating_rows": [],
+            "repeated_title_rows": [],
+        },
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/horrorfest/analytics/export/compare?left_year=2025&right_year=2024")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert "section,metric,left_year,right_year,delta" in response.text

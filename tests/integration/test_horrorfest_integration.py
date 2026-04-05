@@ -406,3 +406,163 @@ def test_horrorfest_selected_year_drilldown_filters_by_date_source_and_rating(
     assert rating_response.status_code == 200
     rating_payload = rating_response.json()
     assert [row["watch_order"] for row in rating_payload] == [1, 3]
+
+
+def test_horrorfest_comparison_returns_deltas_and_repeated_titles(
+    integration_client,
+    integration_session_factory: sessionmaker[Session],
+) -> None:
+    session = integration_session_factory()
+    user = User(username=f"horrorfest-compare-{uuid4().hex[:8]}")
+    movie = MediaItem(type="movie", title="The Thing", year=1982, base_runtime_seconds=6540)
+    session.add_all(
+        [
+            user,
+            movie,
+            HorrorfestYear(
+                horrorfest_year=2024,
+                window_start_at=datetime.fromisoformat("2024-10-01T00:00:00+00:00"),
+                window_end_at=datetime.fromisoformat("2024-10-31T23:59:59+00:00"),
+                label="Horrorfest 2024",
+                is_active=True,
+            ),
+            HorrorfestYear(
+                horrorfest_year=2025,
+                window_start_at=datetime.fromisoformat("2025-10-01T00:00:00+00:00"),
+                window_end_at=datetime.fromisoformat("2025-10-31T23:59:59+00:00"),
+                label="Horrorfest 2025",
+                is_active=True,
+            ),
+        ]
+    )
+    session.flush()
+
+    watch_2024 = WatchEvent(
+        user_id=user.user_id,
+        media_item_id=movie.media_item_id,
+        watched_at=datetime.fromisoformat("2024-10-10T04:00:00+00:00"),
+        playback_source="disc",
+        completed=True,
+        rating_value=7,
+        rating_scale="10-star",
+    )
+    watch_2025_first = WatchEvent(
+        user_id=user.user_id,
+        media_item_id=movie.media_item_id,
+        watched_at=datetime.fromisoformat("2025-10-10T04:00:00+00:00"),
+        playback_source="kodi",
+        completed=True,
+        rating_value=8,
+        rating_scale="10-star",
+    )
+    watch_2025_second = WatchEvent(
+        user_id=user.user_id,
+        media_item_id=movie.media_item_id,
+        watched_at=datetime.fromisoformat("2025-10-12T04:00:00+00:00"),
+        playback_source="kodi",
+        completed=True,
+        rating_value=9,
+        rating_scale="10-star",
+        rewatch=True,
+    )
+    session.add_all([watch_2024, watch_2025_first, watch_2025_second])
+    session.flush()
+    session.add_all(
+        [
+            HorrorfestEntry(watch_id=watch_2024.watch_id, horrorfest_year=2024, watch_order=1, source_kind="manual"),
+            HorrorfestEntry(watch_id=watch_2025_first.watch_id, horrorfest_year=2025, watch_order=1, source_kind="manual"),
+            HorrorfestEntry(watch_id=watch_2025_second.watch_id, horrorfest_year=2025, watch_order=2, source_kind="manual"),
+        ]
+    )
+    session.commit()
+    session.close()
+
+    response = integration_client.get(
+        f"/api/v1/horrorfest/analytics/compare?left_year=2025&right_year=2024&user_id={user.user_id}"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["delta"]["watch_count"] == 1
+    assert payload["source_rows"][0]["playback_source"] == "kodi"
+    assert payload["repeated_title_rows"][0]["title"] == "The Thing (1982)"
+
+
+def test_horrorfest_repeated_titles_leaderboard_and_export_return_sorted_rows(
+    integration_client,
+    integration_session_factory: sessionmaker[Session],
+) -> None:
+    session = integration_session_factory()
+    user = User(username=f"horrorfest-repeats-{uuid4().hex[:8]}")
+    repeated_movie = MediaItem(type="movie", title="Halloween", year=1978, base_runtime_seconds=5460)
+    single_movie = MediaItem(type="movie", title="Candyman", year=1992, base_runtime_seconds=5940)
+    session.add_all(
+        [
+            user,
+            repeated_movie,
+            single_movie,
+            HorrorfestYear(
+                horrorfest_year=2024,
+                window_start_at=datetime.fromisoformat("2024-10-01T00:00:00+00:00"),
+                window_end_at=datetime.fromisoformat("2024-10-31T23:59:59+00:00"),
+                label="Horrorfest 2024",
+                is_active=True,
+            ),
+            HorrorfestYear(
+                horrorfest_year=2025,
+                window_start_at=datetime.fromisoformat("2025-10-01T00:00:00+00:00"),
+                window_end_at=datetime.fromisoformat("2025-10-31T23:59:59+00:00"),
+                label="Horrorfest 2025",
+                is_active=True,
+            ),
+        ]
+    )
+    session.flush()
+    repeated_2024 = WatchEvent(
+        user_id=user.user_id,
+        media_item_id=repeated_movie.media_item_id,
+        watched_at=datetime.fromisoformat("2024-10-10T04:00:00+00:00"),
+        playback_source="disc",
+        completed=True,
+    )
+    repeated_2025 = WatchEvent(
+        user_id=user.user_id,
+        media_item_id=repeated_movie.media_item_id,
+        watched_at=datetime.fromisoformat("2025-10-10T04:00:00+00:00"),
+        playback_source="disc",
+        completed=True,
+        rewatch=True,
+    )
+    single_2025 = WatchEvent(
+        user_id=user.user_id,
+        media_item_id=single_movie.media_item_id,
+        watched_at=datetime.fromisoformat("2025-10-11T04:00:00+00:00"),
+        playback_source="disc",
+        completed=True,
+    )
+    session.add_all([repeated_2024, repeated_2025, single_2025])
+    session.flush()
+    session.add_all(
+        [
+            HorrorfestEntry(watch_id=repeated_2024.watch_id, horrorfest_year=2024, watch_order=1, source_kind="manual"),
+            HorrorfestEntry(watch_id=repeated_2025.watch_id, horrorfest_year=2025, watch_order=1, source_kind="manual"),
+            HorrorfestEntry(watch_id=single_2025.watch_id, horrorfest_year=2025, watch_order=2, source_kind="manual"),
+        ]
+    )
+    session.commit()
+    session.close()
+
+    leaderboard_response = integration_client.get(
+        f"/api/v1/horrorfest/analytics/leaderboards/repeated-titles?user_id={user.user_id}"
+    )
+    assert leaderboard_response.status_code == 200
+    leaderboard_payload = leaderboard_response.json()
+    assert leaderboard_payload["rows"][0]["title"] == "Halloween (1978)"
+    assert leaderboard_payload["rows"][0]["total_count"] == 2
+
+    export_response = integration_client.get(
+        f"/api/v1/horrorfest/analytics/export/leaderboards/repeated-titles?user_id={user.user_id}"
+    )
+    assert export_response.status_code == 200
+    assert export_response.headers["content-type"].startswith("text/csv")
+    assert "Halloween (1978),2" in export_response.text

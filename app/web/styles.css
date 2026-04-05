@@ -671,6 +671,11 @@ ul {
   justify-content: flex-end;
 }
 
+.embedded-card {
+  margin-top: var(--space-3);
+  box-shadow: none;
+}
+
 .horrorfest-matrix-toolbar input,
 .horrorfest-matrix-toolbar select {
   min-width: 140px;
