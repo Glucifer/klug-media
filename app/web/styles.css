@@ -680,6 +680,14 @@ ul {
   overflow-x: auto;
 }
 
+.matrix-year-active {
+  background: rgba(255, 138, 61, 0.08);
+}
+
+.matrix-zero {
+  color: var(--muted);
+}
+
 .matrix-cell-button {
   border: 0;
   background: transparent;
@@ -687,10 +695,16 @@ ul {
   cursor: pointer;
   font: inherit;
   padding: 0;
+  border-radius: 999px;
 }
 
 .matrix-cell-button:hover {
   text-decoration: underline;
+}
+
+.matrix-cell-button.is-active {
+  color: var(--accent-strong);
+  font-weight: 700;
 }
 
 .matrix-action-cell {
@@ -727,6 +741,10 @@ ul {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+#horrorfest-drilldown-actions {
+  align-items: center;
 }
 
 .signal-stack {

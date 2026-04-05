@@ -317,6 +317,7 @@
                   <div>
                     <h3>Title Matrix</h3>
                     <p class="muted">Cross-year counts for repeated Horrorfest titles.</p>
+                    <p class="detail-subtitle">Click any non-zero count to inspect the matching Horrorfest watches.</p>
                   </div>
                   <div class="toolbar-inline horrorfest-matrix-toolbar">
                     <label for="horrorfest-title-matrix-query">Search</label>
@@ -339,6 +340,7 @@
                   <div>
                     <h3>Decade Matrix</h3>
                     <p class="muted">Release decades counted across Horrorfest years.</p>
+                    <p class="detail-subtitle">Decade labels and non-zero cells open the same shared drilldown panel.</p>
                   </div>
                 </div>
                 <div class="table-scroll">
@@ -353,7 +355,12 @@
                   </div>
                   <button id="horrorfest-drilldown-close" class="secondary" type="button">Close</button>
                 </div>
-                <p id="horrorfest-drilldown-status" class="muted">Select a title or decade count to inspect the matching Horrorfest watches.</p>
+                <p id="horrorfest-drilldown-status" class="muted">Select a title, decade, or breakdown count to inspect the matching Horrorfest watches.</p>
+                <div id="horrorfest-drilldown-actions" class="button-cluster hidden">
+                  <button id="horrorfest-drilldown-open-history" class="secondary" type="button">Open History</button>
+                  <button id="horrorfest-drilldown-open-log" class="secondary" type="button">Open Log Year</button>
+                  <button id="horrorfest-drilldown-clear" class="secondary" type="button">Clear Drilldown</button>
+                </div>
                 <div id="horrorfest-drilldown-body" class="detail-stack"></div>
               </aside>
             </div>

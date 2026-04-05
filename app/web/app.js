@@ -203,6 +203,10 @@ const horrorfestDecadeMatrixBody = document.getElementById("horrorfest-decade-ma
 const horrorfestDrilldownPanel = document.getElementById("horrorfest-drilldown-panel");
 const horrorfestDrilldownTitle = document.getElementById("horrorfest-drilldown-title");
 const horrorfestDrilldownStatus = document.getElementById("horrorfest-drilldown-status");
+const horrorfestDrilldownActions = document.getElementById("horrorfest-drilldown-actions");
+const horrorfestDrilldownOpenHistory = document.getElementById("horrorfest-drilldown-open-history");
+const horrorfestDrilldownOpenLog = document.getElementById("horrorfest-drilldown-open-log");
+const horrorfestDrilldownClear = document.getElementById("horrorfest-drilldown-clear");
 const horrorfestDrilldownBody = document.getElementById("horrorfest-drilldown-body");
 const horrorfestDrilldownClose = document.getElementById("horrorfest-drilldown-close");
 const adminContextBanner = document.getElementById("admin-context-banner");
@@ -481,6 +485,8 @@ function renderHistoryContextBanner() {
         ? "Library"
         : linkedHistoryContext.sourceView === "shows"
           ? "Shows"
+          : linkedHistoryContext.sourceView === "horrorfest"
+            ? "Horrorfest analytics"
           : linkedHistoryContext.sourceView === "dashboard"
             ? "Dashboard"
         : "browse";
@@ -503,6 +509,8 @@ function renderHistoryContextBanner() {
       ? "Back to Library"
       : linkedHistoryContext.sourceView === "shows"
         ? "Back to Shows"
+        : linkedHistoryContext.sourceView === "horrorfest"
+          ? "Back to Horrorfest"
         : linkedHistoryContext.sourceView === "dashboard"
           ? "Back to Dashboard"
         : "Close Link";
@@ -600,6 +608,15 @@ function syncHorrorfestAnalyticsSortUi() {
 }
 
 function syncHorrorfestTitleMatrixControls() {
+  const activeYear = getActiveHorrorfestMatrixYear();
+  const selectedYearOption = Array.from(horrorfestTitleMatrixSort.options).find(
+    (option) => option.value === "selected_year_count"
+  );
+  if (selectedYearOption) {
+    selectedYearOption.textContent = activeYear
+      ? `Selected Year Count (${activeYear})`
+      : "Selected Year Count";
+  }
   horrorfestTitleMatrixSort.value = horrorfestTitleMatrixSortKey;
   horrorfestTitleMatrixDirection.textContent =
     horrorfestTitleMatrixSortDirection === "asc" ? "Asc" : "Desc";
@@ -947,6 +964,13 @@ async function returnHistoryContextToSource() {
     }
     return;
   }
+  if (linkedHistoryContext.sourceView === "horrorfest") {
+    const preferredYear = linkedHistoryContext.horrorfestYear || selectedHorrorfestAnalyticsYear || null;
+    setHorrorfestMode(linkedHistoryContext.horrorfestMode || "analytics");
+    setActiveView("horrorfest");
+    await loadHorrorfestWorkspace(preferredYear ? String(preferredYear) : null);
+    return;
+  }
   if (linkedHistoryContext.sourceView === "dashboard") {
     setActiveView("dashboard");
     await loadDashboardData();
@@ -1001,7 +1025,10 @@ async function openHistoryForUnratedQueue() {
   await Promise.all([loadHistory(), loadUnratedWatches()]);
 }
 
-async function openHistoryForHorrorfestYear(selectedYear) {
+async function openHistoryForHorrorfestYear(
+  selectedYear,
+  { sourceView = "dashboard", label = null, horrorfestModeValue = null } = {}
+) {
   historyOffset = 0;
   historyQuery.value = "";
   historyMediaType.value = "movie";
@@ -1011,8 +1038,10 @@ async function openHistoryForHorrorfestYear(selectedYear) {
   window.localStorage.setItem(UI_PREF_KEYS.historyQuery, "");
   setLinkedHistoryContext({
     type: "horrorfest_year_window",
-    label: `Horrorfest ${selectedYear.horrorfest_year}`,
-    sourceView: "dashboard",
+    label: label || `Horrorfest ${selectedYear.horrorfest_year}`,
+    sourceView,
+    horrorfestYear: selectedYear.horrorfest_year,
+    horrorfestMode: horrorfestModeValue,
     appliesQuery: false,
   });
   setActiveView("history");
@@ -2747,6 +2776,61 @@ function getHorrorfestTitleSelectedYearCount(row) {
   return Number(row.year_counts?.[String(activeYear)] || 0);
 }
 
+function getSingleHorrorfestYearFromRows(rows) {
+  const years = new Set(
+    (rows || [])
+      .map((row) => Number.parseInt(String(row.horrorfest_year || ""), 10))
+      .filter((year) => Number.isInteger(year))
+  );
+  return years.size === 1 ? [...years][0] : null;
+}
+
+function formatHorrorfestDrilldownStatus(state) {
+  const rows = state?.rows || [];
+  if (!rows.length) {
+    return "No Horrorfest watches matched this drilldown.";
+  }
+  const parts = [`Showing ${rows.length} matching Horrorfest watch(es).`];
+  if (state?.horrorfestYear) {
+    parts.push(`Filtered to Horrorfest ${state.horrorfestYear}.`);
+  }
+  if (state?.watchDate) {
+    parts.push(`Watch date ${state.watchDate}.`);
+  }
+  if (state?.playbackSource) {
+    parts.push(`Source ${state.playbackSource}.`);
+  }
+  if (state?.ratingValue !== null && state?.ratingValue !== undefined) {
+    parts.push(`Rating ${state.ratingValue}/10.`);
+  }
+  return parts.join(" ");
+}
+
+function getHorrorfestDrilldownHistoryTarget(state) {
+  if (!state) {
+    return null;
+  }
+  if (state.kind === "title" && state.mediaItemId) {
+    const firstRow = state.rows?.[0] || null;
+    return {
+      type: "media_item",
+      mediaItemId: state.mediaItemId,
+      label: state.label || firstRow?.display_title || firstRow?.media_item_title || "selected media",
+      mediaType: firstRow?.media_item_type || "",
+    };
+  }
+  const hasExtraFilters = Boolean(state.watchDate || state.playbackSource) ||
+    (state.ratingValue !== null && state.ratingValue !== undefined);
+  if (state.kind === "year_detail" && state.horrorfestYear && !hasExtraFilters) {
+    return {
+      type: "horrorfest_year",
+      horrorfestYear: state.horrorfestYear,
+      label: state.label || `Horrorfest ${state.horrorfestYear}`,
+    };
+  }
+  return null;
+}
+
 function renderHorrorfestDrilldownRow(row) {
   const title = row.display_title || row.media_item_title || row.watch_id;
   const yearLabel = `Horrorfest ${row.horrorfest_year}`;
@@ -2775,6 +2859,11 @@ function renderHorrorfestDrilldownRow(row) {
               ? `<button class="secondary library-inline-button" data-media-item-open="${row.media_item_id}" type="button">Open Media Detail</button>`
               : ""
           }
+          ${
+            row.media_item_id
+              ? `<button class="secondary library-inline-button" data-horrorfest-drilldown-history-media-item="${row.media_item_id}" data-horrorfest-drilldown-history-label="${escapeHtml(title)}" data-horrorfest-drilldown-history-type="${escapeHtml(row.media_item_type || "")}" data-horrorfest-drilldown-history-year="${row.horrorfest_year}" type="button">Open History</button>`
+              : ""
+          }
           <button class="secondary library-inline-button" data-horrorfest-analytics-open-log="${row.horrorfest_year}" type="button">Open Log Year</button>
         </div>
       </div>
@@ -2786,7 +2875,11 @@ function closeHorrorfestDrilldownPanel({ resetState = false } = {}) {
   horrorfestDrilldownPanel.classList.add("hidden");
   horrorfestDrilldownTitle.textContent = "Horrorfest Drilldown";
   horrorfestDrilldownStatus.textContent =
-    "Select a title or decade count to inspect the matching Horrorfest watches.";
+    "Select a title, decade, or breakdown count to inspect the matching Horrorfest watches.";
+  horrorfestDrilldownActions.classList.add("hidden");
+  horrorfestDrilldownOpenHistory.disabled = true;
+  horrorfestDrilldownOpenLog.disabled = true;
+  delete horrorfestDrilldownOpenLog.dataset.horrorfestAnalyticsOpenLog;
   horrorfestDrilldownBody.innerHTML = "";
   if (resetState) {
     horrorfestDrilldownState = null;
@@ -2801,9 +2894,17 @@ function renderHorrorfestDrilldownPanel() {
   horrorfestDrilldownPanel.classList.remove("hidden");
   horrorfestDrilldownTitle.textContent = horrorfestDrilldownState.label || "Horrorfest Drilldown";
   const rows = horrorfestDrilldownState.rows || [];
-  horrorfestDrilldownStatus.textContent = rows.length
-    ? `Showing ${rows.length} Horrorfest watch(es).`
-    : "No Horrorfest watches matched this drilldown.";
+  const singleYear = getSingleHorrorfestYearFromRows(rows);
+  const historyTarget = getHorrorfestDrilldownHistoryTarget(horrorfestDrilldownState);
+  horrorfestDrilldownStatus.textContent = formatHorrorfestDrilldownStatus(horrorfestDrilldownState);
+  horrorfestDrilldownActions.classList.remove("hidden");
+  horrorfestDrilldownOpenHistory.disabled = !historyTarget;
+  horrorfestDrilldownOpenLog.disabled = !singleYear;
+  if (singleYear) {
+    horrorfestDrilldownOpenLog.dataset.horrorfestAnalyticsOpenLog = String(singleYear);
+  } else {
+    delete horrorfestDrilldownOpenLog.dataset.horrorfestAnalyticsOpenLog;
+  }
   horrorfestDrilldownBody.innerHTML = rows.length
     ? `<ul class="drilldown-list">${rows.map((row) => renderHorrorfestDrilldownRow(row)).join("")}</ul>`
     : '<p class="muted">Try another title, decade, or year cell.</p>';
@@ -2886,8 +2987,12 @@ function renderHorrorfestTitleMatrix() {
     horrorfestTitleMatrixBody.innerHTML = '<tr><td colspan="2">No matrix data available yet</td></tr>';
     return;
   }
+  const activeYear = getActiveHorrorfestMatrixYear();
   const yearHeaders = horrorfestTitleMatrix.years
-    .map((year) => `<th>${escapeHtml(String(year))}</th>`)
+    .map((year) => {
+      const yearClass = year === activeYear ? ' class="matrix-year-active"' : "";
+      return `<th${yearClass}>${escapeHtml(String(year))}</th>`;
+    })
     .join("");
   horrorfestTitleMatrixHead.innerHTML = `<tr><th>Title</th><th>Total</th>${yearHeaders}<th>Action</th></tr>`;
   const normalizedQuery = horrorfestTitleMatrixQuery.value.trim().toLowerCase();
@@ -2921,16 +3026,17 @@ function renderHorrorfestTitleMatrix() {
     const yearCells = horrorfestTitleMatrix.years
       .map((year) => {
         const count = Number(row.year_counts?.[String(year)] || 0);
+        const cellClass = year === activeYear ? ' class="matrix-year-active"' : "";
         if (!count) {
-          return "<td>0</td>";
+          return `<td${cellClass}><span class="matrix-zero">0</span></td>`;
         }
         if (!canDrillIntoTitle) {
-          return `<td>${count}</td>`;
+          return `<td${cellClass}>${count}</td>`;
         }
         return `
-          <td>
+          <td${cellClass}>
             <button
-              class="matrix-cell-button"
+              class="matrix-cell-button${year === activeYear ? " is-active" : ""}"
               data-horrorfest-title-drilldown-media-item="${row.media_item_id}"
               data-horrorfest-title-drilldown-year="${year}"
               data-horrorfest-title-drilldown-label="${escapeHtml(row.title)}"
@@ -2968,8 +3074,12 @@ function renderHorrorfestDecadeMatrix() {
     horrorfestDecadeMatrixBody.innerHTML = '<tr><td colspan="2">No matrix data available yet</td></tr>';
     return;
   }
+  const activeYear = getActiveHorrorfestMatrixYear();
   const yearHeaders = horrorfestDecadeMatrix.years
-    .map((year) => `<th>${escapeHtml(String(year))}</th>`)
+    .map((year) => {
+      const yearClass = year === activeYear ? ' class="matrix-year-active"' : "";
+      return `<th${yearClass}>${escapeHtml(String(year))}</th>`;
+    })
     .join("");
   horrorfestDecadeMatrixHead.innerHTML = `<tr><th>Decade</th><th>Total</th>${yearHeaders}</tr>`;
   for (const row of horrorfestDecadeMatrix.rows) {
@@ -2983,13 +3093,14 @@ function renderHorrorfestDecadeMatrix() {
     const yearCells = horrorfestDecadeMatrix.years
       .map((year) => {
         const count = Number(row.year_counts?.[String(year)] || 0);
+        const cellClass = year === activeYear ? ' class="matrix-year-active"' : "";
         if (!count) {
-          return "<td>0</td>";
+          return `<td${cellClass}><span class="matrix-zero">0</span></td>`;
         }
         return `
-          <td>
+          <td${cellClass}>
             <button
-              class="matrix-cell-button"
+              class="matrix-cell-button${year === activeYear ? " is-active" : ""}"
               data-horrorfest-decade-drilldown="${decadeStart}"
               data-horrorfest-decade-drilldown-year="${year}"
               data-horrorfest-decade-drilldown-label="${escapeHtml(row.decade)}"
@@ -4488,6 +4599,34 @@ horrorfestDrilldownBody.addEventListener("click", async (event) => {
     }
     return;
   }
+  const historyButton = target.closest("button[data-horrorfest-drilldown-history-media-item]");
+  if (historyButton instanceof HTMLButtonElement) {
+    const mediaItemId = historyButton.dataset.horrorfestDrilldownHistoryMediaItem;
+    const label = historyButton.dataset.horrorfestDrilldownHistoryLabel || "selected media";
+    const mediaType = historyButton.dataset.horrorfestDrilldownHistoryType || "";
+    const horrorfestYear = Number.parseInt(
+      historyButton.dataset.horrorfestDrilldownHistoryYear || "",
+      10
+    );
+    if (mediaItemId) {
+      await openHistoryForMedia({
+        mediaItemId,
+        label,
+        mediaType,
+        sourceView: "horrorfest",
+        libraryModeValue: libraryMode,
+      });
+      if (linkedHistoryContext) {
+        linkedHistoryContext.horrorfestMode = "analytics";
+        linkedHistoryContext.horrorfestYear = Number.isInteger(horrorfestYear)
+          ? horrorfestYear
+          : selectedHorrorfestAnalyticsYear;
+        persistLinkedHistoryContext();
+        renderHistoryContextBanner();
+      }
+    }
+    return;
+  }
   const openLogButton = target.closest("button[data-horrorfest-analytics-open-log]");
   if (openLogButton instanceof HTMLButtonElement) {
     const year = Number.parseInt(
@@ -4504,6 +4643,61 @@ horrorfestDrilldownBody.addEventListener("click", async (event) => {
 
 horrorfestDrilldownClose.addEventListener("click", () => {
   closeHorrorfestDrilldownPanel({ resetState: true });
+});
+
+horrorfestDrilldownClear.addEventListener("click", () => {
+  closeHorrorfestDrilldownPanel({ resetState: true });
+});
+
+horrorfestDrilldownOpenLog.addEventListener("click", async () => {
+  const year = Number.parseInt(
+    horrorfestDrilldownOpenLog.dataset.horrorfestAnalyticsOpenLog || "",
+    10
+  );
+  if (!year) {
+    return;
+  }
+  horrorfestYearSelect.value = String(year);
+  setHorrorfestMode("log");
+  await loadHorrorfest(String(year));
+});
+
+horrorfestDrilldownOpenHistory.addEventListener("click", async () => {
+  const target = getHorrorfestDrilldownHistoryTarget(horrorfestDrilldownState);
+  if (!target) {
+    return;
+  }
+  if (target.type === "media_item") {
+    await openHistoryForMedia({
+      mediaItemId: target.mediaItemId,
+      label: target.label,
+      mediaType: target.mediaType,
+      sourceView: "horrorfest",
+      libraryModeValue: libraryMode,
+    });
+    if (linkedHistoryContext) {
+      linkedHistoryContext.horrorfestMode = "analytics";
+      linkedHistoryContext.horrorfestYear =
+        horrorfestDrilldownState?.horrorfestYear ||
+        getSingleHorrorfestYearFromRows(horrorfestDrilldownState?.rows || []) ||
+        selectedHorrorfestAnalyticsYear;
+      persistLinkedHistoryContext();
+      renderHistoryContextBanner();
+    }
+    return;
+  }
+  if (target.type === "horrorfest_year") {
+    const selectedYear = horrorfestYears.find(
+      (row) => row.horrorfest_year === target.horrorfestYear
+    );
+    if (selectedYear) {
+      await openHistoryForHorrorfestYear(selectedYear, {
+        sourceView: "horrorfest",
+        label: target.label,
+        horrorfestModeValue: "analytics",
+      });
+    }
+  }
 });
 
 mediaPanelClose.addEventListener("click", () => {
