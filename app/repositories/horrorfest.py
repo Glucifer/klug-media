@@ -194,6 +194,85 @@ def _build_comparison_delta(
     }
 
 
+def _collect_title_year_history(
+    session: Session,
+    *,
+    user_id: UUID | None = None,
+) -> tuple[list[int], list[dict[str, object]]]:
+    payload = list_horrorfest_analytics_title_matrix(session, user_id=user_id)
+    years = sorted(payload["years"])
+    latest_year = years[-1] if years else None
+    rows: list[dict[str, object]] = []
+    for row in payload["rows"]:
+        year_counts = {int(year): int(count) for year, count in row["year_counts"].items()}
+        years_present = sorted(year for year, count in year_counts.items() if count > 0)
+        if not years_present:
+            continue
+        longest_streak_length = 1
+        longest_streak_start = years_present[0]
+        longest_streak_end = years_present[0]
+        current_length = 1
+        current_start = years_present[0]
+        for index in range(1, len(years_present)):
+            year = years_present[index]
+            previous_year = years_present[index - 1]
+            if year == previous_year + 1:
+                current_length += 1
+            else:
+                if current_length > longest_streak_length:
+                    longest_streak_length = current_length
+                    longest_streak_start = current_start
+                    longest_streak_end = previous_year
+                current_length = 1
+                current_start = year
+        if current_length > longest_streak_length:
+            longest_streak_length = current_length
+            longest_streak_start = current_start
+            longest_streak_end = years_present[-1]
+
+        trailing_streak_length = 0
+        if latest_year is not None and years_present[-1] == latest_year:
+            trailing_streak_length = 1
+            for index in range(len(years_present) - 1, 0, -1):
+                if years_present[index] == years_present[index - 1] + 1:
+                    trailing_streak_length += 1
+                else:
+                    break
+
+        biggest_gap = 0
+        biggest_gap_start = None
+        biggest_gap_end = None
+        for index in range(1, len(years_present)):
+            gap = years_present[index] - years_present[index - 1] - 1
+            if gap > biggest_gap:
+                biggest_gap = gap
+                biggest_gap_start = years_present[index - 1]
+                biggest_gap_end = years_present[index]
+
+        rows.append(
+            {
+                "media_item_id": row.get("media_item_id"),
+                "title": row["title"],
+                "total_count": int(row["total_count"]),
+                "years_seen": len(years_present),
+                "first_year": years_present[0],
+                "latest_year": years_present[-1],
+                "current_streak_length": trailing_streak_length,
+                "longest_streak_length": longest_streak_length,
+                "streak_start_year": longest_streak_start,
+                "streak_end_year": longest_streak_end,
+                "gap_years": biggest_gap if biggest_gap > 0 else None,
+                "gap_start_year": biggest_gap_start,
+                "gap_end_year": biggest_gap_end,
+                "years_since_last_seen": (
+                    latest_year - years_present[-1] if latest_year is not None else None
+                ),
+                "year_counts": year_counts,
+            }
+        )
+    return years, rows
+
+
 def get_horrorfest_year(
     session: Session,
     *,
@@ -750,6 +829,82 @@ def list_horrorfest_analytics_rewatch_leaderboard(
         }
         for row in rows
     ]
+
+
+def list_horrorfest_analytics_curation_staples(
+    session: Session,
+    *,
+    user_id: UUID | None = None,
+) -> list[dict[str, object]]:
+    _years, rows = _collect_title_year_history(session, user_id=user_id)
+    return sorted(
+        rows,
+        key=lambda row: (
+            -int(row["total_count"]),
+            -int(row["years_seen"]),
+            -int(row["latest_year"]),
+            str(row["title"]).lower(),
+        ),
+    )
+
+
+def list_horrorfest_analytics_curation_streaks(
+    session: Session,
+    *,
+    user_id: UUID | None = None,
+) -> list[dict[str, object]]:
+    _years, rows = _collect_title_year_history(session, user_id=user_id)
+    streak_rows = [row for row in rows if int(row["longest_streak_length"] or 0) > 1]
+    return sorted(
+        streak_rows,
+        key=lambda row: (
+            -int(row["longest_streak_length"] or 0),
+            -int(row["current_streak_length"] or 0),
+            -int(row["total_count"]),
+            str(row["title"]).lower(),
+        ),
+    )
+
+
+def list_horrorfest_analytics_curation_gaps(
+    session: Session,
+    *,
+    user_id: UUID | None = None,
+) -> list[dict[str, object]]:
+    _years, rows = _collect_title_year_history(session, user_id=user_id)
+    gap_rows = [row for row in rows if row["gap_years"]]
+    return sorted(
+        gap_rows,
+        key=lambda row: (
+            -int(row["gap_years"] or 0),
+            -int(row["total_count"]),
+            str(row["title"]).lower(),
+        ),
+    )
+
+
+def list_horrorfest_analytics_curation_dormant(
+    session: Session,
+    *,
+    user_id: UUID | None = None,
+    dormant_year_window: int = 3,
+) -> list[dict[str, object]]:
+    _years, rows = _collect_title_year_history(session, user_id=user_id)
+    dormant_rows = [
+        row
+        for row in rows
+        if int(row["years_since_last_seen"] or 0) >= dormant_year_window
+        and int(row["total_count"]) > 1
+    ]
+    return sorted(
+        dormant_rows,
+        key=lambda row: (
+            -int(row["years_since_last_seen"] or 0),
+            -int(row["total_count"]),
+            -int(row["latest_year"]),
+            str(row["title"]).lower(),
+        ),
+    )
 
 
 def _build_horrorfest_entry_payload(

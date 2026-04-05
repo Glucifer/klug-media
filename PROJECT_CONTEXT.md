@@ -69,6 +69,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - operator endpoints now exist under `/api/v1/horrorfest/*` for year config, listing, include/remove/restore, and manual reordering
   - analytics drilldown endpoints now exist for title-history and decade-cell exploration under `/api/v1/horrorfest/analytics/titles/{media_item_id}/entries` and `/api/v1/horrorfest/analytics/decades/{decade_start}/entries`
   - Horrorfest analytics now also exposes comparison, leaderboard, and CSV export endpoints under `/api/v1/horrorfest/analytics/*`
+  - Horrorfest analytics now also includes repeat-pattern curation reports for staples, streaks, gaps, and dormant titles under `/api/v1/horrorfest/analytics/curation/*`
   - watch-event list responses now expose `horrorfest_year`, `horrorfest_watch_order`, and `is_horrorfest_watch`
   - legacy import rows can now carry optional `horrorfest_year` and `horrorfest_watch_order` values so historical annual order can be preserved during import
 - Dashboard stats:
@@ -105,7 +106,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - recently watched, unrated queue with 1-10 rating actions
   - shared media side panel fed by `/api/v1/media-items/{media_item_id}` for poster-first movie/episode drilldown
   - one-click media-detail open actions from dashboard previews, history, Horrorfest, and show episodes
-  - Horrorfest now has internal `Log` and `Analytics` modes: yearly browsing/correction remains in `Log`, while `Analytics` provides in-app year-over-year reporting, selected-year drilldowns, inline year comparison, cross-year title/decade matrices, leaderboard tables, CSV exports, Title Matrix search/sort controls, and a dedicated analytics side panel for title/decade/date/source/rating click-through watch history
+  - Horrorfest now has internal `Log` and `Analytics` modes: yearly browsing/correction remains in `Log`, while `Analytics` provides in-app year-over-year reporting, selected-year drilldowns, inline year comparison, cross-year title/decade matrices, leaderboard tables, repeat-pattern curation reports, CSV exports, Title Matrix search/sort controls, and a dedicated analytics side panel for title/decade/date/source/rating click-through watch history
   - Shows is now evolving toward browsing-first TV navigation: richer show rows, linked History jumps, season collapse/expand, and episode-level media/history drilldown while completion percentages are intentionally de-emphasized until a future Collection feature exists
   - Admin workspace split into Imports, Manual Add, Scrobbler, and Enrichment subviews
   - import runner (file upload + mode/dry-run/resume options)

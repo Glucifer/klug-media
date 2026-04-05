@@ -446,6 +446,64 @@
                   </section>
                 </div>
               </section>
+              <section class="section-card">
+                <div class="section-headline">
+                  <div>
+                    <h3>Curation Reports</h3>
+                    <p class="muted">Repeat-pattern reports that surface staples, streaks, gaps, and dormant titles.</p>
+                  </div>
+                </div>
+                <div class="dashboard-grid">
+                  <section class="section-card">
+                    <div class="section-headline">
+                      <div>
+                        <h3>Annual Staples</h3>
+                        <p class="detail-subtitle">Frequent returners with broad year coverage.</p>
+                      </div>
+                      <div class="button-cluster">
+                        <button id="horrorfest-export-curation-staples" class="secondary" type="button">Export CSV</button>
+                      </div>
+                    </div>
+                    <table><thead><tr><th>Title</th><th>Total</th><th>Years Seen</th><th>Latest</th><th>Current Streak</th><th>Action</th></tr></thead><tbody id="horrorfest-curation-staples-body"></tbody></table>
+                  </section>
+                  <section class="section-card">
+                    <div class="section-headline">
+                      <div>
+                        <h3>Streaks</h3>
+                        <p class="detail-subtitle">Longest consecutive-year appearance runs.</p>
+                      </div>
+                      <div class="button-cluster">
+                        <button id="horrorfest-export-curation-streaks" class="secondary" type="button">Export CSV</button>
+                      </div>
+                    </div>
+                    <table><thead><tr><th>Title</th><th>Longest</th><th>Span</th><th>Current</th><th>Total</th><th>Action</th></tr></thead><tbody id="horrorfest-curation-streaks-body"></tbody></table>
+                  </section>
+                  <section class="section-card">
+                    <div class="section-headline">
+                      <div>
+                        <h3>Longest Gaps</h3>
+                        <p class="detail-subtitle">Titles that disappeared and later returned after long breaks.</p>
+                      </div>
+                      <div class="button-cluster">
+                        <button id="horrorfest-export-curation-gaps" class="secondary" type="button">Export CSV</button>
+                      </div>
+                    </div>
+                    <table><thead><tr><th>Title</th><th>Gap</th><th>From</th><th>To</th><th>Total</th><th>Action</th></tr></thead><tbody id="horrorfest-curation-gaps-body"></tbody></table>
+                  </section>
+                  <section class="section-card">
+                    <div class="section-headline">
+                      <div>
+                        <h3>Dormant Titles</h3>
+                        <p class="detail-subtitle">Titles absent from the last 3 Horrorfests despite prior history.</p>
+                      </div>
+                      <div class="button-cluster">
+                        <button id="horrorfest-export-curation-dormant" class="secondary" type="button">Export CSV</button>
+                      </div>
+                    </div>
+                    <table><thead><tr><th>Title</th><th>Last Seen</th><th>Years Away</th><th>Total</th><th>Years Seen</th><th>Action</th></tr></thead><tbody id="horrorfest-curation-dormant-body"></tbody></table>
+                  </section>
+                </div>
+              </section>
               <aside id="horrorfest-drilldown-panel" class="side-panel hidden" aria-live="polite">
                 <div class="side-panel-header">
                   <div>

@@ -212,3 +212,24 @@ class HorrorfestAnalyticsRewatchRowRead(KlugORMModel):
 
 class HorrorfestAnalyticsRewatchLeaderboardRead(KlugORMModel):
     rows: list[HorrorfestAnalyticsRewatchRowRead]
+
+
+class HorrorfestAnalyticsCurationRowRead(KlugORMModel):
+    media_item_id: UUID | None = None
+    title: str
+    total_count: int
+    years_seen: int
+    first_year: int
+    latest_year: int
+    current_streak_length: int = 0
+    longest_streak_length: int | None = None
+    streak_start_year: int | None = None
+    streak_end_year: int | None = None
+    gap_years: int | None = None
+    gap_start_year: int | None = None
+    gap_end_year: int | None = None
+    years_since_last_seen: int | None = None
+
+
+class HorrorfestAnalyticsCurationReportRead(KlugORMModel):
+    rows: list[HorrorfestAnalyticsCurationRowRead]

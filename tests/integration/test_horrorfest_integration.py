@@ -566,3 +566,127 @@ def test_horrorfest_repeated_titles_leaderboard_and_export_return_sorted_rows(
     assert export_response.status_code == 200
     assert export_response.headers["content-type"].startswith("text/csv")
     assert "Halloween (1978),2" in export_response.text
+
+
+def test_horrorfest_curation_reports_return_expected_repeat_patterns(
+    integration_client,
+    integration_session_factory: sessionmaker[Session],
+) -> None:
+    session = integration_session_factory()
+    user = User(username=f"horrorfest-curation-{uuid4().hex[:8]}")
+    halloween = MediaItem(type="movie", title="Halloween", year=1978, base_runtime_seconds=5460)
+    blob = MediaItem(type="movie", title="The Blob", year=1988, base_runtime_seconds=5700)
+    session.add_all(
+        [
+            user,
+            halloween,
+            blob,
+            HorrorfestYear(
+                horrorfest_year=2020,
+                window_start_at=datetime.fromisoformat("2020-10-01T00:00:00+00:00"),
+                window_end_at=datetime.fromisoformat("2020-10-31T23:59:59+00:00"),
+                label="Horrorfest 2020",
+                is_active=True,
+            ),
+            HorrorfestYear(
+                horrorfest_year=2021,
+                window_start_at=datetime.fromisoformat("2021-10-01T00:00:00+00:00"),
+                window_end_at=datetime.fromisoformat("2021-10-31T23:59:59+00:00"),
+                label="Horrorfest 2021",
+                is_active=True,
+            ),
+            HorrorfestYear(
+                horrorfest_year=2022,
+                window_start_at=datetime.fromisoformat("2022-10-01T00:00:00+00:00"),
+                window_end_at=datetime.fromisoformat("2022-10-31T23:59:59+00:00"),
+                label="Horrorfest 2022",
+                is_active=True,
+            ),
+            HorrorfestYear(
+                horrorfest_year=2023,
+                window_start_at=datetime.fromisoformat("2023-10-01T00:00:00+00:00"),
+                window_end_at=datetime.fromisoformat("2023-10-31T23:59:59+00:00"),
+                label="Horrorfest 2023",
+                is_active=True,
+            ),
+            HorrorfestYear(
+                horrorfest_year=2024,
+                window_start_at=datetime.fromisoformat("2024-10-01T00:00:00+00:00"),
+                window_end_at=datetime.fromisoformat("2024-10-31T23:59:59+00:00"),
+                label="Horrorfest 2024",
+                is_active=True,
+            ),
+            HorrorfestYear(
+                horrorfest_year=2025,
+                window_start_at=datetime.fromisoformat("2025-10-01T00:00:00+00:00"),
+                window_end_at=datetime.fromisoformat("2025-10-31T23:59:59+00:00"),
+                label="Horrorfest 2025",
+                is_active=True,
+            ),
+        ]
+    )
+    session.flush()
+
+    def add_watch(media_item: MediaItem, year: int, order: int) -> None:
+        watch = WatchEvent(
+            user_id=user.user_id,
+            media_item_id=media_item.media_item_id,
+            watched_at=datetime.fromisoformat(f"{year}-10-{order:02d}T04:00:00+00:00"),
+            playback_source="integration",
+            completed=True,
+        )
+        session.add(watch)
+        session.flush()
+        session.add(
+            HorrorfestEntry(
+                watch_id=watch.watch_id,
+                horrorfest_year=year,
+                watch_order=order,
+                source_kind="manual",
+            )
+        )
+
+    add_watch(halloween, 2020, 1)
+    add_watch(halloween, 2021, 2)
+    add_watch(halloween, 2022, 3)
+    add_watch(halloween, 2025, 4)
+    add_watch(blob, 2020, 5)
+    add_watch(blob, 2025, 6)
+    session.commit()
+    session.close()
+
+    staples_response = integration_client.get(
+        f"/api/v1/horrorfest/analytics/curation/staples?user_id={user.user_id}"
+    )
+    assert staples_response.status_code == 200
+    staples_payload = staples_response.json()["rows"]
+    assert staples_payload[0]["title"] == "Halloween (1978)"
+    assert staples_payload[0]["total_count"] == 4
+
+    streaks_response = integration_client.get(
+        f"/api/v1/horrorfest/analytics/curation/streaks?user_id={user.user_id}"
+    )
+    assert streaks_response.status_code == 200
+    streaks_payload = streaks_response.json()["rows"]
+    assert streaks_payload[0]["title"] == "Halloween (1978)"
+    assert streaks_payload[0]["longest_streak_length"] == 3
+    assert streaks_payload[0]["streak_start_year"] == 2020
+    assert streaks_payload[0]["streak_end_year"] == 2022
+
+    gaps_response = integration_client.get(
+        f"/api/v1/horrorfest/analytics/curation/gaps?user_id={user.user_id}"
+    )
+    assert gaps_response.status_code == 200
+    gaps_payload = gaps_response.json()["rows"]
+    assert gaps_payload[0]["title"] == "Halloween (1978)"
+    assert gaps_payload[0]["gap_years"] == 2
+    assert gaps_payload[0]["gap_start_year"] == 2022
+    assert gaps_payload[0]["gap_end_year"] == 2025
+
+    dormant_response = integration_client.get(
+        f"/api/v1/horrorfest/analytics/curation/dormant?user_id={user.user_id}&dormant_year_window=3"
+    )
+    assert dormant_response.status_code == 200
+    dormant_payload = dormant_response.json()["rows"]
+    assert dormant_payload[0]["title"] == "The Blob (1988)"
+    assert dormant_payload[0]["years_since_last_seen"] == 5

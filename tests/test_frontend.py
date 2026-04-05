@@ -33,6 +33,11 @@ def test_root_frontend_serves_index() -> None:
     assert "Most Repeated Titles" in response.text
     assert "Highest Rated Repeats" in response.text
     assert "Most Rewatched Titles" in response.text
+    assert "Curation Reports" in response.text
+    assert "Annual Staples" in response.text
+    assert "Streaks" in response.text
+    assert "Longest Gaps" in response.text
+    assert "Dormant Titles" in response.text
     assert "Export CSV" in response.text
     assert "Analytics Drilldown" in response.text
     assert "Click any non-zero count to inspect the matching Horrorfest watches." in response.text

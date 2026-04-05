@@ -215,6 +215,52 @@ class HorrorfestService:
         )
 
     @staticmethod
+    def get_analytics_curation_staples(
+        session: Session,
+        *,
+        user_id: UUID | None = None,
+    ) -> list[dict[str, object]]:
+        return horrorfest_repository.list_horrorfest_analytics_curation_staples(
+            session,
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def get_analytics_curation_streaks(
+        session: Session,
+        *,
+        user_id: UUID | None = None,
+    ) -> list[dict[str, object]]:
+        return horrorfest_repository.list_horrorfest_analytics_curation_streaks(
+            session,
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def get_analytics_curation_gaps(
+        session: Session,
+        *,
+        user_id: UUID | None = None,
+    ) -> list[dict[str, object]]:
+        return horrorfest_repository.list_horrorfest_analytics_curation_gaps(
+            session,
+            user_id=user_id,
+        )
+
+    @staticmethod
+    def get_analytics_curation_dormant(
+        session: Session,
+        *,
+        user_id: UUID | None = None,
+        dormant_year_window: int = 3,
+    ) -> list[dict[str, object]]:
+        return horrorfest_repository.list_horrorfest_analytics_curation_dormant(
+            session,
+            user_id=user_id,
+            dormant_year_window=dormant_year_window,
+        )
+
+    @staticmethod
     def list_analytics_title_entries(
         session: Session,
         *,

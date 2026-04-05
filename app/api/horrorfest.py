@@ -11,6 +11,7 @@ from app.core.auth import require_request_auth
 from app.db.session import get_db_session
 from app.schemas.horrorfest import (
     HorrorfestAnalyticsComparisonRead,
+    HorrorfestAnalyticsCurationReportRead,
     HorrorfestAnalyticsDecadeMatrixRead,
     HorrorfestAnalyticsHighestRatedLeaderboardRead,
     HorrorfestAnalyticsRewatchLeaderboardRead,
@@ -183,6 +184,65 @@ def get_horrorfest_analytics_rewatch_leaderboard(
             "rows": HorrorfestService.get_analytics_rewatch_leaderboard(
                 session,
                 user_id=user_id,
+            )
+        }
+    )
+
+
+@router.get(
+    "/analytics/curation/staples",
+    response_model=HorrorfestAnalyticsCurationReportRead,
+)
+def get_horrorfest_analytics_curation_staples(
+    user_id: UUID | None = Query(default=None),
+    session: Session = Depends(get_db_session),
+) -> HorrorfestAnalyticsCurationReportRead:
+    return HorrorfestAnalyticsCurationReportRead.model_validate(
+        {"rows": HorrorfestService.get_analytics_curation_staples(session, user_id=user_id)}
+    )
+
+
+@router.get(
+    "/analytics/curation/streaks",
+    response_model=HorrorfestAnalyticsCurationReportRead,
+)
+def get_horrorfest_analytics_curation_streaks(
+    user_id: UUID | None = Query(default=None),
+    session: Session = Depends(get_db_session),
+) -> HorrorfestAnalyticsCurationReportRead:
+    return HorrorfestAnalyticsCurationReportRead.model_validate(
+        {"rows": HorrorfestService.get_analytics_curation_streaks(session, user_id=user_id)}
+    )
+
+
+@router.get(
+    "/analytics/curation/gaps",
+    response_model=HorrorfestAnalyticsCurationReportRead,
+)
+def get_horrorfest_analytics_curation_gaps(
+    user_id: UUID | None = Query(default=None),
+    session: Session = Depends(get_db_session),
+) -> HorrorfestAnalyticsCurationReportRead:
+    return HorrorfestAnalyticsCurationReportRead.model_validate(
+        {"rows": HorrorfestService.get_analytics_curation_gaps(session, user_id=user_id)}
+    )
+
+
+@router.get(
+    "/analytics/curation/dormant",
+    response_model=HorrorfestAnalyticsCurationReportRead,
+)
+def get_horrorfest_analytics_curation_dormant(
+    user_id: UUID | None = Query(default=None),
+    dormant_year_window: int = Query(default=3, ge=1),
+    session: Session = Depends(get_db_session),
+) -> HorrorfestAnalyticsCurationReportRead:
+    return HorrorfestAnalyticsCurationReportRead.model_validate(
+        {
+            "rows": HorrorfestService.get_analytics_curation_dormant(
+                session,
+                user_id=user_id,
+                dormant_year_window=dormant_year_window,
             )
         }
     )
@@ -655,6 +715,94 @@ def export_horrorfest_rewatch_leaderboard(
         rows,
         fieldnames=["title", "total_count", "rewatch_count", "new_watch_count"],
         filename="horrorfest_rewatch_titles.csv",
+    )
+
+
+@router.get("/analytics/export/curation/staples")
+def export_horrorfest_curation_staples(
+    user_id: UUID | None = Query(default=None),
+    session: Session = Depends(get_db_session),
+) -> Response:
+    rows = HorrorfestService.get_analytics_curation_staples(session, user_id=user_id)
+    return _csv_response(
+        rows,
+        fieldnames=[
+            "title",
+            "total_count",
+            "years_seen",
+            "first_year",
+            "latest_year",
+            "current_streak_length",
+            "longest_streak_length",
+        ],
+        filename="horrorfest_annual_staples.csv",
+    )
+
+
+@router.get("/analytics/export/curation/streaks")
+def export_horrorfest_curation_streaks(
+    user_id: UUID | None = Query(default=None),
+    session: Session = Depends(get_db_session),
+) -> Response:
+    rows = HorrorfestService.get_analytics_curation_streaks(session, user_id=user_id)
+    return _csv_response(
+        rows,
+        fieldnames=[
+            "title",
+            "total_count",
+            "years_seen",
+            "longest_streak_length",
+            "streak_start_year",
+            "streak_end_year",
+            "current_streak_length",
+        ],
+        filename="horrorfest_streaks.csv",
+    )
+
+
+@router.get("/analytics/export/curation/gaps")
+def export_horrorfest_curation_gaps(
+    user_id: UUID | None = Query(default=None),
+    session: Session = Depends(get_db_session),
+) -> Response:
+    rows = HorrorfestService.get_analytics_curation_gaps(session, user_id=user_id)
+    return _csv_response(
+        rows,
+        fieldnames=[
+            "title",
+            "total_count",
+            "years_seen",
+            "gap_years",
+            "gap_start_year",
+            "gap_end_year",
+            "latest_year",
+        ],
+        filename="horrorfest_gaps.csv",
+    )
+
+
+@router.get("/analytics/export/curation/dormant")
+def export_horrorfest_curation_dormant(
+    user_id: UUID | None = Query(default=None),
+    dormant_year_window: int = Query(default=3, ge=1),
+    session: Session = Depends(get_db_session),
+) -> Response:
+    rows = HorrorfestService.get_analytics_curation_dormant(
+        session,
+        user_id=user_id,
+        dormant_year_window=dormant_year_window,
+    )
+    return _csv_response(
+        rows,
+        fieldnames=[
+            "title",
+            "total_count",
+            "years_seen",
+            "latest_year",
+            "years_since_last_seen",
+            "current_streak_length",
+        ],
+        filename="horrorfest_dormant_titles.csv",
     )
 
 

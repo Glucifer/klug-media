@@ -640,6 +640,61 @@ def test_get_horrorfest_repeated_titles_leaderboard_returns_payload(monkeypatch)
     assert payload["rows"][0]["total_count"] == 7
 
 
+def test_get_horrorfest_curation_streaks_returns_payload(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    monkeypatch.setattr(
+        HorrorfestService,
+        "get_analytics_curation_streaks",
+        lambda *_args, **_kwargs: [
+            {
+                "media_item_id": uuid4(),
+                "title": "Halloween",
+                "total_count": 4,
+                "years_seen": 4,
+                "first_year": 2021,
+                "latest_year": 2025,
+                "current_streak_length": 2,
+                "longest_streak_length": 3,
+                "streak_start_year": 2021,
+                "streak_end_year": 2023,
+                "gap_years": None,
+                "gap_start_year": None,
+                "gap_end_year": None,
+                "years_since_last_seen": 0,
+            }
+        ],
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/horrorfest/analytics/curation/streaks")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["rows"][0]["title"] == "Halloween"
+    assert payload["rows"][0]["longest_streak_length"] == 3
+
+
+def test_get_horrorfest_curation_dormant_passes_window(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    captured = {}
+
+    def fake_get(*_args, **kwargs):
+        captured.update(kwargs)
+        return []
+
+    monkeypatch.setattr(
+        HorrorfestService,
+        "get_analytics_curation_dormant",
+        fake_get,
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/horrorfest/analytics/curation/dormant?dormant_year_window=4")
+
+    assert response.status_code == 200
+    assert captured["dormant_year_window"] == 4
+
+
 def test_export_horrorfest_analytics_years_returns_csv(monkeypatch) -> None:
     _set_permissive_auth(monkeypatch)
     monkeypatch.setattr(
@@ -723,3 +778,40 @@ def test_export_horrorfest_comparison_returns_csv(monkeypatch) -> None:
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/csv")
     assert "section,metric,left_year,right_year,delta" in response.text
+
+
+def test_export_horrorfest_curation_staples_returns_csv(monkeypatch) -> None:
+    _set_permissive_auth(monkeypatch)
+    monkeypatch.setattr(
+        HorrorfestService,
+        "get_analytics_curation_staples",
+        lambda *_args, **_kwargs: [
+            {
+                "media_item_id": uuid4(),
+                "title": "Halloween",
+                "total_count": 5,
+                "years_seen": 5,
+                "first_year": 2020,
+                "latest_year": 2025,
+                "current_streak_length": 2,
+                "longest_streak_length": 3,
+                "streak_start_year": 2020,
+                "streak_end_year": 2022,
+                "gap_years": None,
+                "gap_start_year": None,
+                "gap_end_year": None,
+                "years_since_last_seen": 0,
+            }
+        ],
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/v1/horrorfest/analytics/export/curation/staples")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert (
+        response.headers["content-disposition"]
+        == 'attachment; filename="horrorfest_annual_staples.csv"'
+    )
+    assert "title,total_count,years_seen" in response.text

@@ -219,9 +219,23 @@ const horrorfestRepeatedTitlesHead = document.getElementById("horrorfest-repeate
 const horrorfestRepeatedTitlesBody = document.getElementById("horrorfest-repeated-titles-body");
 const horrorfestHighestRatedBody = document.getElementById("horrorfest-highest-rated-body");
 const horrorfestRewatchBody = document.getElementById("horrorfest-rewatch-body");
+const horrorfestCurationStaplesBody = document.getElementById("horrorfest-curation-staples-body");
+const horrorfestCurationStreaksBody = document.getElementById("horrorfest-curation-streaks-body");
+const horrorfestCurationGapsBody = document.getElementById("horrorfest-curation-gaps-body");
+const horrorfestCurationDormantBody = document.getElementById("horrorfest-curation-dormant-body");
 const horrorfestExportRepeatedTitles = document.getElementById("horrorfest-export-repeated-titles");
 const horrorfestExportHighestRated = document.getElementById("horrorfest-export-highest-rated");
 const horrorfestExportRewatches = document.getElementById("horrorfest-export-rewatches");
+const horrorfestExportCurationStaples = document.getElementById(
+  "horrorfest-export-curation-staples"
+);
+const horrorfestExportCurationStreaks = document.getElementById(
+  "horrorfest-export-curation-streaks"
+);
+const horrorfestExportCurationGaps = document.getElementById("horrorfest-export-curation-gaps");
+const horrorfestExportCurationDormant = document.getElementById(
+  "horrorfest-export-curation-dormant"
+);
 const horrorfestExportDecades = document.getElementById("horrorfest-export-decades");
 const horrorfestDecadeMatrixHead = document.getElementById("horrorfest-decade-matrix-head");
 const horrorfestDecadeMatrixBody = document.getElementById("horrorfest-decade-matrix-body");
@@ -308,6 +322,10 @@ let horrorfestComparison = null;
 let horrorfestRepeatedTitles = null;
 let horrorfestHighestRated = [];
 let horrorfestRewatchLeaderboard = [];
+let horrorfestCurationStaples = [];
+let horrorfestCurationStreaks = [];
+let horrorfestCurationGaps = [];
+let horrorfestCurationDormant = [];
 let selectedHorrorfestEntryId = null;
 let selectedHorrorfestAnalyticsYear = null;
 let horrorfestMode = window.localStorage.getItem(UI_PREF_KEYS.horrorfestMode) || "log";
@@ -2958,6 +2976,79 @@ function renderHorrorfestSimpleLeaderboardRows(body, rows, emptyMessage, valueRe
     : `<tr><td colspan="5">${emptyMessage}</td></tr>`;
 }
 
+function renderHorrorfestCurationRows(body, rows, emptyMessage, colspan, valueRenderer) {
+  body.innerHTML = rows.length
+    ? rows.map(valueRenderer).join("")
+    : `<tr><td colspan="${colspan}">${emptyMessage}</td></tr>`;
+}
+
+function renderHorrorfestCurationReports() {
+  renderHorrorfestCurationRows(
+    horrorfestCurationStaplesBody,
+    horrorfestCurationStaples,
+    "No annual staples identified yet.",
+    6,
+    (row) => `
+      <tr>
+        <td>${row.media_item_id ? `<button class="matrix-cell-button" data-horrorfest-title-drilldown-media-item="${row.media_item_id}" data-horrorfest-title-drilldown-label="${escapeHtml(row.title)}" type="button">${escapeHtml(row.title)}</button>` : escapeHtml(row.title)}</td>
+        <td>${row.total_count}</td>
+        <td>${row.years_seen}</td>
+        <td>${row.latest_year}</td>
+        <td>${row.current_streak_length || 0}</td>
+        <td>${row.media_item_id ? `<button class="secondary library-inline-button" data-media-item-open="${row.media_item_id}" type="button">Media Detail</button>` : "-"}</td>
+      </tr>
+    `
+  );
+  renderHorrorfestCurationRows(
+    horrorfestCurationStreaksBody,
+    horrorfestCurationStreaks,
+    "No streak data yet.",
+    6,
+    (row) => `
+      <tr>
+        <td>${row.media_item_id ? `<button class="matrix-cell-button" data-horrorfest-title-drilldown-media-item="${row.media_item_id}" data-horrorfest-title-drilldown-label="${escapeHtml(row.title)}" type="button">${escapeHtml(row.title)}</button>` : escapeHtml(row.title)}</td>
+        <td>${row.longest_streak_length || 0}</td>
+        <td>${row.streak_start_year || "-"} - ${row.streak_end_year || "-"}</td>
+        <td>${row.current_streak_length || 0}</td>
+        <td>${row.total_count}</td>
+        <td>${row.media_item_id ? `<button class="secondary library-inline-button" data-media-item-open="${row.media_item_id}" type="button">Media Detail</button>` : "-"}</td>
+      </tr>
+    `
+  );
+  renderHorrorfestCurationRows(
+    horrorfestCurationGapsBody,
+    horrorfestCurationGaps,
+    "No return-gap titles yet.",
+    6,
+    (row) => `
+      <tr>
+        <td>${row.media_item_id ? `<button class="matrix-cell-button" data-horrorfest-title-drilldown-media-item="${row.media_item_id}" data-horrorfest-title-drilldown-label="${escapeHtml(row.title)}" type="button">${escapeHtml(row.title)}</button>` : escapeHtml(row.title)}</td>
+        <td>${row.gap_years || 0}</td>
+        <td>${row.gap_start_year || "-"}</td>
+        <td>${row.gap_end_year || "-"}</td>
+        <td>${row.total_count}</td>
+        <td>${row.media_item_id ? `<button class="secondary library-inline-button" data-media-item-open="${row.media_item_id}" type="button">Media Detail</button>` : "-"}</td>
+      </tr>
+    `
+  );
+  renderHorrorfestCurationRows(
+    horrorfestCurationDormantBody,
+    horrorfestCurationDormant,
+    "No dormant titles found for the current window.",
+    6,
+    (row) => `
+      <tr>
+        <td>${row.media_item_id ? `<button class="matrix-cell-button" data-horrorfest-title-drilldown-media-item="${row.media_item_id}" data-horrorfest-title-drilldown-label="${escapeHtml(row.title)}" type="button">${escapeHtml(row.title)}</button>` : escapeHtml(row.title)}</td>
+        <td>${row.latest_year}</td>
+        <td>${row.years_since_last_seen || 0}</td>
+        <td>${row.total_count}</td>
+        <td>${row.years_seen}</td>
+        <td>${row.media_item_id ? `<button class="secondary library-inline-button" data-media-item-open="${row.media_item_id}" type="button">Media Detail</button>` : "-"}</td>
+      </tr>
+    `
+  );
+}
+
 function renderHorrorfestAnalyticsYears() {
   syncHorrorfestAnalyticsSortUi();
   horrorfestAnalyticsYearsBody.innerHTML = "";
@@ -3533,6 +3624,23 @@ async function loadHorrorfestLeaderboards() {
   );
 }
 
+async function loadHorrorfestCurationReports() {
+  const [staplesResponse, streaksResponse, gapsResponse, dormantResponse] = await Promise.all([
+    api("/api/v1/horrorfest/analytics/curation/staples"),
+    api("/api/v1/horrorfest/analytics/curation/streaks"),
+    api("/api/v1/horrorfest/analytics/curation/gaps"),
+    api("/api/v1/horrorfest/analytics/curation/dormant"),
+  ]);
+  if (!staplesResponse.ok || !streaksResponse.ok || !gapsResponse.ok || !dormantResponse.ok) {
+    throw new Error("Failed to load Horrorfest curation reports");
+  }
+  horrorfestCurationStaples = (await staplesResponse.json()).rows || [];
+  horrorfestCurationStreaks = (await streaksResponse.json()).rows || [];
+  horrorfestCurationGaps = (await gapsResponse.json()).rows || [];
+  horrorfestCurationDormant = (await dormantResponse.json()).rows || [];
+  renderHorrorfestCurationReports();
+}
+
 async function loadHorrorfestAnalytics(preferredYear = null) {
   horrorfestAnalyticsStatus.textContent = "Loading Horrorfest analytics...";
   horrorfestAnalyticsYearsBody.innerHTML = "";
@@ -3550,6 +3658,10 @@ async function loadHorrorfestAnalytics(preferredYear = null) {
   horrorfestRepeatedTitlesBody.innerHTML = "";
   horrorfestHighestRatedBody.innerHTML = "";
   horrorfestRewatchBody.innerHTML = "";
+  horrorfestCurationStaplesBody.innerHTML = "";
+  horrorfestCurationStreaksBody.innerHTML = "";
+  horrorfestCurationGapsBody.innerHTML = "";
+  horrorfestCurationDormantBody.innerHTML = "";
   horrorfestDecadeMatrixHead.innerHTML = "";
   horrorfestDecadeMatrixBody.innerHTML = "";
   horrorfestAnalyticsOpenLog.disabled = true;
@@ -3570,6 +3682,7 @@ async function loadHorrorfestAnalytics(preferredYear = null) {
     }
     await loadHorrorfestAnalyticsMatrices();
     await loadHorrorfestLeaderboards();
+    await loadHorrorfestCurationReports();
     const selectedYear =
       Number.parseInt(preferredYear || "", 10) ||
       selectedHorrorfestAnalyticsYear ||
@@ -5065,7 +5178,14 @@ horrorfestRepeatedTitlesBody.addEventListener("click", async (event) => {
   });
 });
 
-for (const body of [horrorfestHighestRatedBody, horrorfestRewatchBody]) {
+for (const body of [
+  horrorfestHighestRatedBody,
+  horrorfestRewatchBody,
+  horrorfestCurationStaplesBody,
+  horrorfestCurationStreaksBody,
+  horrorfestCurationGapsBody,
+  horrorfestCurationDormantBody,
+]) {
   body.addEventListener("click", async (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) {
@@ -5306,6 +5426,34 @@ horrorfestExportRewatches.addEventListener("click", async () => {
   await downloadApiFile(
     "/api/v1/horrorfest/analytics/export/leaderboards/rewatches",
     "horrorfest_rewatch_titles.csv"
+  );
+});
+
+horrorfestExportCurationStaples.addEventListener("click", async () => {
+  await downloadApiFile(
+    "/api/v1/horrorfest/analytics/export/curation/staples",
+    "horrorfest_annual_staples.csv"
+  );
+});
+
+horrorfestExportCurationStreaks.addEventListener("click", async () => {
+  await downloadApiFile(
+    "/api/v1/horrorfest/analytics/export/curation/streaks",
+    "horrorfest_streaks.csv"
+  );
+});
+
+horrorfestExportCurationGaps.addEventListener("click", async () => {
+  await downloadApiFile(
+    "/api/v1/horrorfest/analytics/export/curation/gaps",
+    "horrorfest_gaps.csv"
+  );
+});
+
+horrorfestExportCurationDormant.addEventListener("click", async () => {
+  await downloadApiFile(
+    "/api/v1/horrorfest/analytics/export/curation/dormant",
+    "horrorfest_dormant_titles.csv"
   );
 });
 
