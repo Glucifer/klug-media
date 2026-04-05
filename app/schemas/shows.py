@@ -7,7 +7,7 @@ from app.schemas.base import KlugBaseModel, KlugORMModel
 
 class ShowRead(KlugORMModel):
     show_id: UUID
-    tmdb_id: int
+    tmdb_id: int | None
     tvdb_id: int | None
     imdb_id: str | None
     title: str
@@ -20,7 +20,7 @@ class ShowRead(KlugORMModel):
 
 class ShowProgressRead(KlugBaseModel):
     show_id: UUID
-    show_tmdb_id: int
+    show_tmdb_id: int | None
     show_title: str
     user_id: UUID
     total_episodes: int

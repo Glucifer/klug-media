@@ -12,12 +12,21 @@ from app.core.auth import require_request_auth
 from app.core.config import Settings, get_settings
 from app.db.session import get_db_session
 from app.scripts import import_watch_events as import_watch_events_script
+from app.schemas.collection import (
+    JellyfinCollectionImportRequest,
+    JellyfinCollectionImportResponse,
+)
 from app.schemas.imports import (
     ImportMode,
     LegacySourceWatchEventImportRequest,
     WatchEventImportRequest,
     WatchEventImportResponse,
 )
+from app.services.collection_imports import (
+    JellyfinCollectionImportResult,
+    JellyfinCollectionImportService,
+)
+from app.services.jellyfin import JellyfinClientError, JellyfinConfigurationError
 from app.services.imports import WatchEventImportResult, WatchEventImportService
 from app.services.users import UserService
 
@@ -43,6 +52,25 @@ def _to_import_response(result: WatchEventImportResult) -> WatchEventImportRespo
         shows_created=result.shows_created,
         cursor_before=result.cursor_before,
         cursor_after=result.cursor_after,
+    )
+
+
+def _to_collection_import_response(
+    result: JellyfinCollectionImportResult,
+) -> JellyfinCollectionImportResponse:
+    return JellyfinCollectionImportResponse(
+        import_batch_id=result.import_batch_id,
+        status=result.status,
+        dry_run=result.dry_run,
+        processed_count=result.processed_count,
+        inserted_count=result.inserted_count,
+        updated_count=result.updated_count,
+        missing_marked_count=result.missing_marked_count,
+        skipped_count=result.skipped_count,
+        error_count=result.error_count,
+        media_items_created=result.media_items_created,
+        shows_created=result.shows_created,
+        collection_entries_created=result.collection_entries_created,
     )
 
 
@@ -114,6 +142,32 @@ def import_watch_events(
         ) from exc
 
     return _to_import_response(result)
+
+
+@router.post("/collection/jellyfin", response_model=JellyfinCollectionImportResponse)
+def import_jellyfin_collection(
+    payload: JellyfinCollectionImportRequest,
+    session: Session = Depends(get_db_session),
+) -> JellyfinCollectionImportResponse:
+    try:
+        result = JellyfinCollectionImportService.run_import(session, payload=payload)
+    except JellyfinConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+    except JellyfinClientError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+
+    return _to_collection_import_response(result)
 
 
 @router.post("/watch-events/legacy-source", response_model=WatchEventImportResponse)

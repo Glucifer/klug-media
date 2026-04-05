@@ -7,6 +7,7 @@ from uuid import UUID
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Computed,
     Date,
     DateTime,
@@ -124,7 +125,7 @@ class Show(Base):
     show_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
-    tmdb_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    tmdb_id: Mapped[int | None] = mapped_column(Integer)
     tvdb_id: Mapped[int | None] = mapped_column(Integer)
     imdb_id: Mapped[str | None] = mapped_column(String)
     title: Mapped[str] = mapped_column(String, nullable=False)
@@ -137,6 +138,9 @@ class Show(Base):
     )
 
     media_items: Mapped[list[MediaItem]] = relationship(back_populates="show")
+    collection_entries: Mapped[list[CollectionEntry]] = relationship(
+        back_populates="show"
+    )
 
 
 class MediaItem(Base):
@@ -204,6 +208,67 @@ class MediaItem(Base):
     )
     watch_events: Mapped[list[WatchEvent]] = relationship(back_populates="media_item")
     show: Mapped[Show | None] = relationship(back_populates="media_items")
+    collection_entries: Mapped[list[CollectionEntry]] = relationship(
+        back_populates="media_item"
+    )
+
+
+class CollectionEntry(Base):
+    __tablename__ = "collection_entry"
+    __table_args__ = (
+        UniqueConstraint("source", "source_item_id", name="uq_collection_entry_source_item"),
+        Index("ix_collection_entry_present", "source", "is_present"),
+        Index("ix_collection_entry_library", "source", "library_id"),
+        CheckConstraint(
+            "("
+            "(item_type = 'show'::public.media_type AND show_id IS NOT NULL AND media_item_id IS NULL) OR "
+            "(item_type IN ('movie'::public.media_type, 'episode'::public.media_type) "
+            "AND media_item_id IS NOT NULL AND show_id IS NULL)"
+            ")",
+            name="ck_collection_entry_item_target",
+        ),
+        {"schema": APP_SCHEMA},
+    )
+
+    collection_entry_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    source: Mapped[str] = mapped_column(String, nullable=False)
+    source_item_id: Mapped[str] = mapped_column(String, nullable=False)
+    item_type: Mapped[str] = mapped_column(MEDIA_TYPE_ENUM, nullable=False)
+    media_item_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey(f"{APP_SCHEMA}.media_item.media_item_id", ondelete="SET NULL"),
+    )
+    show_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey(f"{APP_SCHEMA}.shows.show_id", ondelete="SET NULL"),
+    )
+    library_id: Mapped[str] = mapped_column(String, nullable=False)
+    library_name: Mapped[str | None] = mapped_column(String)
+    is_present: Mapped[bool] = mapped_column(
+        Boolean, server_default=text("true"), nullable=False
+    )
+    first_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+    missing_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    added_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    runtime_seconds: Mapped[int | None] = mapped_column(Integer)
+    file_path: Mapped[str | None] = mapped_column(String)
+    source_data: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, server_default=text("'{}'::jsonb"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    media_item: Mapped[MediaItem | None] = relationship(back_populates="collection_entries")
+    show: Mapped[Show | None] = relationship(back_populates="collection_entries")
 
 
 class MediaVersion(Base):

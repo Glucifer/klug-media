@@ -33,6 +33,7 @@ The current system is usable for day-to-day tracking without direct database edi
 Core v1 workflows now include:
 
 - full watch-history import from legacy JSON/CSV exports
+- one-time Jellyfin collection snapshot import for owned movies/shows/episodes
 - live Kodi scrobbling through Node-RED/Home Assistant
 - manual watch entry for off-Kodi viewing
 - TMDB-first metadata enrichment
@@ -47,13 +48,14 @@ The repository currently includes:
 - Versioned API prefix (`/api/v1`)
 - Health endpoint (`GET /api/v1/health`)
 - Import endpoints (`/api/v1/imports/*`)
+- Collection browse endpoints (`/api/v1/collection/*`)
 - Users, media items, watch events, and shows endpoints
 - Manual watch entry endpoint for off-Kodi viewing
 - Horrorfest year/entry endpoints for annual challenge tracking
 - Stats endpoints for dashboard summaries and monthly/Horrorfest rollups
 - Config wiring via `pydantic-settings`
 - SQLAlchemy engine/session module
-- Alembic migrations through `0013_filter_deleted_from_watch_event_enriched`
+- Alembic migrations through `0014_add_collection_entry_table`
 
 ## Architecture Direction
 
@@ -103,6 +105,9 @@ $env:KLUG_WATCH_COLLISION_WINDOW_SECONDS="300"
 $env:KLUG_TMDB_API_KEY="replace-with-tmdb-api-key"
 $env:KLUG_METADATA_ENRICHMENT_ENABLED="true"
 $env:KLUG_METADATA_CACHE_TTL_HOURS="168"
+$env:KLUG_JELLYFIN_BASE_URL="http://jellyfin-host:8096"
+$env:KLUG_JELLYFIN_API_KEY="replace-with-jellyfin-api-key"
+$env:KLUG_JELLYFIN_TIMEOUT_SECONDS="15"
 ```
 
 `KLUG_API_AUTH_MODE` options:
@@ -129,6 +134,11 @@ Metadata enrichment options:
 - `KLUG_TMDB_API_KEY`: TMDB API key used for async metadata enrichment and external-id lookups
 - `KLUG_METADATA_ENRICHMENT_ENABLED`: enables the operator-driven TMDB enrichment queue
 - `KLUG_METADATA_CACHE_TTL_HOURS`: cache lifetime for TMDB payloads stored in `app.tmdb_metadata_cache`
+
+Jellyfin collection import options:
+- `KLUG_JELLYFIN_BASE_URL`: Jellyfin server base URL used for collection snapshot reads
+- `KLUG_JELLYFIN_API_KEY`: Jellyfin API key with read access to libraries and items
+- `KLUG_JELLYFIN_TIMEOUT_SECONDS`: HTTP timeout for Jellyfin snapshot requests
 
 5. Run API:
 ```bash
@@ -197,6 +207,16 @@ Write mode example:
 uv run python -m app.scripts.backfill_episode_shows
 ```
 
+11. Run a Jellyfin collection snapshot import after configuring Jellyfin env vars:
+```bash
+curl -X POST http://172.20.1.10:8010/api/v1/imports/collection/jellyfin -H "Content-Type: application/json" -H "X-API-Key: <your-api-key>" -d '{"dry_run":true}'
+```
+
+Real import example:
+```bash
+curl -X POST http://172.20.1.10:8010/api/v1/imports/collection/jellyfin -H "Content-Type: application/json" -H "X-API-Key: <your-api-key>" -d '{}'
+```
+
 ## API Smoke Checks
 
 With server running on `http://172.20.1.10:8010`:
@@ -205,6 +225,9 @@ With server running on `http://172.20.1.10:8010`:
 curl http://172.20.1.10:8010/api/v1/health
 curl -X POST http://172.20.1.10:8010/api/v1/session/login -H "Content-Type: application/json" -d '{"password":"<session-password>"}'
 curl http://172.20.1.10:8010/api/v1/shows
+curl http://172.20.1.10:8010/api/v1/collection/movies
+curl http://172.20.1.10:8010/api/v1/collection/shows
+curl http://172.20.1.10:8010/api/v1/collection/episodes
 curl http://172.20.1.10:8010/api/v1/shows/progress
 curl "http://172.20.1.10:8010/api/v1/shows/progress?user_id=<your-user-uuid>"
 curl http://172.20.1.10:8010/api/v1/shows/<show-uuid>
@@ -246,6 +269,22 @@ V1 manual entry is intentionally rough but usable from the existing dashboard or
 - optional TMDB episode id can be included as a validation check
 
 Episode note: TMDB does not provide episode-detail lookup by episode id alone, so Klug uses the canonical local episode identity of `show_tmdb_id + season + episode`.
+
+## Jellyfin Collection Import
+
+Collection import is intentionally separate from watch history.
+
+- Jellyfin is treated as the owned-library source of truth for movies, shows, and episodes
+- Klug ignores Jellyfin watched flags, play counts, resume state, and other user playback fields
+- snapshot reruns mark no-longer-present entries as missing instead of deleting them
+- current collection browse lives under `/api/v1/collection/*`
+
+Recommended cutover:
+
+1. Run a dry-run collection import.
+2. Run the real collection import.
+3. Verify `/api/v1/collection/movies`, `/api/v1/collection/shows`, and `/api/v1/collection/episodes`.
+4. Disable the Jellyfin plugin that writes external watch-state changes back into Jellyfin.
 
 ## V1 Notes
 

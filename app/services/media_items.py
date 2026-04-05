@@ -40,6 +40,7 @@ class MediaItemService:
         episode_number: int | None = None,
         show_id: UUID | None = None,
         metadata_source: str | None = None,
+        jellyfin_item_id: str | None = None,
     ) -> MediaItem:
         normalized_title = title.strip()
         normalized_imdb_id = imdb_id.strip() if imdb_id else None
@@ -69,6 +70,7 @@ class MediaItemService:
                 episode_number=episode_number,
                 show_id=show_id,
                 metadata_source=metadata_source,
+                jellyfin_item_id=jellyfin_item_id,
                 enrichment_status=enrichment_state.status,
                 enrichment_error=enrichment_state.error,
             )
@@ -239,6 +241,7 @@ class MediaItemService:
         metadata_source: str | None,
         enrichment_status: str,
         enrichment_error: str | None,
+        jellyfin_item_id: str | None = None,
         ) -> MediaItem:
         now = datetime.now(UTC)
         return media_item_repository.update_media_item(
@@ -260,6 +263,7 @@ class MediaItemService:
             enrichment_status=enrichment_status,
             enrichment_error=enrichment_error,
             enrichment_attempted_at=now,
+            jellyfin_item_id=jellyfin_item_id,
         )
 
     @staticmethod

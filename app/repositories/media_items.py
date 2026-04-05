@@ -33,6 +33,7 @@ def create_media_item(
     enrichment_status: str = "pending",
     enrichment_error: str | None = None,
     enrichment_attempted_at: datetime | None = None,
+    jellyfin_item_id: str | None = None,
 ) -> MediaItem:
     media_item = MediaItem(
         type=media_type,
@@ -48,6 +49,7 @@ def create_media_item(
         season_number=season_number,
         episode_number=episode_number,
         show_id=show_id,
+        jellyfin_item_id=jellyfin_item_id,
         base_runtime_seconds=base_runtime_seconds,
         metadata_source=metadata_source,
         metadata_updated_at=metadata_updated_at,
@@ -99,6 +101,21 @@ def find_media_item_by_external_ids(
     return None
 
 
+def find_media_items_by_title_and_year(
+    session: Session,
+    *,
+    media_type: str,
+    title: str,
+    year: int,
+) -> list[MediaItem]:
+    statement = select(MediaItem).where(
+        MediaItem.type == media_type,
+        func.lower(MediaItem.title) == title.strip().lower(),
+        MediaItem.year == year,
+    )
+    return list(session.scalars(statement))
+
+
 def find_episode_media_item(
     session: Session,
     *,
@@ -109,6 +126,22 @@ def find_episode_media_item(
     statement = select(MediaItem).where(
         MediaItem.type == "episode",
         MediaItem.show_tmdb_id == show_tmdb_id,
+        MediaItem.season_number == season_number,
+        MediaItem.episode_number == episode_number,
+    )
+    return session.scalar(statement)
+
+
+def find_episode_media_item_by_show_id(
+    session: Session,
+    *,
+    show_id,
+    season_number: int,
+    episode_number: int,
+) -> MediaItem | None:
+    statement = select(MediaItem).where(
+        MediaItem.type == "episode",
+        MediaItem.show_id == show_id,
         MediaItem.season_number == season_number,
         MediaItem.episode_number == episode_number,
     )
@@ -253,6 +286,8 @@ def update_media_item(
     imdb_id: str | None = None,
     tvdb_id: int | None = None,
     show_tmdb_id: int | None = None,
+    season_number: int | None = None,
+    episode_number: int | None = None,
     show_id=None,
     base_runtime_seconds: int | None = None,
     metadata_source: str | None = None,
@@ -260,6 +295,7 @@ def update_media_item(
     enrichment_status: str | None = None,
     enrichment_error: str | None = None,
     enrichment_attempted_at: datetime | None = None,
+    jellyfin_item_id: str | None = None,
 ) -> MediaItem:
     if title is not None:
         media_item.title = title
@@ -276,7 +312,13 @@ def update_media_item(
         media_item.tvdb_id = tvdb_id
     if show_tmdb_id is not None:
         media_item.show_tmdb_id = show_tmdb_id
+    if season_number is not None:
+        media_item.season_number = season_number
+    if episode_number is not None:
+        media_item.episode_number = episode_number
     media_item.show_id = show_id
+    if jellyfin_item_id is not None:
+        media_item.jellyfin_item_id = jellyfin_item_id
     media_item.base_runtime_seconds = base_runtime_seconds
     media_item.metadata_source = metadata_source
     media_item.metadata_updated_at = metadata_updated_at

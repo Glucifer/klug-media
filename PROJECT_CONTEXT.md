@@ -28,13 +28,22 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - media items
   - watch events
   - shows + show progress
+  - owned collection browse
   - import batches + import errors
   - watch-event import endpoint(s), including upload route
+  - Jellyfin collection snapshot import endpoint
 - Import upload endpoint:
   - `POST /api/v1/imports/watch-events/legacy-source/upload`
   - accepts JSON/CSV multipart uploads
   - supports `input_schema`, `mode`, `dry_run`, `resume_from_latest`
   - enforces max size via `KLUG_IMPORT_UPLOAD_MAX_MB` (default 25 MB)
+- Owned collection support:
+  - `collection_entry` now models owned library rows separately from watch history
+  - operator browse endpoints exist under `/api/v1/collection/movies|shows|episodes`
+  - operator snapshot import endpoint exists at `POST /api/v1/imports/collection/jellyfin`
+  - Jellyfin collection import reads movies, series, and episodes, creates minimal unmatched Klug records, and marks removed items as missing on rerun
+  - Jellyfin watch state is intentionally ignored; Klug watch history remains separate
+  - `app.shows.tmdb_id` is now nullable so unmatched Jellyfin shows can still be represented
 - Kodi playback ingestion endpoints:
   - `POST /api/v1/webhooks/kodi/events`
   - `POST /api/v1/webhooks/kodi/scrobble`
@@ -97,7 +106,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - client-side section switching for Dashboard, Library, History, Horrorfest, Shows, and Admin
   - dashboard previews for stats, recent watches, unrated queue, and enrichment watchlist
   - Dashboard is evolving into an action-first launch surface with a Needs Attention strip plus context-aware jumps into filtered History, Horrorfest, and Admin views
-  - watched-media `Library` section for browse-first Movies / Episodes / Shows views distinct from future owned-media collection support
+  - watched-media `Library` section for browse-first Movies / Episodes / Shows views distinct from owned-media `Collection` support
   - Phase 5 cross-linking between `Library`/media detail and `History`, including linked browse context, return-to-library flow, and one-click history-open actions
   - watch history title search plus pagination/filtering and client-side sorting for watched time, title, and rating
   - history quick-jump date presets plus active filter summary chips
@@ -140,7 +149,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
 ## What Is Not Implemented Yet (or only partial)
 - Production-grade frontend UI (current page is intentionally minimal).
 - Full watch-history browsing UX polish beyond title search/sorting (advanced filters, column customization).
-- Owned-media `Collection` support does not exist yet; `Library` now refers specifically to watched media.
+- Owned-media `Collection` API support now exists for Jellyfin snapshot imports and browse, but frontend/operator UX is still minimal.
 - Planned external sync integrations (metadata/webhooks/automation connectors) are not fully implemented.
 - Metadata enrichment exists in a first operator-focused form, but there is not yet a polished end-user metadata UI.
 - Scrobbler pipeline is only partially implemented: Kodi/Node-RED ingestion now exists, but richer session/resume handling and additional playback sources still need work.
@@ -185,6 +194,8 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - PostgreSQL, Home Assistant, and Node-RED run on `172.20.1.20`
   - Preferred dev bind/port for Klug is `0.0.0.0:8010` so container-hosted services can reach it without colliding with an existing service on port `8000`
   - After a recent Windows update, TCP port `8010` may be in an excluded port range on this machine; `8210` is a working fallback dev port when `8010` fails with `WinError 10013`
+- Jellyfin note:
+  - The configured Jellyfin MCP endpoint appears misconfigured in this Codex environment (`172.1.20:8096`), so live plugin inspection from MCP is unreliable until that host is corrected.
 - Node-RED collector notes:
   - Flow tab: `Kodi Scrobbler`
   - The current flow reads flow env vars first, then falls back to Node-RED global values for:

@@ -19,7 +19,7 @@ class ShowService:
     def get_or_create_show(
         session: Session,
         *,
-        tmdb_id: int,
+        tmdb_id: int | None,
         title: str,
         year: int | None,
         tvdb_id: int | None,
@@ -30,7 +30,12 @@ class ShowService:
         if not normalized_title:
             raise ValueError("Show title must not be empty")
 
-        existing = show_repository.find_show_by_tmdb_id(session, tmdb_id=tmdb_id)
+        existing = show_repository.find_show_by_external_ids(
+            session,
+            tmdb_id=tmdb_id,
+            tvdb_id=tvdb_id,
+            imdb_id=normalized_imdb_id,
+        )
         if existing is not None:
             return existing
 
@@ -59,7 +64,7 @@ class ShowService:
     def upsert_show(
         session: Session,
         *,
-        tmdb_id: int,
+        tmdb_id: int | None,
         title: str,
         year: int | None,
         tvdb_id: int | None,
@@ -70,7 +75,12 @@ class ShowService:
         if not normalized_title:
             raise ValueError("Show title must not be empty")
 
-        existing = show_repository.find_show_by_tmdb_id(session, tmdb_id=tmdb_id)
+        existing = show_repository.find_show_by_external_ids(
+            session,
+            tmdb_id=tmdb_id,
+            tvdb_id=tvdb_id,
+            imdb_id=normalized_imdb_id,
+        )
         if existing is None:
             return ShowService.get_or_create_show(
                 session,
@@ -86,6 +96,7 @@ class ShowService:
             show=existing,
             title=normalized_title,
             year=year,
+            tmdb_id=tmdb_id,
             tvdb_id=tvdb_id,
             imdb_id=normalized_imdb_id,
         )

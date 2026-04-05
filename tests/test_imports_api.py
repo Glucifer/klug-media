@@ -7,7 +7,13 @@ from fastapi.testclient import TestClient
 
 from app.core.auth import require_request_auth
 from app.main import app
+from app.schemas.collection import JellyfinCollectionImportRequest
 from app.scripts.import_watch_events import LegacyBackupPreprocessResult
+from app.services.collection_imports import (
+    JellyfinCollectionImportResult,
+    JellyfinCollectionImportService,
+)
+from app.services.jellyfin import JellyfinClientError
 from app.services.imports import WatchEventImportResult, WatchEventImportService
 
 
@@ -63,6 +69,61 @@ def test_import_watch_events_returns_summary(monkeypatch) -> None:
     assert payload["skipped_count"] == 1
     assert payload["error_count"] == 1
     assert payload["rejected_before_import"] == 2
+
+
+def test_import_jellyfin_collection_returns_summary(monkeypatch) -> None:
+    expected_result = JellyfinCollectionImportResult(
+        import_batch_id=uuid4(),
+        status="dry_run",
+        dry_run=True,
+        processed_count=12,
+        inserted_count=10,
+        updated_count=2,
+        missing_marked_count=4,
+        skipped_count=1,
+        error_count=0,
+        media_items_created=8,
+        shows_created=2,
+        collection_entries_created=10,
+    )
+
+    def fake_run_import(_session, *, payload: JellyfinCollectionImportRequest):
+        assert payload.dry_run is True
+        assert payload.library_ids == ["movies"]
+        return expected_result
+
+    monkeypatch.setattr(JellyfinCollectionImportService, "run_import", fake_run_import)
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/imports/collection/jellyfin",
+        json={
+            "dry_run": True,
+            "library_ids": ["movies"],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["processed_count"] == 12
+    assert payload["updated_count"] == 2
+    assert payload["missing_marked_count"] == 4
+    assert payload["collection_entries_created"] == 10
+
+
+def test_import_jellyfin_collection_maps_client_errors_to_502(monkeypatch) -> None:
+    monkeypatch.setattr(
+        JellyfinCollectionImportService,
+        "run_import",
+        lambda _session, *, payload: (_ for _ in ()).throw(
+            JellyfinClientError("Jellyfin request failed")
+        ),
+    )
+
+    client = TestClient(app)
+    response = client.post("/api/v1/imports/collection/jellyfin", json={})
+
+    assert response.status_code == 502
 
 
 def test_import_watch_events_unsupported_source_returns_422(monkeypatch) -> None:

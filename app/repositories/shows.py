@@ -1,5 +1,6 @@
 from uuid import UUID
 
+import sqlalchemy as sa
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
@@ -38,10 +39,23 @@ def find_show_by_external_ids(
     return None
 
 
+def find_shows_by_title_and_year(
+    session: Session,
+    *,
+    title: str,
+    year: int,
+) -> list[Show]:
+    statement = select(Show).where(
+        sa.func.lower(Show.title) == title.strip().lower(),
+        Show.year == year,
+    )
+    return list(session.scalars(statement))
+
+
 def create_show(
     session: Session,
     *,
-    tmdb_id: int,
+    tmdb_id: int | None,
     title: str,
     year: int | None,
     tvdb_id: int | None,
@@ -68,7 +82,9 @@ def update_show(
     year: int | None,
     tvdb_id: int | None,
     imdb_id: str | None,
+    tmdb_id: int | None,
 ) -> Show:
+    show.tmdb_id = tmdb_id
     show.title = title
     show.year = year
     show.tvdb_id = tvdb_id

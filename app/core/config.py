@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     klug_tmdb_api_key: str | None = None
     klug_metadata_enrichment_enabled: bool = True
     klug_metadata_cache_ttl_hours: int = 24 * 7
+    klug_jellyfin_base_url: str | None = None
+    klug_jellyfin_api_key: str | None = None
+    klug_jellyfin_timeout_seconds: int = 15
     database_url: str = (
         "postgresql+psycopg://postgres:postgres@localhost:5432/klug_media"
     )

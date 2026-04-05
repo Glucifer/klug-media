@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.api.collection import router as collection_router
 from app.api.frontend import WEB_ROOT, router as frontend_router
 from app.api.health import router as health_router
 from app.api.horrorfest import router as horrorfest_router
@@ -36,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(stats_router, prefix=settings.api_v1_prefix)
     app.include_router(imports_router, prefix=settings.api_v1_prefix)
     app.include_router(import_batches_router, prefix=settings.api_v1_prefix)
+    app.include_router(collection_router, prefix=settings.api_v1_prefix)
     app.include_router(library_router, prefix=settings.api_v1_prefix)
     app.include_router(metadata_enrichment_router, prefix=settings.api_v1_prefix)
     app.include_router(users_router, prefix=settings.api_v1_prefix)
