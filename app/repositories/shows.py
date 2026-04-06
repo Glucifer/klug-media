@@ -39,6 +39,16 @@ def find_show_by_external_ids(
     return None
 
 
+def find_show_by_tvdb_id(session: Session, *, tvdb_id: int) -> Show | None:
+    statement = select(Show).where(Show.tvdb_id == tvdb_id)
+    return session.scalar(statement)
+
+
+def find_show_by_imdb_id(session: Session, *, imdb_id: str) -> Show | None:
+    statement = select(Show).where(Show.imdb_id == imdb_id)
+    return session.scalar(statement)
+
+
 def find_shows_by_title_and_year(
     session: Session,
     *,

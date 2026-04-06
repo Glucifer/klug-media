@@ -6,6 +6,26 @@ from app.services.collection_imports import JellyfinCollectionImportService
 from app.services.jellyfin import JellyfinCollectionItem, JellyfinLibrary
 
 
+class DummyNestedTransaction:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+class DummySession:
+    def __init__(self) -> None:
+        self.rollback_calls = 0
+
+    def begin_nested(self):
+        return DummyNestedTransaction()
+
+    def rollback(self):
+        self.rollback_calls += 1
+        return None
+
+
 class DummyClient:
     def __init__(self, libraries, items_by_library) -> None:
         self._libraries = libraries
@@ -107,7 +127,7 @@ def test_run_import_dry_run_counts_new_rows_and_missing_entries(monkeypatch) -> 
             "tv": [_show_item(), _episode_item()],
         },
     )
-    session_obj = object()
+    session_obj = DummySession()
 
     monkeypatch.setattr(
         "app.services.collection_imports.collection_repository.find_collection_entry_by_source_item",
@@ -166,7 +186,7 @@ def test_run_import_updates_existing_rows_and_marks_missing(monkeypatch) -> None
         libraries=[JellyfinLibrary("movies", "Movies", "movies")],
         items_by_library={"movies": [_movie_item()]},
     )
-    session_obj = object()
+    session_obj = DummySession()
     finish_calls: dict[str, object] = {}
 
     monkeypatch.setattr(
@@ -180,6 +200,18 @@ def test_run_import_updates_existing_rows_and_marks_missing(monkeypatch) -> None
     monkeypatch.setattr(
         "app.services.collection_imports.media_item_repository.update_media_item",
         lambda *_args, **_kwargs: movie_media_item,
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.media_item_repository.find_media_item_by_tmdb_id",
+        lambda *_args, **_kwargs: movie_media_item,
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.media_item_repository.find_media_item_by_imdb_id",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.media_item_repository.find_media_item_by_tvdb_id",
+        lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
         "app.services.collection_imports.MediaItemService.determine_initial_enrichment_state",
@@ -222,7 +254,7 @@ def test_run_import_logs_ambiguous_title_match_and_creates_new_movie(monkeypatch
         libraries=[JellyfinLibrary("movies", "Movies", "movies")],
         items_by_library={"movies": [_movie_item(source_item_id="movie-ambiguous")]},
     )
-    session_obj = object()
+    session_obj = DummySession()
     recorded_errors: list[dict] = []
 
     monkeypatch.setattr(
@@ -242,6 +274,18 @@ def test_run_import_logs_ambiguous_title_match_and_creates_new_movie(monkeypatch
         lambda *_args, **_kwargs: movie_media_item,
     )
     monkeypatch.setattr(
+        "app.services.collection_imports.media_item_repository.find_media_item_by_tmdb_id",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.media_item_repository.find_media_item_by_imdb_id",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.media_item_repository.find_media_item_by_tvdb_id",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
         "app.services.collection_imports.collection_repository.create_collection_entry",
         lambda *_args, **_kwargs: None,
     )
@@ -259,6 +303,14 @@ def test_run_import_logs_ambiguous_title_match_and_creates_new_movie(monkeypatch
     )
     monkeypatch.setattr(
         "app.services.collection_imports.ImportBatchService.add_import_batch_error",
+        lambda *_args, **kwargs: recorded_errors.append(kwargs),
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.import_batch_repository.get_import_batch",
+        lambda *_args, **_kwargs: SimpleNamespace(import_batch_id=batch_id, errors_count=0),
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.import_batch_repository.create_import_batch_error",
         lambda *_args, **kwargs: recorded_errors.append(kwargs),
     )
     monkeypatch.setattr(
@@ -283,7 +335,7 @@ def test_run_import_skips_invalid_episode_rows(monkeypatch) -> None:
         libraries=[JellyfinLibrary("tv", "TV Shows", "tvshows")],
         items_by_library={"tv": [_episode_item(season_number=None)]},
     )
-    session_obj = object()
+    session_obj = DummySession()
     recorded_errors: list[dict] = []
 
     monkeypatch.setattr(
@@ -316,3 +368,87 @@ def test_run_import_skips_invalid_episode_rows(monkeypatch) -> None:
     assert result.error_count == 1
     assert result.skipped_count == 1
     assert recorded_errors[0]["entity_ref"] == "episode-1"
+
+
+def test_run_import_item_errors_do_not_rollback_successful_outer_work(monkeypatch) -> None:
+    batch_id = uuid4()
+    created_entries: list[str] = []
+    client = DummyClient(
+        libraries=[JellyfinLibrary("movies", "Movies", "movies")],
+        items_by_library={"movies": [_movie_item(source_item_id="movie-ok"), _movie_item(source_item_id="movie-bad")]},
+    )
+    session_obj = DummySession()
+
+    monkeypatch.setattr(
+        "app.services.collection_imports.collection_repository.find_collection_entry_by_source_item",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.media_item_repository.find_media_item_by_external_ids",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.media_item_repository.find_media_items_by_title_and_year",
+        lambda *_args, **_kwargs: [],
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.media_item_repository.find_media_item_by_tmdb_id",
+        lambda *_args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.media_item_repository.find_media_item_by_imdb_id",
+        lambda *_args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.media_item_repository.find_media_item_by_tvdb_id",
+        lambda *_args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.MediaItemService.determine_initial_enrichment_state",
+        lambda **_kwargs: SimpleNamespace(status="pending", error=None),
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.ImportBatchService.start_import_batch",
+        lambda *_args, **_kwargs: SimpleNamespace(import_batch_id=batch_id),
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.ImportBatchService.finish_import_batch",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.ImportBatchService.add_import_batch_error",
+        lambda *_args, **_kwargs: None,
+    )
+
+    def fake_create_media_item(_session, **kwargs):
+        if kwargs["jellyfin_item_id"] == "movie-bad":
+            raise ValueError("duplicate id conflict")
+        return SimpleNamespace(media_item_id=uuid4())
+
+    def fake_create_collection_entry(_session, **kwargs):
+        created_entries.append(kwargs["source_item_id"])
+        return None
+
+    monkeypatch.setattr(
+        "app.services.collection_imports.media_item_repository.create_media_item",
+        fake_create_media_item,
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.collection_repository.create_collection_entry",
+        fake_create_collection_entry,
+    )
+    monkeypatch.setattr(
+        "app.services.collection_imports.collection_repository.mark_missing_entries",
+        lambda *_args, **_kwargs: 0,
+    )
+
+    result = JellyfinCollectionImportService.run_import(
+        session_obj,
+        payload=JellyfinCollectionImportRequest(dry_run=False),
+        client=client,
+    )
+
+    assert result.inserted_count == 1
+    assert result.error_count == 1
+    assert created_entries == ["movie-ok"]
+    assert session_obj.rollback_calls == 0

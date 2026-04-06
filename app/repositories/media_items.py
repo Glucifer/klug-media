@@ -101,6 +101,45 @@ def find_media_item_by_external_ids(
     return None
 
 
+def find_media_item_by_tmdb_id(
+    session: Session,
+    *,
+    media_type: str,
+    tmdb_id: int,
+) -> MediaItem | None:
+    statement = select(MediaItem).where(
+        MediaItem.type == media_type,
+        MediaItem.tmdb_id == tmdb_id,
+    )
+    return session.scalar(statement)
+
+
+def find_media_item_by_tvdb_id(
+    session: Session,
+    *,
+    media_type: str,
+    tvdb_id: int,
+) -> MediaItem | None:
+    statement = select(MediaItem).where(
+        MediaItem.type == media_type,
+        MediaItem.tvdb_id == tvdb_id,
+    )
+    return session.scalar(statement)
+
+
+def find_media_item_by_imdb_id(
+    session: Session,
+    *,
+    media_type: str,
+    imdb_id: str,
+) -> MediaItem | None:
+    statement = select(MediaItem).where(
+        MediaItem.type == media_type,
+        MediaItem.imdb_id == imdb_id,
+    )
+    return session.scalar(statement)
+
+
 def find_media_items_by_title_and_year(
     session: Session,
     *,
