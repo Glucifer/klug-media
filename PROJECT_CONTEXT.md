@@ -202,9 +202,10 @@ Purpose: quick rehydration file after context compaction so work can resume with
     - `KLUG_API_BASE_URL` (for current dev setup, use `http://172.20.1.10:8010`)
     - `KLUG_API_KEY`
     - `KLUG_USER_ID`
-  - The current collector listens to `media_player.kodi` state changes and also polls lightweight progress every 5 minutes while Kodi is playing.
+  - The current collector listens to `media_player.kodi` state changes and also polls lightweight progress every 60 seconds while Kodi is playing.
   - Live verification now succeeds end to end: Kodi play/stop events persist to `playback_event`, high-progress stop events create `watch_event`, and external IDs such as `tvdb_id` are promoted from Kodi payloads for later enrichment.
   - The deployed flow uses a native Node-RED `http request` node for delivery to Klug rather than `fetch` inside a function node.
+  - The collector's http request node should keep senderr: true so transport failures reach the Klug API Error debug path instead of disappearing silently.
 
 ## 🛠 Status Dashboard
 - [x] Backend Core (FastAPI)
@@ -230,4 +231,3 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - auth behavior changes
   - scripts/import behavior changes
   - workflow agreements with user change
-
