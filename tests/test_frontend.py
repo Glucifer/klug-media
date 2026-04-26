@@ -10,7 +10,10 @@ def test_root_frontend_serves_index() -> None:
     assert response.status_code == 200
     assert "Klug Media" in response.text
     assert "Library" in response.text
+    assert "Collection" in response.text
     assert "Watched Media Index" in response.text
+    assert "Owned Media Snapshot" in response.text
+    assert "Browse what Jellyfin says is currently in your library" in response.text
     assert "Back to Library" in response.text
     assert "Open History" in response.text
     assert "Needs Attention" in response.text
@@ -69,3 +72,4 @@ def test_frontend_static_assets_are_served() -> None:
     assert ":root" in css_response.text
     assert js_response.status_code == 200
     assert "checkSession();" in js_response.text
+    assert "Back to Collection" in js_response.text

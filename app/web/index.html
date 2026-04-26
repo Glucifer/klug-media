@@ -32,6 +32,7 @@
           <nav class="sidebar-nav">
             <button class="nav-link active" data-view-target="dashboard" type="button">Dashboard</button>
             <button class="nav-link" data-view-target="library" type="button">Library</button>
+            <button class="nav-link" data-view-target="collection" type="button">Collection</button>
             <button class="nav-link" data-view-target="history" type="button">History</button>
             <button class="nav-link" data-view-target="horrorfest" type="button">Horrorfest</button>
             <button class="nav-link" data-view-target="shows" type="button">Shows</button>
@@ -212,6 +213,38 @@
                 <tbody id="library-body"></tbody>
               </table>
               <div class="pagination-row"><button id="library-prev" class="secondary" type="button">Previous</button><span id="library-page" class="muted">Page 1</span><button id="library-next" class="secondary" type="button">Next</button></div>
+            </section>
+          </section>
+
+          <section class="view-panel hidden" data-view="collection">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Owned Media Snapshot</p>
+                <h2>Collection</h2>
+                <p class="muted">Browse what Jellyfin says is currently in your library, separate from watch history.</p>
+              </div>
+            </div>
+            <section class="section-card">
+              <div class="library-toolbar-head">
+                <div class="mode-switch" role="tablist" aria-label="Collection mode">
+                  <button class="secondary collection-mode active" data-collection-mode="movies" type="button">Movies</button>
+                  <button class="secondary collection-mode" data-collection-mode="episodes" type="button">Episodes</button>
+                  <button class="secondary collection-mode" data-collection-mode="shows" type="button">Shows</button>
+                </div>
+                <p id="collection-status" class="muted">Loading collection...</p>
+              </div>
+              <div class="toolbar-grid">
+                <label for="collection-query">Title Search</label><input id="collection-query" type="search" placeholder="Search owned movies, episodes, or shows" />
+                <label for="collection-present">Presence</label><select id="collection-present"><option value="">All</option><option value="true">Present</option><option value="false">Missing</option></select>
+                <label for="collection-limit">Rows</label><select id="collection-limit"><option value="25">25</option><option value="50">50</option><option value="100">100</option></select>
+                <button id="collection-apply" class="secondary" type="button">Apply</button>
+              </div>
+              <p id="collection-filter-summary" class="muted">Showing collection rows from Jellyfin.</p>
+              <table class="library-table">
+                <thead><tr id="collection-head"></tr></thead>
+                <tbody id="collection-body"></tbody>
+              </table>
+              <div class="pagination-row"><button id="collection-prev" class="secondary" type="button">Previous</button><span id="collection-page" class="muted">Page 1</span><button id="collection-next" class="secondary" type="button">Next</button></div>
             </section>
           </section>
 

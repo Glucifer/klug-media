@@ -373,7 +373,8 @@ ul {
   gap: var(--space-2);
 }
 
-.library-mode.active {
+.library-mode.active,
+.collection-mode.active {
   background: linear-gradient(90deg, rgba(255, 138, 61, 0.16), rgba(97, 178, 255, 0.12));
   border-color: var(--border-strong);
   color: var(--fg);

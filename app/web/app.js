@@ -65,6 +65,17 @@ const libraryBody = document.getElementById("library-body");
 const libraryPrev = document.getElementById("library-prev");
 const libraryNext = document.getElementById("library-next");
 const libraryPage = document.getElementById("library-page");
+const collectionQuery = document.getElementById("collection-query");
+const collectionPresent = document.getElementById("collection-present");
+const collectionLimitSelect = document.getElementById("collection-limit");
+const collectionApply = document.getElementById("collection-apply");
+const collectionStatus = document.getElementById("collection-status");
+const collectionFilterSummary = document.getElementById("collection-filter-summary");
+const collectionHead = document.getElementById("collection-head");
+const collectionBody = document.getElementById("collection-body");
+const collectionPrev = document.getElementById("collection-prev");
+const collectionNext = document.getElementById("collection-next");
+const collectionPage = document.getElementById("collection-page");
 const historyMediaType = document.getElementById("history-media-type");
 const historyQuery = document.getElementById("history-query");
 const historyLocalDateFrom = document.getElementById("history-local-date-from");
@@ -261,6 +272,7 @@ const jumpButtons = Array.from(document.querySelectorAll("[data-jump-view]"));
 const historySortButtons = Array.from(document.querySelectorAll("[data-history-sort]"));
 const historyPresetButtons = Array.from(document.querySelectorAll("[data-history-preset]"));
 const libraryModeButtons = Array.from(document.querySelectorAll("[data-library-mode]"));
+const collectionModeButtons = Array.from(document.querySelectorAll("[data-collection-mode]"));
 const horrorfestModeButtons = Array.from(document.querySelectorAll("[data-horrorfest-mode]"));
 const horrorfestAnalyticsSortButtons = Array.from(
   document.querySelectorAll("[data-horrorfest-analytics-sort]")
@@ -291,6 +303,10 @@ const UI_PREF_KEYS = {
   libraryEnrichmentStatus: "klug.library_enrichment_status",
   libraryWatched: "klug.library_watched",
   libraryLimit: "klug.library_limit",
+  collectionMode: "klug.collection_mode",
+  collectionQuery: "klug.collection_query",
+  collectionPresent: "klug.collection_present",
+  collectionLimit: "klug.collection_limit",
   historyLinkedContext: "klug.history_linked_context",
   dashboardAdminContext: "klug.dashboard_admin_context",
   dashboardHorrorfestContext: "klug.dashboard_horrorfest_context",
@@ -307,6 +323,9 @@ let historyRows = [];
 let libraryOffset = 0;
 let libraryLimit = Number.parseInt(libraryLimitSelect.value, 10);
 let libraryMode = window.localStorage.getItem(UI_PREF_KEYS.libraryMode) || "movies";
+let collectionOffset = 0;
+let collectionLimit = Number.parseInt(collectionLimitSelect.value, 10);
+let collectionMode = window.localStorage.getItem(UI_PREF_KEYS.collectionMode) || "movies";
 let selectedHistoryId = null;
 let historySortKey = "watched_at";
 let historySortDirection = "desc";
@@ -349,6 +368,7 @@ let statsSummaryData = null;
 let statsMonthlyRowsData = [];
 let statsHorrorfestRowsData = [];
 let libraryRows = [];
+let collectionRows = [];
 let linkedHistoryContext = null;
 let selectedShowDetail = null;
 let selectedMediaItemId = null;
@@ -535,6 +555,8 @@ function renderHistoryContextBanner() {
       ? "Media detail"
       : linkedHistoryContext.sourceView === "library"
         ? "Library"
+        : linkedHistoryContext.sourceView === "collection"
+          ? "Collection"
         : linkedHistoryContext.sourceView === "shows"
           ? "Shows"
           : linkedHistoryContext.sourceView === "horrorfest"
@@ -559,6 +581,8 @@ function renderHistoryContextBanner() {
   historyContextReturn.textContent =
     linkedHistoryContext.sourceView === "library"
       ? "Back to Library"
+      : linkedHistoryContext.sourceView === "collection"
+        ? "Back to Collection"
       : linkedHistoryContext.sourceView === "shows"
         ? "Back to Shows"
         : linkedHistoryContext.sourceView === "horrorfest"
@@ -771,11 +795,17 @@ function initializeUiShell() {
   libraryLimitSelect.value =
     window.localStorage.getItem(UI_PREF_KEYS.libraryLimit) || libraryLimitSelect.value;
   libraryLimit = Number.parseInt(libraryLimitSelect.value, 10);
+  collectionQuery.value = window.localStorage.getItem(UI_PREF_KEYS.collectionQuery) || "";
+  collectionPresent.value = window.localStorage.getItem(UI_PREF_KEYS.collectionPresent) || "";
+  collectionLimitSelect.value =
+    window.localStorage.getItem(UI_PREF_KEYS.collectionLimit) || collectionLimitSelect.value;
+  collectionLimit = Number.parseInt(collectionLimitSelect.value, 10);
   loadPersistedLinkedHistoryContext();
   loadPersistedDashboardContexts();
   setActiveView(window.localStorage.getItem(UI_PREF_KEYS.activeView) || "dashboard");
   setActiveAdminView(window.localStorage.getItem(UI_PREF_KEYS.activeAdminView) || "imports");
   setLibraryMode(window.localStorage.getItem(UI_PREF_KEYS.libraryMode) || "movies");
+  setCollectionMode(window.localStorage.getItem(UI_PREF_KEYS.collectionMode) || "movies");
   setHorrorfestMode(window.localStorage.getItem(UI_PREF_KEYS.horrorfestMode) || "log");
   horrorfestCompareLeftValue = Number.parseInt(
     window.localStorage.getItem(UI_PREF_KEYS.horrorfestCompareLeft) || "",
@@ -793,6 +823,7 @@ function initializeUiShell() {
   renderHorrorfestContextBanner();
   renderHistoryFilterSummary();
   renderLibraryFilterSummary();
+  renderCollectionFilterSummary();
 }
 
 function setAuthenticatedUI(authenticated, message) {
@@ -886,6 +917,7 @@ async function loadDashboardData() {
   loadManualWatchPreferences();
   await Promise.all([
     loadLibrary(),
+    loadCollection(),
     loadShows(),
     loadStats(),
     loadDashboardPreviews(),
@@ -1038,6 +1070,14 @@ async function returnHistoryContextToSource() {
     }
     setActiveView("library");
     await loadLibrary();
+    return;
+  }
+  if (linkedHistoryContext.sourceView === "collection") {
+    if (linkedHistoryContext.libraryMode) {
+      setCollectionMode(linkedHistoryContext.libraryMode);
+    }
+    setActiveView("collection");
+    await loadCollection();
     return;
   }
   if (linkedHistoryContext.sourceView === "shows") {
@@ -1194,6 +1234,15 @@ function setLibraryMode(mode) {
   renderLibraryFilterSummary();
 }
 
+function setCollectionMode(mode) {
+  collectionMode = mode || "movies";
+  for (const button of collectionModeButtons) {
+    button.classList.toggle("active", button.dataset.collectionMode === collectionMode);
+  }
+  window.localStorage.setItem(UI_PREF_KEYS.collectionMode, collectionMode);
+  renderCollectionFilterSummary();
+}
+
 function renderLibraryFilterSummary() {
   const chips = [renderStatusChip(`mode: ${libraryMode}`, "info")];
   if (libraryQuery.value.trim()) {
@@ -1218,11 +1267,36 @@ function renderLibraryFilterSummary() {
   libraryFilterSummary.innerHTML = `Active filters: ${chips.join(" ")}`;
 }
 
+function renderCollectionFilterSummary() {
+  const chips = [renderStatusChip(`mode: ${collectionMode}`, "info")];
+  if (collectionQuery.value.trim()) {
+    chips.push(
+      renderStatusChip(`title: ${escapeHtml(collectionQuery.value.trim())}`, "neutral")
+    );
+  }
+  if (collectionPresent.value) {
+    chips.push(
+      renderStatusChip(
+        collectionPresent.value === "true" ? "present" : "missing",
+        collectionPresent.value === "true" ? "success" : "warning"
+      )
+    );
+  }
+  collectionFilterSummary.innerHTML = `Active filters: ${chips.join(" ")}`;
+}
+
 function setLibraryPagination(rowsLoaded) {
   const page = Math.floor(libraryOffset / libraryLimit) + 1;
   libraryPage.textContent = `Page ${page}`;
   libraryPrev.disabled = libraryOffset === 0;
   libraryNext.disabled = rowsLoaded < libraryLimit;
+}
+
+function setCollectionPagination(rowsLoaded) {
+  const page = Math.floor(collectionOffset / collectionLimit) + 1;
+  collectionPage.textContent = `Page ${page}`;
+  collectionPrev.disabled = collectionOffset === 0;
+  collectionNext.disabled = rowsLoaded < collectionLimit;
 }
 
 function buildLibraryQuery() {
@@ -1247,6 +1321,19 @@ function buildLibraryQuery() {
   return params.toString();
 }
 
+function buildCollectionQuery() {
+  const params = new URLSearchParams();
+  params.set("limit", String(collectionLimit));
+  params.set("offset", String(collectionOffset));
+  if (collectionQuery.value.trim()) {
+    params.set("query", collectionQuery.value.trim());
+  }
+  if (collectionPresent.value) {
+    params.set("present", collectionPresent.value);
+  }
+  return params.toString();
+}
+
 function renderLibraryHeader() {
   if (libraryMode === "movies") {
     libraryHead.innerHTML =
@@ -1261,12 +1348,34 @@ function renderLibraryHeader() {
   libraryHead.innerHTML = "<th>Show</th><th>Year</th><th>Progress</th><th>Signals</th><th>Actions</th>";
 }
 
+function renderCollectionHeader() {
+  if (collectionMode === "movies") {
+    collectionHead.innerHTML =
+      "<th>Title</th><th>Added</th><th>Library</th><th>Status</th><th>IDs</th><th>Actions</th>";
+    return;
+  }
+  if (collectionMode === "episodes") {
+    collectionHead.innerHTML =
+      "<th>Episode</th><th>Show</th><th>Added</th><th>Status</th><th>IDs</th><th>Actions</th>";
+    return;
+  }
+  collectionHead.innerHTML =
+    "<th>Show</th><th>Year</th><th>Library</th><th>Status</th><th>IDs</th><th>Actions</th>";
+}
+
 function renderLibraryEmpty(message) {
   libraryBody.innerHTML = "";
   const tr = document.createElement("tr");
   const columnCount = libraryMode === "shows" ? 5 : 6;
   tr.innerHTML = `<td colspan="${columnCount}">${message}</td>`;
   libraryBody.appendChild(tr);
+}
+
+function renderCollectionEmpty(message) {
+  collectionBody.innerHTML = "";
+  const tr = document.createElement("tr");
+  tr.innerHTML = `<td colspan="6">${message}</td>`;
+  collectionBody.appendChild(tr);
 }
 
 function renderLibraryRows() {
@@ -1386,7 +1495,141 @@ function renderLibraryRows() {
   }
 }
 
+function renderCollectionIds(row) {
+  const ids = [];
+  if (row.tmdb_id) {
+    ids.push(renderStatusChip(`TMDB ${escapeHtml(row.tmdb_id)}`, "info"));
+  }
+  if (row.imdb_id) {
+    ids.push(renderStatusChip(escapeHtml(row.imdb_id), "neutral"));
+  }
+  if (row.tvdb_id) {
+    ids.push(renderStatusChip(`TVDB ${escapeHtml(row.tvdb_id)}`, "neutral"));
+  }
+  return ids.length ? ids.join(" ") : renderStatusChip("no external ids", "neutral");
+}
+
+function renderCollectionPresence(row) {
+  const statusChips = [
+    row.is_present ? renderStatusChip("present", "success") : renderStatusChip("missing", "warning"),
+  ];
+  if (!row.is_present && row.missing_since) {
+    statusChips.push(
+      renderStatusChip(
+        `missing since ${escapeHtml(new Date(row.missing_since).toLocaleDateString())}`,
+        "warning"
+      )
+    );
+  }
+  return statusChips.join(" ");
+}
+
+function renderCollectionRows() {
+  collectionBody.innerHTML = "";
+  if (!collectionRows.length) {
+    renderCollectionEmpty("No collection rows for the current filter.");
+    return;
+  }
+  for (const row of collectionRows) {
+    const tr = document.createElement("tr");
+    tr.classList.add("history-row-clickable");
+    const addedAt = row.added_at ? new Date(row.added_at).toLocaleDateString() : "-";
+    const libraryName = escapeHtml(row.library_name || row.library_id || "-");
+    const status = renderCollectionPresence(row);
+    const ids = renderCollectionIds(row);
+    if (collectionMode === "movies") {
+      tr.innerHTML = `
+        <td>
+          <div class="library-title-cell">
+            ${
+              row.media_item_id
+                ? `<button class="media-link-button" data-media-item-open="${row.media_item_id}" type="button">${escapeHtml(row.title)}</button>`
+                : escapeHtml(row.title)
+            }
+            <div class="muted">${escapeHtml(row.year || "-")}</div>
+          </div>
+        </td>
+        <td>${addedAt}</td>
+        <td>${libraryName}</td>
+        <td><div class="history-badges">${status}</div></td>
+        <td><div class="history-badges">${ids}</div></td>
+        <td>
+          <div class="button-cluster compact-actions">
+            ${
+              row.media_item_id
+                ? `<button class="secondary collection-inline-button" data-media-item-open="${row.media_item_id}" type="button">Open Media</button>
+                   <button class="secondary collection-inline-button" data-collection-history-open="${row.media_item_id}" data-collection-history-label="${escapeHtml(row.title)}" data-collection-history-type="movie" type="button">Open History</button>`
+                : ""
+            }
+          </div>
+        </td>
+      `;
+    } else if (collectionMode === "episodes") {
+      const episodeLabel = `S${String(row.season_number ?? "?").padStart(2, "0")}E${String(row.episode_number ?? "?").padStart(2, "0")}`;
+      tr.innerHTML = `
+        <td>
+          <div class="library-title-cell">
+            ${
+              row.media_item_id
+                ? `<button class="media-link-button" data-media-item-open="${row.media_item_id}" type="button">${escapeHtml(row.title)}</button>`
+                : escapeHtml(row.title)
+            }
+            <div class="muted">${episodeLabel}</div>
+          </div>
+        </td>
+        <td>${escapeHtml(row.show_title || "-")}</td>
+        <td>${addedAt}</td>
+        <td><div class="history-badges">${status}</div></td>
+        <td><div class="history-badges">${ids}</div></td>
+        <td>
+          <div class="button-cluster compact-actions">
+            ${
+              row.media_item_id
+                ? `<button class="secondary collection-inline-button" data-media-item-open="${row.media_item_id}" type="button">Open Media</button>
+                   <button class="secondary collection-inline-button" data-collection-history-open="${row.media_item_id}" data-collection-history-label="${escapeHtml(row.show_title ? `${row.show_title} - ${row.title}` : row.title)}" data-collection-history-type="episode" type="button">Open History</button>`
+                : ""
+            }
+            ${
+              row.show_id
+                ? `<button class="secondary collection-inline-button" data-collection-show-open="${row.show_id}" type="button">Show Detail</button>`
+                : ""
+            }
+          </div>
+        </td>
+      `;
+    } else {
+      tr.innerHTML = `
+        <td>
+          <div class="library-title-cell">
+            <button class="media-link-button" data-collection-show-open="${row.show_id}" type="button">${escapeHtml(row.title)}</button>
+          </div>
+        </td>
+        <td>${escapeHtml(row.year || "-")}</td>
+        <td>${libraryName}</td>
+        <td><div class="history-badges">${status}</div></td>
+        <td><div class="history-badges">${ids}</div></td>
+        <td>
+          <div class="button-cluster compact-actions">
+            <button class="secondary collection-inline-button" data-collection-show-open="${row.show_id}" type="button">Show Detail</button>
+            <button class="secondary collection-inline-button" data-collection-show-history="${escapeHtml(row.title)}" type="button">Open History</button>
+          </div>
+        </td>
+      `;
+    }
+    collectionBody.appendChild(tr);
+  }
+}
+
 async function openLibraryShow(showId) {
+  if (!showId) {
+    return;
+  }
+  setActiveView("shows");
+  await loadShows();
+  await loadShowDetail(showId);
+}
+
+async function openCollectionShow(showId) {
   if (!showId) {
     return;
   }
@@ -1422,6 +1665,36 @@ async function loadLibrary() {
     libraryStatus.textContent = "Failed to load watched library";
     renderLibraryEmpty("Watched library unavailable right now.");
     setLibraryPagination(0);
+  }
+}
+
+async function loadCollection() {
+  renderCollectionHeader();
+  renderCollectionFilterSummary();
+  collectionStatus.textContent = "Loading collection...";
+  collectionBody.innerHTML = "";
+  try {
+    const response = await api(`/api/v1/collection/${collectionMode}?${buildCollectionQuery()}`);
+    if (!response.ok) {
+      collectionStatus.textContent = "Failed to load collection";
+      renderCollectionEmpty("Collection unavailable right now.");
+      setCollectionPagination(0);
+      return;
+    }
+    collectionRows = await response.json();
+    if (!collectionRows.length) {
+      collectionStatus.textContent = "No collection rows for the current filter";
+      renderCollectionEmpty("No collection rows for the current filter.");
+      setCollectionPagination(0);
+      return;
+    }
+    renderCollectionRows();
+    collectionStatus.textContent = `Loaded ${collectionRows.length} ${collectionMode} row(s)`;
+    setCollectionPagination(collectionRows.length);
+  } catch (_error) {
+    collectionStatus.textContent = "Failed to load collection";
+    renderCollectionEmpty("Collection unavailable right now.");
+    setCollectionPagination(0);
   }
 }
 
@@ -5940,6 +6213,8 @@ for (const button of navButtons) {
       await loadDashboardData();
     } else if (targetView === "library") {
       await loadLibrary();
+    } else if (targetView === "collection") {
+      await loadCollection();
     } else if (targetView === "history") {
       await Promise.all([loadHistory(), loadUnratedWatches()]);
     } else if (targetView === "horrorfest") {
@@ -5989,6 +6264,8 @@ for (const button of jumpButtons) {
       await Promise.all([loadHistory(), loadUnratedWatches()]);
     } else if (targetView === "library") {
       await loadLibrary();
+    } else if (targetView === "collection") {
+      await loadCollection();
     } else if (targetView === "horrorfest") {
       await loadHorrorfestWorkspace(
         dashboardHorrorfestContext?.year ? String(dashboardHorrorfestContext.year) : null
@@ -6182,6 +6459,18 @@ for (const button of libraryModeButtons) {
   });
 }
 
+for (const button of collectionModeButtons) {
+  button.addEventListener("click", async () => {
+    const mode = button.dataset.collectionMode;
+    if (!mode) {
+      return;
+    }
+    setCollectionMode(mode);
+    collectionOffset = 0;
+    await loadCollection();
+  });
+}
+
 libraryApply.addEventListener("click", async () => {
   libraryLimit = Number.parseInt(libraryLimitSelect.value, 10);
   libraryOffset = 0;
@@ -6198,6 +6487,16 @@ libraryApply.addEventListener("click", async () => {
   await loadLibrary();
 });
 
+collectionApply.addEventListener("click", async () => {
+  collectionLimit = Number.parseInt(collectionLimitSelect.value, 10);
+  collectionOffset = 0;
+  window.localStorage.setItem(UI_PREF_KEYS.collectionQuery, collectionQuery.value.trim());
+  window.localStorage.setItem(UI_PREF_KEYS.collectionPresent, collectionPresent.value);
+  window.localStorage.setItem(UI_PREF_KEYS.collectionLimit, collectionLimitSelect.value);
+  renderCollectionFilterSummary();
+  await loadCollection();
+});
+
 libraryPrev.addEventListener("click", async () => {
   libraryOffset = Math.max(0, libraryOffset - libraryLimit);
   await loadLibrary();
@@ -6206,6 +6505,16 @@ libraryPrev.addEventListener("click", async () => {
 libraryNext.addEventListener("click", async () => {
   libraryOffset += libraryLimit;
   await loadLibrary();
+});
+
+collectionPrev.addEventListener("click", async () => {
+  collectionOffset = Math.max(0, collectionOffset - collectionLimit);
+  await loadCollection();
+});
+
+collectionNext.addEventListener("click", async () => {
+  collectionOffset += collectionLimit;
+  await loadCollection();
 });
 
 libraryBody.addEventListener("click", async (event) => {
@@ -6252,6 +6561,56 @@ libraryBody.addEventListener("click", async (event) => {
     const showId = showButton.dataset.libraryShowOpen;
     if (showId) {
       await openLibraryShow(showId);
+    }
+  }
+});
+
+collectionBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const mediaButton = target.closest("button[data-media-item-open]");
+  if (mediaButton instanceof HTMLButtonElement) {
+    const mediaItemId = mediaButton.dataset.mediaItemOpen;
+    if (mediaItemId) {
+      await openMediaDetail(mediaItemId);
+    }
+    return;
+  }
+  const historyButton = target.closest("button[data-collection-history-open]");
+  if (historyButton instanceof HTMLButtonElement) {
+    const mediaItemId = historyButton.dataset.collectionHistoryOpen;
+    const label = historyButton.dataset.collectionHistoryLabel || "selected media";
+    const mediaType = historyButton.dataset.collectionHistoryType || "";
+    if (mediaItemId) {
+      await openHistoryForMedia({
+        mediaItemId,
+        label,
+        mediaType,
+        sourceView: "collection",
+        libraryModeValue: collectionMode,
+      });
+    }
+    return;
+  }
+  const showHistoryButton = target.closest("button[data-collection-show-history]");
+  if (showHistoryButton instanceof HTMLButtonElement) {
+    const title = showHistoryButton.dataset.collectionShowHistory;
+    if (title) {
+      await openHistoryForShow({
+        title,
+        sourceView: "collection",
+        libraryModeValue: collectionMode,
+      });
+    }
+    return;
+  }
+  const showButton = target.closest("button[data-collection-show-open]");
+  if (showButton instanceof HTMLButtonElement) {
+    const showId = showButton.dataset.collectionShowOpen;
+    if (showId) {
+      await openCollectionShow(showId);
     }
   }
 });
