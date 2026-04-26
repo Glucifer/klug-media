@@ -184,13 +184,20 @@ Purpose: quick rehydration file after context compaction so work can resume with
 
 ## Current Working Context
 - Development environment has moved from the Windows-native filesystem into WSL using the Codex desktop app and `uv`.
-- Dockerization is the next deployment polish target; no tracked Dockerfile or Compose file exists yet.
+- Dockerization now targets Godzilla Unraid at `172.20.1.20`, publishing Klug on host port `8010`.
+- Container config/env is expected under `/mnt/user/appdata/klug-media`, with `/mnt/user/appdata/klug-media/klug-media.env` loaded by Compose.
+- Docker artifacts:
+  - `Dockerfile`
+  - `.dockerignore`
+  - `compose.unraid.yml`
+  - `docker/entrypoint.sh`
+  - `docker/klug-media.env.example`
 - Prefer guidance that remains valid across sessions; update temporary goal notes when they materially change.
 - If adding temporary session notes here, keep them short and remove or refresh them once they become stale.
 - Local Codex MCP setup:
   - A local `postgres` MCP server is configured in Codex and verified working against `klug_local`.
   - Prefer the MCP database tools for schema inspection and query work when available in-session.
-- Previous Windows-native local network topology to verify before reuse:
+- Previous Windows-native local network topology for historical reference:
   - Klug API ran on the Windows host at `172.20.1.10`
   - PostgreSQL, Home Assistant, and Node-RED run on `172.20.1.20`
   - Preferred dev bind/port for Klug is `0.0.0.0:8010` so container-hosted services can reach it without colliding with an existing service on port `8000`
@@ -200,7 +207,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Node-RED collector notes:
   - Flow tab: `Kodi Scrobbler`
   - The current flow reads flow env vars first, then falls back to Node-RED global values for:
-    - `KLUG_API_BASE_URL` (previous Windows-native value was `http://172.20.1.10:8010`; update for WSL/Docker)
+    - `KLUG_API_BASE_URL` (`http://172.20.1.20:8010` for Godzilla Docker deployment)
     - `KLUG_API_KEY`
     - `KLUG_USER_ID`
   - The current collector listens to `media_player.kodi` state changes and also polls lightweight progress every 60 seconds while Kodi is playing.

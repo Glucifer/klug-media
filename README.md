@@ -78,6 +78,62 @@ The repository currently includes:
 Internal app code, identifiers, and docs should use `klug` naming rather than third-party service branding.
 An exception is allowed when documenting or handling one-time import of an external export format, where the external service name may be mentioned descriptively.
 
+## Docker Deployment On Godzilla
+
+The included Docker setup is intended for the Godzilla Unraid server at `172.20.1.20`.
+It runs only the Klug API container and expects PostgreSQL to already be available.
+
+The app is published on host port `8010`:
+
+```text
+http://172.20.1.20:8010/
+http://172.20.1.20:8010/docs
+```
+
+Create the app config directory and seed the environment file:
+
+```bash
+mkdir -p /mnt/user/appdata/klug-media
+cp docker/klug-media.env.example /mnt/user/appdata/klug-media/klug-media.env
+```
+
+Edit `/mnt/user/appdata/klug-media/klug-media.env` and set the real secrets plus `DATABASE_URL`.
+For a PostgreSQL service reachable on Godzilla's LAN address, use this shape:
+
+```text
+DATABASE_URL=postgresql+psycopg://username:password@172.20.1.20:5432/klug_media
+```
+
+Build and start the container from the repository root:
+
+```bash
+docker compose -f compose.unraid.yml up -d --build
+```
+
+The compose file runs Alembic migrations on container startup by default.
+Set `KLUG_RUN_MIGRATIONS=false` in `compose.unraid.yml` if you want migrations to be a manual step.
+
+Useful Docker commands:
+
+```bash
+docker compose -f compose.unraid.yml logs -f klug-media
+docker compose -f compose.unraid.yml exec klug-media alembic current
+docker compose -f compose.unraid.yml exec klug-media alembic upgrade head
+docker compose -f compose.unraid.yml down
+```
+
+Smoke check after startup:
+
+```bash
+curl http://172.20.1.20:8010/api/v1/health
+```
+
+For Node-RED/Home Assistant collectors on Godzilla, set the Klug API base URL to:
+
+```text
+http://172.20.1.20:8010
+```
+
 ## Local Development (Contributor/Personal Use)
 
 1. Create environment:
