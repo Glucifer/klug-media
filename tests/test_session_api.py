@@ -12,15 +12,17 @@ def _set_session_env(
     auth_mode: str = "write",
 ) -> None:
     if password is None:
-        monkeypatch.delenv("KLUG_SESSION_PASSWORD", raising=False)
+        monkeypatch.setenv("KLUG_SESSION_PASSWORD", "")
     else:
         monkeypatch.setenv("KLUG_SESSION_PASSWORD", password)
 
     if secret is None:
-        monkeypatch.delenv("KLUG_SESSION_SECRET", raising=False)
+        monkeypatch.setenv("KLUG_SESSION_SECRET", "")
     else:
         monkeypatch.setenv("KLUG_SESSION_SECRET", secret)
 
+    monkeypatch.setenv("APP_ENV", "dev")
+    monkeypatch.setenv("KLUG_API_KEY", "")
     monkeypatch.setenv("KLUG_API_AUTH_MODE", auth_mode)
     get_settings.cache_clear()
 

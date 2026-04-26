@@ -145,8 +145,9 @@ Jellyfin collection import options:
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8010
 ```
 
-For this environment, Klug runs on the Windows host at `172.20.1.10:8010`.
-That allows Docker-hosted services on `172.20.1.20` such as Node-RED and Home Assistant to reach the API over the LAN.
+In the previous Windows-native environment, Klug ran on the Windows host at `172.20.1.10:8010`.
+That allowed Docker-hosted services on `172.20.1.20` such as Node-RED and Home Assistant to reach the API over the LAN.
+For WSL or Dockerized deployment, replace these host examples with the container/host address exposed in that environment.
 
 If Windows reserves `8010` after an OS update and you hit `WinError 10013`, run on `8210` instead:
 
@@ -219,7 +220,7 @@ curl -X POST http://172.20.1.10:8010/api/v1/imports/collection/jellyfin -H "Cont
 
 ## API Smoke Checks
 
-With server running on `http://172.20.1.10:8010`:
+With the server running, replace the base URL below with the address for your current WSL/Docker environment:
 
 ```bash
 curl http://172.20.1.10:8010/api/v1/health

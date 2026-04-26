@@ -23,10 +23,9 @@ Thumbs.db
 !.env.example
 
 # Local workspace artifacts
+.codex
 windows-session-chat
 history-*.json
 import_errors.json
 db/*.old
 db-schema-backup-commands.txt
-=3.11,
-
