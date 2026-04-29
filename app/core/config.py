@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     klug_session_password: str | None = None
     klug_session_secret: str | None = None
     klug_session_ttl_seconds: int = 60 * 60 * 24 * 30
+    klug_session_cookie_secure: bool | None = None
     klug_import_upload_max_mb: int = 25
     klug_scrobble_min_progress_percent: Decimal = Decimal("90")
     klug_scrobble_min_completion_ratio: Decimal = Decimal("0.90")

@@ -38,6 +38,12 @@ def _expires_at_from_epoch(value: int | None) -> datetime | None:
     return datetime.fromtimestamp(value, tz=UTC)
 
 
+def _session_cookie_secure(settings: Settings) -> bool:
+    if settings.klug_session_cookie_secure is not None:
+        return settings.klug_session_cookie_secure
+    return settings.app_env == "prod"
+
+
 @router.post("/login", response_model=SessionLoginResponse)
 def login(
     payload: SessionLoginRequest,
@@ -67,7 +73,7 @@ def login(
         max_age=settings.klug_session_ttl_seconds,
         httponly=True,
         samesite="lax",
-        secure=settings.app_env == "prod",
+        secure=_session_cookie_secure(settings),
     )
     return SessionLoginResponse(
         authenticated=True,
@@ -81,7 +87,11 @@ def logout(
     response: Response,
     settings: Settings = Depends(get_settings),
 ) -> SessionStatusResponse:
-    response.delete_cookie(key=SESSION_COOKIE_NAME)
+    response.delete_cookie(
+        key=SESSION_COOKIE_NAME,
+        samesite="lax",
+        secure=_session_cookie_secure(settings),
+    )
     return SessionStatusResponse(
         authenticated=False,
         auth_mode=settings.klug_api_auth_mode,

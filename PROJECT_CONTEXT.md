@@ -186,6 +186,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Development environment has moved from the Windows-native filesystem into WSL using the Codex desktop app and `uv`.
 - Dockerization now targets Godzilla Unraid at `172.20.1.20`, publishing Klug on host port `8010`.
 - Container config/env is expected under `/mnt/user/appdata/klug-media`, with `/mnt/user/appdata/klug-media/klug-media.env` loaded by Compose.
+- Godzilla currently serves Klug over plain HTTP, so `KLUG_SESSION_COOKIE_SECURE=false` is required for browser login cookies unless/until HTTPS is added.
 - Docker artifacts:
   - `Dockerfile`
   - `.dockerignore`

@@ -24,6 +24,7 @@ def _set_session_env(
     monkeypatch.setenv("APP_ENV", "dev")
     monkeypatch.setenv("KLUG_API_KEY", "")
     monkeypatch.setenv("KLUG_API_AUTH_MODE", auth_mode)
+    monkeypatch.delenv("KLUG_SESSION_COOKIE_SECURE", raising=False)
     get_settings.cache_clear()
 
 
@@ -84,3 +85,36 @@ def test_session_logout_clears_session(monkeypatch) -> None:
     me = client.get("/api/v1/session/me")
     assert me.status_code == 200
     assert me.json()["authenticated"] is False
+
+
+def test_prod_session_cookie_is_secure_by_default(monkeypatch) -> None:
+    _set_session_env(
+        monkeypatch,
+        password="session-pass",
+        secret="session-secret",
+    )
+    monkeypatch.setenv("APP_ENV", "prod")
+    get_settings.cache_clear()
+
+    client = TestClient(app)
+    login = client.post("/api/v1/session/login", json={"password": "session-pass"})
+
+    assert login.status_code == 200
+    assert "Secure" in login.headers["set-cookie"]
+
+
+def test_session_cookie_secure_can_be_disabled_for_lan_http(monkeypatch) -> None:
+    _set_session_env(
+        monkeypatch,
+        password="session-pass",
+        secret="session-secret",
+    )
+    monkeypatch.setenv("APP_ENV", "prod")
+    monkeypatch.setenv("KLUG_SESSION_COOKIE_SECURE", "false")
+    get_settings.cache_clear()
+
+    client = TestClient(app)
+    login = client.post("/api/v1/session/login", json={"password": "session-pass"})
+
+    assert login.status_code == 200
+    assert "Secure" not in login.headers["set-cookie"]

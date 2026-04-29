@@ -11,6 +11,7 @@ def clear_auth_environment(monkeypatch) -> None:
     monkeypatch.setenv("KLUG_SESSION_PASSWORD", "")
     monkeypatch.setenv("KLUG_SESSION_SECRET", "")
     monkeypatch.delenv("KLUG_SESSION_TTL_SECONDS", raising=False)
+    monkeypatch.delenv("KLUG_SESSION_COOKIE_SECURE", raising=False)
     monkeypatch.delenv("KLUG_IMPORT_UPLOAD_MAX_MB", raising=False)
     get_settings.cache_clear()
     yield

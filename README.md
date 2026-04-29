@@ -104,6 +104,9 @@ For a PostgreSQL service reachable on Godzilla's LAN address, use this shape:
 DATABASE_URL=postgresql+psycopg://username:password@172.20.1.20:5432/klug_media
 ```
 
+The Godzilla LAN example sets `KLUG_SESSION_COOKIE_SECURE=false` because the app is served over plain HTTP at `http://172.20.1.20:8010`.
+Set it to `true` or remove the override when serving Klug behind HTTPS.
+
 Build and start the container from the repository root:
 
 ```bash
