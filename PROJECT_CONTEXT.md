@@ -22,6 +22,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - `POST /api/v1/session/login`
   - `DELETE /api/v1/session/logout`
   - `GET /api/v1/session/me`
+- Authenticated operator UI sessions can perform production writes when the browser request is explicitly marked and same-origin; external API clients continue to use `X-API-Key`.
 - API key auth mode support via settings (`disabled`, `write`, `all`).
 - Domain endpoints:
   - users

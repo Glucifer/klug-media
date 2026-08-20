@@ -185,7 +185,9 @@ def test_prod_write_requires_api_key_even_when_no_credentials_configured(
     assert response.status_code == 401
 
 
-def test_prod_write_rejects_session_cookie_without_api_key(monkeypatch) -> None:
+def test_prod_write_rejects_unmarked_session_cookie_without_api_key(
+    monkeypatch,
+) -> None:
     _set_auth(monkeypatch, api_key="secret-key", auth_mode="write", app_env="prod")
     monkeypatch.setenv("KLUG_SESSION_PASSWORD", "session-pass")
     monkeypatch.setenv("KLUG_SESSION_SECRET", "session-secret")
@@ -201,6 +203,58 @@ def test_prod_write_rejects_session_cookie_without_api_key(monkeypatch) -> None:
     assert login.status_code == 200
 
     response = client.post("/api/v1/users", json={"username": "alice"})
+    assert response.status_code == 401
+
+
+def test_prod_write_accepts_same_origin_frontend_session(monkeypatch) -> None:
+    _set_auth(monkeypatch, api_key="secret-key", auth_mode="write", app_env="prod")
+    monkeypatch.setenv("KLUG_SESSION_PASSWORD", "session-pass")
+    monkeypatch.setenv("KLUG_SESSION_SECRET", "session-secret")
+    get_settings.cache_clear()
+    monkeypatch.setattr(
+        UserService,
+        "create_user",
+        lambda _session, username, timezone: DummyUser(username, timezone),
+    )
+
+    client = TestClient(app, base_url="https://testserver")
+    login = client.post("/api/v1/session/login", json={"password": "session-pass"})
+    assert login.status_code == 200
+
+    response = client.post(
+        "/api/v1/users",
+        json={"username": "alice"},
+        headers={
+            "Origin": "https://testserver",
+            "X-Klug-UI-Request": "1",
+        },
+    )
+    assert response.status_code == 201
+
+
+def test_prod_write_rejects_frontend_session_from_another_origin(monkeypatch) -> None:
+    _set_auth(monkeypatch, api_key="secret-key", auth_mode="write", app_env="prod")
+    monkeypatch.setenv("KLUG_SESSION_PASSWORD", "session-pass")
+    monkeypatch.setenv("KLUG_SESSION_SECRET", "session-secret")
+    get_settings.cache_clear()
+    monkeypatch.setattr(
+        UserService,
+        "create_user",
+        lambda _session, username, timezone: DummyUser(username, timezone),
+    )
+
+    client = TestClient(app, base_url="https://testserver")
+    login = client.post("/api/v1/session/login", json={"password": "session-pass"})
+    assert login.status_code == 200
+
+    response = client.post(
+        "/api/v1/users",
+        json={"username": "alice"},
+        headers={
+            "Origin": "https://example.invalid",
+            "X-Klug-UI-Request": "1",
+        },
+    )
     assert response.status_code == 401
 
 

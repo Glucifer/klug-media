@@ -15,6 +15,8 @@ from app.core.config import Settings, get_settings
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 SESSION_COOKIE_NAME = "klug_session"
+FRONTEND_REQUEST_HEADER = "X-Klug-UI-Request"
+FRONTEND_REQUEST_VALUE = "1"
 
 
 def _is_request_auth_required(request: Request, settings: Settings) -> bool:
@@ -116,6 +118,21 @@ def get_session_expiration_epoch(request: Request, settings: Settings) -> int | 
     return exp
 
 
+def _is_same_origin_frontend_request(request: Request) -> bool:
+    if request.headers.get(FRONTEND_REQUEST_HEADER) != FRONTEND_REQUEST_VALUE:
+        return False
+
+    origin = request.headers.get("origin")
+    host = request.headers.get("host")
+    if not origin or not host:
+        return False
+
+    expected_origins = {f"http://{host}", f"https://{host}"}
+    return origin.rstrip("/").casefold() in {
+        expected_origin.casefold() for expected_origin in expected_origins
+    }
+
+
 def require_request_auth(
     request: Request,
     provided_api_key: str | None = Depends(api_key_header),
@@ -137,10 +154,12 @@ def require_request_auth(
         and compare_digest(provided_api_key, expected_api_key)
     )
 
-    # In production, writes are fail-closed and require API key auth.
-    # Cookie session auth is read-only in production to avoid CSRF-like write paths.
+    # Production writes remain fail-closed. API clients use the API key; the
+    # operator UI may use its session cookie only for marked same-origin requests.
     if settings.app_env == "prod" and request_is_write:
         if provided_valid_api_key:
+            return
+        if session_authenticated and _is_same_origin_frontend_request(request):
             return
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

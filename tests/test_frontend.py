@@ -93,5 +93,6 @@ def test_frontend_static_assets_are_served() -> None:
     )
     assert "loadActiveUserProfiles" in js_response.text
     assert "user_id: activeUserId" in js_response.text
+    assert '"X-Klug-UI-Request": "1"' in js_response.text
     assert "Authenticated; some dashboard data failed to load." in js_response.text
     assert "Back to Collection" in js_response.text

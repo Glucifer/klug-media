@@ -383,9 +383,13 @@ let dashboardEnrichmentPreviewStatus = "";
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Klug-UI-Request": "1",
+      ...(options.headers || {}),
+    },
   });
   return response;
 }
@@ -2845,6 +2849,7 @@ async function runImport(event) {
     const response = await fetch("/api/v1/imports/watch-events/legacy-source/upload", {
       method: "POST",
       credentials: "include",
+      headers: { "X-Klug-UI-Request": "1" },
       body: formData,
     });
     const payload = await response.json();

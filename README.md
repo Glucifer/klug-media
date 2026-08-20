@@ -211,14 +211,14 @@ $env:KLUG_JELLYFIN_TIMEOUT_SECONDS="15"
 - `all`: require `X-API-Key` on all routed endpoints
 
 In `APP_ENV=dev`, if `KLUG_API_KEY` is unset and no session secret/password is configured, requests are allowed (local dev convenience).
-In `APP_ENV=prod`, write requests fail closed and require a valid `X-API-Key` even if a session cookie is present.
+In `APP_ENV=prod`, write requests fail closed. External clients require a valid `X-API-Key`; the bundled operator UI can use its authenticated session cookie for explicitly marked same-origin requests.
 
 Session auth endpoints:
 - `POST /api/v1/session/login` with `{ "password": "<KLUG_SESSION_PASSWORD>" }`
 - `DELETE /api/v1/session/logout`
 - `GET /api/v1/session/me`
 
-When logged in, a signed `klug_session` cookie can satisfy API auth checks (API key remains supported for scripts/admin usage).
+When logged in, a signed `klug_session` cookie can satisfy API auth checks. Production browser writes additionally require Klug's same-origin UI request marker; API keys remain the supported credential for scripts and external integrations.
 
 Scrobbler threshold options:
 - `KLUG_SCROBBLE_MIN_PROGRESS_PERCENT`: progress percent required for stop-event scrobbling when progress data is present
