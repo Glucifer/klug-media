@@ -30,7 +30,7 @@ jobs:
         run: uv sync --frozen
 
       - name: Run tests
-        run: uv run --frozen pytest -q
+        run: uv run --frozen pytest -q -s
 
   publish:
     name: Build and publish
