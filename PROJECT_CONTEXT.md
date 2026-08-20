@@ -230,6 +230,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - The configured Jellyfin MCP endpoint appears misconfigured in this Codex environment (`172.1.20:8096`), so live plugin inspection from MCP is unreliable until that host is corrected.
   - The official Webhook plugin setup is documented in `docs/jellyfin/README.md`; its versioned v1 template requires plugin v18+ for `json_encode`.
   - Initial reconciliation defaults to 90 days because watch history from the post-fire temporary-computer period is not fully trusted.
+  - Reconciliation treats `PlayCount` as informational only and imports at most the reliable latest `LastPlayedDate`; existing-watch detection spans from five minutes before playback start through the item runtime plus five minutes so Kodi stop timestamps do not create false duplicates.
 - Node-RED collector notes:
   - Flow tab: `Kodi Scrobbler`
   - The current flow reads flow env vars first, then falls back to Node-RED global values for:

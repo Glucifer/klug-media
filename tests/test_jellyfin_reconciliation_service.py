@@ -142,6 +142,39 @@ def test_reconcile_reports_unmatched_missing_and_ambiguous(monkeypatch) -> None:
     }
 
 
+def test_reconcile_matches_existing_watch_at_playback_stop(monkeypatch) -> None:
+    session = Mock()
+    now = datetime(2026, 8, 20, 12, tzinfo=UTC)
+    user = _install_user_and_cursor(monkeypatch)
+    media_item = SimpleNamespace(media_item_id=uuid4())
+    captured: dict[str, object] = {}
+    monkeypatch.setattr(
+        "app.services.jellyfin_reconciliation.media_item_repository.find_media_item_by_jellyfin_item_id",
+        lambda *_args, **_kwargs: media_item,
+    )
+
+    def find_existing(*_args, **kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(watch_id=uuid4())
+
+    monkeypatch.setattr(
+        "app.services.jellyfin_reconciliation.watch_event_repository.find_matching_watch_event",
+        find_existing,
+    )
+
+    result = JellyfinReconciliationService.run(
+        session,
+        payload=JellyfinReconcileRequest(klug_user_id=user.user_id, dry_run=True),
+        client=DummyClient([_played_item(runtime_seconds=3600)]),
+        now=now,
+    )
+
+    assert result.already_present_count == 1
+    assert result.inserted_count == 0
+    assert captured["collision_window_seconds"] == 300
+    assert captured["collision_window_after_seconds"] == 3900
+
+
 def test_completed_cursor_uses_five_minute_overlap(monkeypatch) -> None:
     session = Mock()
     now = datetime(2026, 8, 20, 12, tzinfo=UTC)

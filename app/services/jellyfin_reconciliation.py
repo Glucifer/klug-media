@@ -133,14 +133,18 @@ class JellyfinReconciliationService:
                 )
                 continue
 
+            collision_window_seconds = (
+                get_settings().klug_watch_collision_window_seconds
+            )
             existing = watch_event_repository.find_matching_watch_event(
                 session,
                 user_id=user.user_id,
                 media_item_id=media_item.media_item_id,
                 watched_at=item.last_played_at,
                 completed=True,
-                collision_window_seconds=(
-                    get_settings().klug_watch_collision_window_seconds
+                collision_window_seconds=collision_window_seconds,
+                collision_window_after_seconds=(
+                    collision_window_seconds + max(0, item.runtime_seconds or 0)
                 ),
             )
             if existing is not None:

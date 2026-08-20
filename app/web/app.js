@@ -5029,11 +5029,17 @@ function renderJellyfinReconcileResult(payload) {
   }
   for (const issue of payload.issues) {
     const row = document.createElement("tr");
+    let reason = issue.reason;
+    if (reason === "older_rewatch_dates_unavailable") {
+      reason = payload.dry_run
+        ? "latest watch will be added; older rewatch dates unavailable"
+        : "latest watch added; older rewatch dates unavailable";
+    }
     row.innerHTML = `
       <td>${escapeHtml(issue.title)}</td>
       <td>${issue.last_played_at ? new Date(issue.last_played_at).toLocaleString() : "-"}</td>
       <td>${issue.play_count}</td>
-      <td>${escapeHtml(issue.reason)}</td>
+      <td>${escapeHtml(reason)}</td>
     `;
     jellyfinReconcileIssuesBody.appendChild(row);
   }

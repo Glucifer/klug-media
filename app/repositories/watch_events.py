@@ -326,10 +326,21 @@ def find_matching_watch_event(
     watched_at: datetime,
     completed: bool,
     collision_window_seconds: int,
+    collision_window_after_seconds: int | None = None,
 ) -> WatchEvent | None:
     collision_window = timedelta(seconds=max(0, collision_window_seconds))
+    collision_window_after = timedelta(
+        seconds=max(
+            0,
+            (
+                collision_window_after_seconds
+                if collision_window_after_seconds is not None
+                else collision_window_seconds
+            ),
+        )
+    )
     lower_bound = watched_at - collision_window
-    upper_bound = watched_at + collision_window
+    upper_bound = watched_at + collision_window_after
     statement = (
         select(WatchEvent)
         .where(
