@@ -179,3 +179,16 @@ class ImportBatchService:
             source=source,
             source_detail=source_detail,
         )
+
+    @staticmethod
+    def get_latest_completed_import_batch_for_source(
+        session: Session,
+        *,
+        source: str,
+        source_detail: str | None,
+    ) -> ImportBatch | None:
+        return import_batch_repository.get_latest_completed_import_batch_for_source(
+            session,
+            source=source,
+            source_detail=source_detail,
+        )

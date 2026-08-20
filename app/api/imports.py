@@ -22,11 +22,16 @@ from app.schemas.imports import (
     WatchEventImportRequest,
     WatchEventImportResponse,
 )
+from app.schemas.jellyfin_integration import (
+    JellyfinReconcileRead,
+    JellyfinReconcileRequest,
+)
 from app.services.collection_imports import (
     JellyfinCollectionImportResult,
     JellyfinCollectionImportService,
 )
 from app.services.jellyfin import JellyfinClientError, JellyfinConfigurationError
+from app.services.jellyfin_reconciliation import JellyfinReconciliationService
 from app.services.imports import WatchEventImportResult, WatchEventImportService
 from app.services.users import UserService
 
@@ -168,6 +173,33 @@ def import_jellyfin_collection(
         ) from exc
 
     return _to_collection_import_response(result)
+
+
+@router.post(
+    "/watch-events/jellyfin/reconcile",
+    response_model=JellyfinReconcileRead,
+)
+def reconcile_jellyfin_watch_events(
+    payload: JellyfinReconcileRequest,
+    session: Session = Depends(get_db_session),
+) -> JellyfinReconcileRead:
+    try:
+        return JellyfinReconciliationService.run(session, payload=payload)
+    except JellyfinConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+    except JellyfinClientError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
 
 
 @router.post("/watch-events/legacy-source", response_model=WatchEventImportResponse)

@@ -56,6 +56,18 @@ def get_playback_event(
     return session.scalar(statement)
 
 
+def get_latest_playback_event_for_collector(
+    session: Session, *, collector: str
+) -> PlaybackEvent | None:
+    statement = (
+        select(PlaybackEvent)
+        .where(PlaybackEvent.collector == collector)
+        .order_by(PlaybackEvent.occurred_at.desc(), PlaybackEvent.created_at.desc())
+        .limit(1)
+    )
+    return session.scalar(statement)
+
+
 def create_playback_event(
     session: Session,
     *,

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.models.entities import User
@@ -21,6 +21,13 @@ def get_user_by_jellyfin_user_id(
 ) -> User | None:
     statement = select(User).where(User.jellyfin_user_id == jellyfin_user_id)
     return session.scalar(statement)
+
+
+def count_mapped_jellyfin_users(session: Session) -> int:
+    statement = select(func.count(User.user_id)).where(
+        User.jellyfin_user_id.is_not(None)
+    )
+    return int(session.scalar(statement) or 0)
 
 
 def create_user(session: Session, username: str, timezone: str) -> User:

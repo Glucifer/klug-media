@@ -125,3 +125,19 @@ def get_latest_import_batch_for_source(
 
     statement = statement.order_by(ImportBatch.started_at.desc()).limit(1)
     return session.scalar(statement)
+
+
+def get_latest_completed_import_batch_for_source(
+    session: Session,
+    *,
+    source: str,
+    source_detail: str | None,
+) -> ImportBatch | None:
+    statement: Select[tuple[ImportBatch]] = select(ImportBatch).where(
+        ImportBatch.source == source,
+        ImportBatch.status.in_(("completed", "completed_with_errors")),
+    )
+    if source_detail is not None:
+        statement = statement.where(ImportBatch.source_detail == source_detail)
+    statement = statement.order_by(ImportBatch.finished_at.desc()).limit(1)
+    return session.scalar(statement)

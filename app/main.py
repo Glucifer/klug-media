@@ -5,6 +5,8 @@ from app.api.frontend import FrontendStaticFiles, WEB_ROOT, router as frontend_r
 from app.api.health import router as health_router
 from app.api.horrorfest import router as horrorfest_router
 from app.api.imports import router as imports_router
+from app.api.jellyfin_integration import router as jellyfin_integration_router
+from app.api.jellyfin_webhooks import router as jellyfin_webhooks_router
 from app.api.import_batches import router as import_batches_router
 from app.api.library import router as library_router
 from app.api.metadata_enrichment import router as metadata_enrichment_router
@@ -35,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(session_router, prefix=settings.api_v1_prefix)
     app.include_router(stats_router, prefix=settings.api_v1_prefix)
     app.include_router(imports_router, prefix=settings.api_v1_prefix)
+    app.include_router(jellyfin_integration_router, prefix=settings.api_v1_prefix)
     app.include_router(import_batches_router, prefix=settings.api_v1_prefix)
     app.include_router(collection_router, prefix=settings.api_v1_prefix)
     app.include_router(library_router, prefix=settings.api_v1_prefix)
@@ -46,6 +49,7 @@ def create_app() -> FastAPI:
     app.include_router(scrobble_activity_router, prefix=settings.api_v1_prefix)
     app.include_router(watch_events_router, prefix=settings.api_v1_prefix)
     app.include_router(webhooks_router, prefix=settings.api_v1_prefix)
+    app.include_router(jellyfin_webhooks_router, prefix=settings.api_v1_prefix)
     return app
 
 
