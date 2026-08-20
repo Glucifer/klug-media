@@ -2,6 +2,14 @@
 
 Purpose: quick rehydration file after context compaction so work can resume with correct project state and workflow assumptions.
 
+## Active implementation plan
+
+- The approved Klug Daily interface modernization plan is tracked in
+  `docs/plans/web-interface-v2.md`.
+- Runtime `/next` implementation is gated on successful completion of the
+  seven-day Jellyfin/Kodi shadow period and explicit authorization to tag and
+  verify `v1.1.0`.
+
 ## High-Level Architecture
 - Backend: FastAPI app (`app/main.py`) with routers mounted under `/api/v1`.
 - Layers:
