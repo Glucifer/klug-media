@@ -233,6 +233,10 @@ def test_import_legacy_source_watch_events_upload_endpoint(monkeypatch) -> None:
     )
 
     monkeypatch.setattr(
+        "app.api.imports.UserService.get_user_by_id",
+        lambda _session, _user_id: None,
+    )
+    monkeypatch.setattr(
         "app.api.imports.import_watch_events_script._build_mapped_rows_from_legacy_backup",
         lambda _rows, *, user_id, dry_run, naive_datetime_timezone="UTC": (
             LegacyBackupPreprocessResult(
