@@ -149,6 +149,12 @@ class MediaItem(Base):
         UniqueConstraint("type", "imdb_id", name="uq_media_imdb"),
         UniqueConstraint("type", "tmdb_id", name="uq_media_tmdb"),
         Index("ix_media_item_tmdb", "tmdb_id"),
+        Index(
+            "ux_media_item_jellyfin_item_id",
+            "jellyfin_item_id",
+            unique=True,
+            postgresql_where=text("jellyfin_item_id IS NOT NULL"),
+        ),
         Index("ix_media_item_show_id", "show_id"),
         Index("ix_media_item_show_tmdb", "show_tmdb_id"),
         Index(
@@ -380,7 +386,15 @@ class TmdbMetadataCache(Base):
 
 class User(Base):
     __tablename__ = "users"
-    __table_args__ = {"schema": APP_SCHEMA}
+    __table_args__ = (
+        Index(
+            "ux_users_jellyfin_user_id",
+            "jellyfin_user_id",
+            unique=True,
+            postgresql_where=text("jellyfin_user_id IS NOT NULL"),
+        ),
+        {"schema": APP_SCHEMA},
+    )
 
     user_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
@@ -392,6 +406,7 @@ class User(Base):
         default="UTC",
         server_default=text("'UTC'::text"),
     )
+    jellyfin_user_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )

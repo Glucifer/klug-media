@@ -15,4 +15,5 @@ class UserRead(KlugORMModel):
     user_id: UUID
     username: str
     timezone: str
+    jellyfin_user_id: UUID | None = None
     created_at: datetime

@@ -12,6 +12,7 @@ class DummyUser:
         self.user_id = uuid4()
         self.username = username
         self.timezone = timezone
+        self.jellyfin_user_id = None
         self.created_at = datetime.now(UTC)
 
 
@@ -31,6 +32,7 @@ def test_list_users_returns_users(monkeypatch) -> None:
     assert len(payload) == 1
     assert payload[0]["username"] == "alice"
     assert payload[0]["timezone"] == "UTC"
+    assert payload[0]["jellyfin_user_id"] is None
 
 
 def test_create_user_returns_201(monkeypatch) -> None:

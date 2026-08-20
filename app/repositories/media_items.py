@@ -101,6 +101,13 @@ def find_media_item_by_external_ids(
     return None
 
 
+def find_media_item_by_jellyfin_item_id(
+    session: Session, *, jellyfin_item_id: str
+) -> MediaItem | None:
+    statement = select(MediaItem).where(MediaItem.jellyfin_item_id == jellyfin_item_id)
+    return session.scalar(statement)
+
+
 def find_media_item_by_tmdb_id(
     session: Session,
     *,
