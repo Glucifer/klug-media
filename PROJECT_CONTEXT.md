@@ -237,6 +237,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Alternate run API if Windows reserves 8010: `uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8210`
 - Run tests: `uv run pytest -q`
 - Run lint: `uv run ruff check app tests`
+- Lint GitHub Actions workflows: `uv run pre-commit run actionlint --all-files`
 - Run integration tests (PowerShell): `$env:KLUG_TEST_DATABASE_URL="..."; uv run pytest -q tests/integration`
 - Legacy import:
   - `uv run python -m app.scripts.import_watch_events ...`
