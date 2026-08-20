@@ -68,6 +68,9 @@ def test_root_frontend_serves_index() -> None:
     assert "Copy Detail JSON" in response.text
     assert "Download Errors JSON" in response.text
     assert "completed_with_errors" in response.text
+    assert "Jellyfin Watch Tracking" in response.text
+    assert "Reconcile Watch State" in response.text
+    assert "Open Jellyfin Activity" in response.text
     assert "API Health:" in response.text
     assert "Last Refresh:" in response.text
     assert "Active user" in response.text
@@ -96,3 +99,6 @@ def test_frontend_static_assets_are_served() -> None:
     assert '"X-Klug-UI-Request": "1"' in js_response.text
     assert "Authenticated; some dashboard data failed to load." in js_response.text
     assert "Back to Collection" in js_response.text
+    assert "loadJellyfinAdmin" in js_response.text
+    assert "/api/v1/imports/watch-events/jellyfin/reconcile" in js_response.text
+    assert "data-jellyfin-map-save" in js_response.text

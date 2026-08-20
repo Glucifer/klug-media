@@ -49,6 +49,7 @@ class JellyfinReconciliationService:
             now=run_started_at,
         )
         source_detail = str(user.user_id)
+        jellyfin_client = client or JellyfinClient.from_settings()
         batch = None
         if not payload.dry_run:
             batch = ImportBatchService.start_import_batch(
@@ -64,7 +65,6 @@ class JellyfinReconciliationService:
                 },
             )
 
-        jellyfin_client = client or JellyfinClient.from_settings()
         try:
             items = jellyfin_client.list_played_items(
                 user_id=user.jellyfin_user_id,

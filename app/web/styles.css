@@ -821,6 +821,17 @@ ul {
   font-size: 20px;
 }
 
+.stats-card-value-small {
+  font-size: 14px !important;
+  line-height: 1.4;
+}
+
+.mono-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .side-panel {
   position: fixed;
   top: var(--space-5);

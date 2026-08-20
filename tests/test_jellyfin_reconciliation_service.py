@@ -3,8 +3,10 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 from uuid import UUID, uuid4
 
+import pytest
+
 from app.schemas.jellyfin_integration import JellyfinReconcileRequest
-from app.services.jellyfin import JellyfinPlayedItem
+from app.services.jellyfin import JellyfinConfigurationError, JellyfinPlayedItem
 from app.services.jellyfin_reconciliation import JellyfinReconciliationService
 
 
@@ -208,3 +210,28 @@ def test_real_reconcile_creates_batch_and_watch(monkeypatch) -> None:
     assert result.inserted_count == 1
     assert captured["origin_kind"] == "manual_import"
     assert captured["import_batch_id"] == batch_id
+
+
+def test_missing_configuration_does_not_start_batch(monkeypatch) -> None:
+    session = Mock()
+    user = _install_user_and_cursor(monkeypatch)
+    start_batch = Mock()
+    monkeypatch.setattr(
+        "app.services.jellyfin_reconciliation.JellyfinClient.from_settings",
+        lambda: (_ for _ in ()).throw(JellyfinConfigurationError("missing")),
+    )
+    monkeypatch.setattr(
+        "app.services.jellyfin_reconciliation.ImportBatchService.start_import_batch",
+        start_batch,
+    )
+
+    with pytest.raises(JellyfinConfigurationError):
+        JellyfinReconciliationService.run(
+            session,
+            payload=JellyfinReconcileRequest(
+                klug_user_id=user.user_id,
+                dry_run=False,
+            ),
+        )
+
+    start_batch.assert_not_called()

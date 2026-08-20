@@ -34,7 +34,8 @@ Core v1 workflows now include:
 
 - full watch-history import from legacy JSON/CSV exports
 - one-time Jellyfin collection snapshot import for owned movies/shows/episodes
-- live Kodi scrobbling through Node-RED/Home Assistant
+- primary Jellyfin watch tracking for Kodi and native Jellyfin clients
+- temporary Kodi/Node-RED shadow collection during the Jellyfin cutover
 - manual watch entry for off-Kodi viewing
 - TMDB-first metadata enrichment
 - ratings and per-watch version/runtime overrides
@@ -55,7 +56,7 @@ The repository currently includes:
 - Stats endpoints for dashboard summaries and monthly/Horrorfest rollups
 - Config wiring via `pydantic-settings`
 - SQLAlchemy engine/session module
-- Alembic migrations through `0014_add_collection_entry_table`
+- Alembic migrations through `0015_add_jellyfin_user_mapping`
 
 ## Architecture Direction
 
@@ -68,7 +69,7 @@ The repository currently includes:
 ## Planned / Post-v1 Integrations
 
 - TMDB metadata sync
-- Jellyfin webhook sync
+- Jellyfin playback reporting and reconciliation hardening
 - Radarr/Sonarr import
 - One-time external watch-history export import workflow
 - Horrorfest annual watch tracking and stats
@@ -368,10 +369,10 @@ Episode note: TMDB does not provide episode-detail lookup by episode id alone, s
 
 ## Jellyfin Collection Import
 
-Collection import is intentionally separate from watch history.
+Collection import remains separate from watch-history ingestion.
 
 - Jellyfin is treated as the owned-library source of truth for movies, shows, and episodes
-- Klug ignores Jellyfin watched flags, play counts, resume state, and other user playback fields
+- collection snapshots ignore watched state; the dedicated playback webhook and reconciliation paths process it
 - snapshot reruns mark no-longer-present entries as missing instead of deleting them
 - current collection browse lives under `/api/v1/collection/*`
 
@@ -381,6 +382,16 @@ Recommended cutover:
 2. Run the real collection import.
 3. Verify `/api/v1/collection/movies`, `/api/v1/collection/shows`, and `/api/v1/collection/episodes`.
 4. Disable the Jellyfin plugin that writes external watch-state changes back into Jellyfin.
+
+## Jellyfin Watch Tracking
+
+Jellyfin is the primary live playback source. Klug records authenticated
+Playback Start/Stop webhooks as raw playback events, creates completed watches
+from qualifying stops, and provides a 90-day first-run reconciliation audit.
+
+Configure user mapping and reconciliation under **Admin → Jellyfin**. See
+[`docs/jellyfin/README.md`](docs/jellyfin/README.md) for Webhook plugin setup and
+the seven-day Kodi shadow/cutover checklist.
 
 ## V1 Notes
 

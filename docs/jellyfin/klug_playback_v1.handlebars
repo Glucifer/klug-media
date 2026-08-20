@@ -1,0 +1,23 @@
+{
+  "notification_type": {{{json_encode NotificationType}}},
+  "server_id": {{{json_encode ServerId}}},
+  "occurred_at": {{{json_encode UtcTimestamp}}},
+  "jellyfin_user_id": {{{json_encode UserId}}},
+  "item_id": {{{json_encode ItemId}}},
+  "item_type": {{{json_encode ItemType}}},
+  "title": {{{json_encode Name}}},
+  "series_name": {{#if_exist SeriesName}}{{{json_encode SeriesName}}}{{else}}null{{/if_exist}},
+  "year": {{#if_exist Year}}{{Year}}{{else}}null{{/if_exist}},
+  "season_number": {{#if_exist SeasonNumber}}{{SeasonNumber}}{{else}}null{{/if_exist}},
+  "episode_number": {{#if_exist EpisodeNumber}}{{EpisodeNumber}}{{else}}null{{/if_exist}},
+  "runtime_ticks": {{#if_exist RunTimeTicks}}{{RunTimeTicks}}{{else}}null{{/if_exist}},
+  "playback_position_ticks": {{#if_exist PlaybackPositionTicks}}{{PlaybackPositionTicks}}{{else}}null{{/if_exist}},
+  "played_to_completion": {{#if PlayedToCompletion}}true{{else}}false{{/if}},
+  "device_id": {{#if_exist DeviceId}}{{{json_encode DeviceId}}}{{else}}null{{/if_exist}},
+  "device_name": {{#if_exist DeviceName}}{{{json_encode DeviceName}}}{{else}}null{{/if_exist}},
+  "client_name": {{#if_exist ClientName}}{{{json_encode ClientName}}}{{else}}null{{/if_exist}},
+  "media_source_id": {{#if_exist MediaSourceId}}{{{json_encode MediaSourceId}}}{{else}}null{{/if_exist}},
+  "tmdb_id": {{#if_exist Provider_tmdb}}{{Provider_tmdb}}{{else}}null{{/if_exist}},
+  "imdb_id": {{#if_exist Provider_imdb}}{{{json_encode Provider_imdb}}}{{else}}null{{/if_exist}},
+  "tvdb_id": {{#if_exist Provider_tvdb}}{{Provider_tvdb}}{{else}}null{{/if_exist}}
+}

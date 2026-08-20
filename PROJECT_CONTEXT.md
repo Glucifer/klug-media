@@ -43,8 +43,16 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - operator browse endpoints exist under `/api/v1/collection/movies|shows|episodes`
   - operator snapshot import endpoint exists at `POST /api/v1/imports/collection/jellyfin`
   - Jellyfin collection import reads movies, series, and episodes, creates minimal unmatched Klug records, and marks removed items as missing on rerun
-  - Jellyfin watch state is intentionally ignored; Klug watch history remains separate
+  - collection snapshots ignore Jellyfin watch state; dedicated webhook and reconciliation services ingest it separately
   - `app.shows.tmdb_id` is now nullable so unmatched Jellyfin shows can still be represented
+- Jellyfin playback ingestion:
+  - `users.jellyfin_user_id` provides a unique database-backed Jellyfin-to-Klug user mapping
+  - `POST /api/v1/webhooks/jellyfin/events` stores authenticated Playback Start/Stop notifications as raw `playback_event` rows
+  - qualifying Jellyfin stop notifications create `watch_event` rows with duration, progress, source-event, and playback-event provenance
+  - deterministic source IDs make webhook retries idempotent; cross-source collision matching prevents Kodi/Jellyfin duplicates during shadow rollout
+  - `POST /api/v1/imports/watch-events/jellyfin/reconcile` provides dry-run/real reconciliation with a 90-day first-run lookback and incremental cursor overlap
+  - reconciliation creates only the latest identifiable missing watch and reports older ambiguous play counts instead of inventing dates
+  - integration status and user mapping endpoints live under `/api/v1/integrations/jellyfin/*`
 - Kodi playback ingestion endpoints:
   - `POST /api/v1/webhooks/kodi/events`
   - `POST /api/v1/webhooks/kodi/scrobble`
@@ -118,12 +126,13 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - one-click media-detail open actions from dashboard previews, history, Horrorfest, and show episodes
   - Horrorfest now has internal `Log` and `Analytics` modes: yearly browsing/correction remains in `Log`, while `Analytics` provides in-app year-over-year reporting, selected-year drilldowns, inline year comparison, cross-year title/decade matrices, leaderboard tables, repeat-pattern curation reports, CSV exports, Title Matrix search/sort controls, and a dedicated analytics side panel for title/decade/date/source/rating click-through watch history
   - Shows is now evolving toward browsing-first TV navigation: richer show rows, linked History jumps, season collapse/expand, and episode-level media/history drilldown while completion percentages are intentionally de-emphasized until a future Collection feature exists
-  - Admin workspace split into Imports, Manual Add, Scrobbler, and Enrichment subviews
+  - Admin workspace split into Imports, Manual Add, Scrobbler, Jellyfin, and Enrichment subviews
   - import runner (file upload + mode/dry-run/resume options)
   - cursor visibility (`cursor_before`, `cursor_after`, local last cursor)
   - import batch history with status filter (persisted)
   - import batch detail panel + JSON copy/export actions
   - scrobble activity operator view
+  - Jellyfin connection status, user mapping, reconciliation controls, issue review, and filtered activity jump
   - metadata enrichment operator queue with chunked batch processing progress
 
 ## V1 Status
@@ -155,7 +164,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Owned-media `Collection` API support now exists for Jellyfin snapshot imports and browse, but frontend/operator UX is still minimal.
 - Planned external sync integrations (metadata/webhooks/automation connectors) are not fully implemented.
 - Metadata enrichment exists in a first operator-focused form, but there is not yet a polished end-user metadata UI.
-- Scrobbler pipeline is only partially implemented: Kodi/Node-RED ingestion now exists, but richer session/resume handling and additional playback sources still need work.
+- Jellyfin is now the primary planned playback source; live deployment/plugin verification and the seven-day Kodi shadow cutover remain operational work.
 - Hardening items likely still needed over time: broader integration coverage, stricter operational docs, and deployment polish.
 
 ## Naming Conventions and Guardrails
@@ -219,6 +228,8 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - After a recent Windows update, TCP port `8010` may be in an excluded port range on this machine; `8210` is a working fallback dev port when `8010` fails with `WinError 10013`
 - Jellyfin note:
   - The configured Jellyfin MCP endpoint appears misconfigured in this Codex environment (`172.1.20:8096`), so live plugin inspection from MCP is unreliable until that host is corrected.
+  - The official Webhook plugin setup is documented in `docs/jellyfin/README.md`; its versioned v1 template requires plugin v18+ for `json_encode`.
+  - Initial reconciliation defaults to 90 days because watch history from the post-fire temporary-computer period is not fully trusted.
 - Node-RED collector notes:
   - Flow tab: `Kodi Scrobbler`
   - The current flow reads flow env vars first, then falls back to Node-RED global values for:
@@ -229,6 +240,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - Live verification now succeeds end to end: Kodi play/stop events persist to `playback_event`, high-progress stop events create `watch_event`, and external IDs such as `tvdb_id` are promoted from Kodi payloads for later enrichment.
   - The deployed flow uses a native Node-RED `http request` node for delivery to Klug rather than `fetch` inside a function node.
   - The collector's http request node should keep senderr: true so transport failures reach the Klug API Error debug path instead of disappearing silently.
+  - Keep delivery active for a seven-day shadow period after Jellyfin webhooks go live, then disable delivery without deleting the flow/export.
 
 ## 🛠 Status Dashboard
 - [x] Backend Core (FastAPI)

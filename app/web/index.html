@@ -586,6 +586,7 @@
               <button class="admin-link active" data-admin-view-target="imports" type="button">Imports</button>
               <button class="admin-link" data-admin-view-target="manual" type="button">Manual Add</button>
               <button class="admin-link" data-admin-view-target="scrobbler" type="button">Scrobbler</button>
+              <button class="admin-link" data-admin-view-target="jellyfin" type="button">Jellyfin</button>
               <button class="admin-link" data-admin-view-target="enrichment" type="button">Enrichment</button>
             </div>
 
@@ -651,12 +652,52 @@
               <div class="section-card">
                 <h3>Scrobble Activity</h3>
                 <p id="activity-status-text" class="muted">Loading scrobble activity...</p>
-                <div class="toolbar-grid"><label for="activity-source">Source</label><select id="activity-source"><option value="">All</option><option value="kodi">Kodi</option></select><label for="activity-status">Result</label><select id="activity-status"><option value="">All</option><option value="watch_event_created">Created</option><option value="recorded_only">Ignored</option><option value="duplicate_watch_event_skipped">Duplicate</option></select><label class="checkbox"><input id="activity-only-unmatched" type="checkbox" />Unmatched Only</label><label class="checkbox"><input id="activity-only-with-watch" type="checkbox" />With Watch Only</label><label for="activity-limit">Rows</label><select id="activity-limit"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select><button id="activity-apply" class="secondary" type="button">Apply</button></div>
+                <div class="toolbar-grid"><label for="activity-source">Source</label><select id="activity-source"><option value="">All</option><option value="kodi">Kodi</option><option value="jellyfin">Jellyfin</option></select><label for="activity-status">Result</label><select id="activity-status"><option value="">All</option><option value="watch_event_created">Created</option><option value="recorded_only">Ignored</option><option value="duplicate_watch_event_skipped">Duplicate</option></select><label class="checkbox"><input id="activity-only-unmatched" type="checkbox" />Unmatched Only</label><label class="checkbox"><input id="activity-only-with-watch" type="checkbox" />With Watch Only</label><label for="activity-limit">Rows</label><select id="activity-limit"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select><button id="activity-apply" class="secondary" type="button">Apply</button></div>
                 <div class="split-layout">
                   <div class="section-primary"><table><thead><tr><th>Time</th><th>User</th><th>Title</th><th>Source</th><th>Action</th><th>Matched Item</th><th>Result</th></tr></thead><tbody id="activity-body"></tbody></table><div class="pagination-row"><button id="activity-prev" class="secondary" type="button">Previous</button><span id="activity-page" class="muted">Page 1</span><button id="activity-next" class="secondary" type="button">Next</button></div></div>
                   <aside class="sticky-card"><p id="activity-detail-status" class="muted">Select an activity row to inspect the raw payload.</p><pre id="activity-detail" class="code-block"></pre></aside>
                 </div>
               </div>
+            </section>
+
+            <section class="admin-panel hidden" data-admin-view="jellyfin">
+              <div class="section-card">
+                <div class="section-headline">
+                  <div><h3>Jellyfin Watch Tracking</h3><p class="muted">Primary playback tracking for Kodi and native Jellyfin clients.</p></div>
+                  <button id="jellyfin-refresh" class="secondary" type="button">Refresh</button>
+                </div>
+                <div id="jellyfin-status-cards" class="stats-grid compact-stats"></div>
+                <p id="jellyfin-status-text" class="muted">Loading Jellyfin status...</p>
+              </div>
+
+              <div class="split-layout">
+                <section class="section-card section-primary">
+                  <h3>User Mapping</h3>
+                  <p class="muted">Only mapped Jellyfin users can create Klug playback events.</p>
+                  <table><thead><tr><th>Jellyfin User</th><th>Klug User</th><th>Action</th></tr></thead><tbody id="jellyfin-user-mapping-body"></tbody></table>
+                </section>
+                <aside class="section-card sticky-card">
+                  <h3>Reconcile Watch State</h3>
+                  <label for="jellyfin-reconcile-user">Klug User</label>
+                  <select id="jellyfin-reconcile-user"></select>
+                  <label for="jellyfin-reconcile-since">Since</label>
+                  <input id="jellyfin-reconcile-since" type="date" />
+                  <p class="muted">Leave blank to resume from the last successful cursor, or use the initial 90-day lookback.</p>
+                  <div class="button-cluster">
+                    <button id="jellyfin-reconcile-dry-run" class="secondary" type="button">Dry Run</button>
+                    <button id="jellyfin-reconcile-run" type="button">Run Reconciliation</button>
+                    <button id="jellyfin-open-activity" class="secondary" type="button">Open Jellyfin Activity</button>
+                  </div>
+                  <p id="jellyfin-reconcile-status" class="muted">No reconciliation run yet.</p>
+                  <pre id="jellyfin-reconcile-summary" class="code-block"></pre>
+                </aside>
+              </div>
+
+              <section class="section-card">
+                <h3>Reconciliation Issues</h3>
+                <p class="muted">Unmatched media, missing timestamps, and rewatches whose older dates Jellyfin cannot reconstruct.</p>
+                <table><thead><tr><th>Title</th><th>Last Played</th><th>Play Count</th><th>Reason</th></tr></thead><tbody id="jellyfin-reconcile-issues-body"></tbody></table>
+              </section>
             </section>
 
             <section class="admin-panel hidden" data-admin-view="enrichment">

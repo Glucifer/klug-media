@@ -265,6 +265,20 @@ const adminContextBanner = document.getElementById("admin-context-banner");
 const adminContextText = document.getElementById("admin-context-text");
 const adminContextReturn = document.getElementById("admin-context-return");
 const adminContextClear = document.getElementById("admin-context-clear");
+const jellyfinRefresh = document.getElementById("jellyfin-refresh");
+const jellyfinStatusCards = document.getElementById("jellyfin-status-cards");
+const jellyfinStatusText = document.getElementById("jellyfin-status-text");
+const jellyfinUserMappingBody = document.getElementById("jellyfin-user-mapping-body");
+const jellyfinReconcileUser = document.getElementById("jellyfin-reconcile-user");
+const jellyfinReconcileSince = document.getElementById("jellyfin-reconcile-since");
+const jellyfinReconcileDryRun = document.getElementById("jellyfin-reconcile-dry-run");
+const jellyfinReconcileRun = document.getElementById("jellyfin-reconcile-run");
+const jellyfinOpenActivity = document.getElementById("jellyfin-open-activity");
+const jellyfinReconcileStatus = document.getElementById("jellyfin-reconcile-status");
+const jellyfinReconcileSummary = document.getElementById("jellyfin-reconcile-summary");
+const jellyfinReconcileIssuesBody = document.getElementById(
+  "jellyfin-reconcile-issues-body"
+);
 const navButtons = Array.from(document.querySelectorAll("[data-view-target]"));
 const viewPanels = Array.from(document.querySelectorAll(".view-panel[data-view]"));
 const adminNavButtons = Array.from(document.querySelectorAll("[data-admin-view-target]"));
@@ -4911,6 +4925,164 @@ async function loadScrobbleActivityDetail(playbackEventId) {
   }
 }
 
+function populateJellyfinReconcileUsers() {
+  const selectedValue = jellyfinReconcileUser.value || activeUserId;
+  jellyfinReconcileUser.replaceChildren(new Option("Choose a Klug user...", ""));
+  for (const user of activeUsers) {
+    jellyfinReconcileUser.appendChild(new Option(user.username, user.user_id));
+  }
+  if (activeUsers.some((user) => user.user_id === selectedValue)) {
+    jellyfinReconcileUser.value = selectedValue;
+  } else if (activeUsers.length === 1) {
+    jellyfinReconcileUser.value = activeUsers[0].user_id;
+  }
+}
+
+function renderJellyfinStatus(status) {
+  const connectionTone = status.connected ? "success" : "danger";
+  jellyfinStatusCards.innerHTML = `
+    <article class="stats-card"><span class="stats-card-label">Configuration</span><strong class="stats-card-value">${status.configured ? "Ready" : "Missing"}</strong></article>
+    <article class="stats-card"><span class="stats-card-label">Connection</span><strong class="stats-card-value">${renderStatusChip(status.connected ? "Connected" : "Offline", connectionTone)}</strong></article>
+    <article class="stats-card"><span class="stats-card-label">Mapped Users</span><strong class="stats-card-value">${status.mapped_user_count}</strong></article>
+    <article class="stats-card"><span class="stats-card-label">Last Webhook</span><strong class="stats-card-value stats-card-value-small">${status.latest_webhook_at ? new Date(status.latest_webhook_at).toLocaleString() : "None"}</strong></article>
+  `;
+  const reconciliation = status.latest_reconciliation_at
+    ? `${new Date(status.latest_reconciliation_at).toLocaleString()} (${status.latest_reconciliation_status})`
+    : "none";
+  jellyfinStatusText.textContent = status.connected
+    ? `Last webhook decision: ${status.latest_webhook_decision || "none"}. Last reconciliation: ${reconciliation}.`
+    : `Jellyfin connection unavailable: ${status.connection_error || "check configuration"}`;
+}
+
+function renderJellyfinMappings(mappings) {
+  jellyfinUserMappingBody.innerHTML = "";
+  if (mappings.length === 0) {
+    jellyfinUserMappingBody.innerHTML = '<tr><td colspan="3">No Jellyfin users returned.</td></tr>';
+    return;
+  }
+  for (const mapping of mappings) {
+    const row = document.createElement("tr");
+    row.dataset.jellyfinUserId = mapping.jellyfin_user_id;
+    const options = [
+      '<option value="">Unmapped</option>',
+      ...activeUsers.map(
+        (user) =>
+          `<option value="${escapeHtml(user.user_id)}" ${user.user_id === mapping.klug_user_id ? "selected" : ""}>${escapeHtml(user.username)}</option>`
+      ),
+    ].join("");
+    row.innerHTML = `
+      <td><strong>${escapeHtml(mapping.jellyfin_username)}</strong><br /><span class="muted mono-text">${escapeHtml(mapping.jellyfin_user_id)}</span></td>
+      <td><select data-jellyfin-map-select>${options}</select></td>
+      <td><div class="button-cluster"><button type="button" data-jellyfin-map-save>Save</button><button type="button" class="secondary" data-jellyfin-map-clear ${mapping.klug_user_id ? "" : "disabled"}>Clear</button></div></td>
+    `;
+    jellyfinUserMappingBody.appendChild(row);
+  }
+}
+
+async function loadJellyfinAdmin() {
+  populateJellyfinReconcileUsers();
+  jellyfinStatusText.textContent = "Loading Jellyfin status...";
+  jellyfinUserMappingBody.innerHTML = '<tr><td colspan="3">Loading users...</td></tr>';
+  try {
+    const statusResponse = await api("/api/v1/integrations/jellyfin/status");
+    if (!statusResponse.ok) {
+      throw new Error("Jellyfin status request failed");
+    }
+    renderJellyfinStatus(await statusResponse.json());
+  } catch (_error) {
+    jellyfinStatusCards.innerHTML = "";
+    jellyfinStatusText.textContent = "Failed to load Jellyfin integration status.";
+  }
+
+  try {
+    const usersResponse = await api("/api/v1/integrations/jellyfin/users");
+    if (!usersResponse.ok) {
+      throw new Error("Jellyfin users request failed");
+    }
+    renderJellyfinMappings(await usersResponse.json());
+  } catch (_error) {
+    jellyfinUserMappingBody.innerHTML =
+      '<tr><td colspan="3">Failed to load Jellyfin users. Check the server connection.</td></tr>';
+  }
+}
+
+async function updateJellyfinMapping(klugUserId, jellyfinUserId) {
+  const response = await api(`/api/v1/integrations/jellyfin/users/${klugUserId}`, {
+    method: "PUT",
+    body: JSON.stringify({ jellyfin_user_id: jellyfinUserId }),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.detail || "Mapping update failed");
+  }
+}
+
+function renderJellyfinReconcileResult(payload) {
+  const summary = { ...payload };
+  delete summary.issues;
+  jellyfinReconcileSummary.textContent = JSON.stringify(summary, null, 2);
+  jellyfinReconcileIssuesBody.innerHTML = "";
+  if (!payload.issues.length) {
+    jellyfinReconcileIssuesBody.innerHTML =
+      '<tr><td colspan="4">No reconciliation issues.</td></tr>';
+    return;
+  }
+  for (const issue of payload.issues) {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${escapeHtml(issue.title)}</td>
+      <td>${issue.last_played_at ? new Date(issue.last_played_at).toLocaleString() : "-"}</td>
+      <td>${issue.play_count}</td>
+      <td>${escapeHtml(issue.reason)}</td>
+    `;
+    jellyfinReconcileIssuesBody.appendChild(row);
+  }
+}
+
+async function runJellyfinReconciliation(dryRun) {
+  const klugUserId = jellyfinReconcileUser.value;
+  if (!klugUserId) {
+    jellyfinReconcileStatus.textContent = "Choose a Klug user first.";
+    return;
+  }
+  if (!dryRun && !window.confirm("Create the missing Jellyfin watches shown by reconciliation?")) {
+    return;
+  }
+  const since = jellyfinReconcileSince.value
+    ? new Date(`${jellyfinReconcileSince.value}T00:00:00`).toISOString()
+    : null;
+  jellyfinReconcileDryRun.disabled = true;
+  jellyfinReconcileRun.disabled = true;
+  jellyfinReconcileStatus.textContent = dryRun
+    ? "Running Jellyfin reconciliation preview..."
+    : "Reconciling Jellyfin watch state...";
+  try {
+    const response = await api("/api/v1/imports/watch-events/jellyfin/reconcile", {
+      method: "POST",
+      body: JSON.stringify({
+        klug_user_id: klugUserId,
+        since,
+        dry_run: dryRun,
+      }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || "Reconciliation failed");
+    }
+    const payload = await response.json();
+    renderJellyfinReconcileResult(payload);
+    jellyfinReconcileStatus.textContent = `${payload.status}: ${payload.inserted_count} ${dryRun ? "candidate" : "watch"}(s), ${payload.already_present_count} already present, ${payload.issue_count} issue(s).`;
+    if (!dryRun) {
+      await loadJellyfinAdmin();
+    }
+  } catch (error) {
+    jellyfinReconcileStatus.textContent = `Reconciliation failed: ${error.message}`;
+  } finally {
+    jellyfinReconcileDryRun.disabled = false;
+    jellyfinReconcileRun.disabled = false;
+  }
+}
+
 async function loadScrobbleActivity() {
   activityStatusText.textContent = "Loading scrobble activity...";
   activityBody.innerHTML = "";
@@ -6194,6 +6366,62 @@ activityBody.addEventListener("click", async (event) => {
   await loadScrobbleActivityDetail(playbackEventId);
 });
 
+jellyfinRefresh.addEventListener("click", async () => {
+  await loadJellyfinAdmin();
+});
+
+jellyfinUserMappingBody.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const row = target.closest("tr[data-jellyfin-user-id]");
+  if (!(row instanceof HTMLTableRowElement)) {
+    return;
+  }
+  const select = row.querySelector("select[data-jellyfin-map-select]");
+  if (!(select instanceof HTMLSelectElement)) {
+    return;
+  }
+  try {
+    if (target.closest("button[data-jellyfin-map-save]")) {
+      if (!select.value) {
+        throw new Error("Choose a Klug user, or use Clear for an existing mapping.");
+      }
+      await updateJellyfinMapping(select.value, row.dataset.jellyfinUserId);
+    } else if (target.closest("button[data-jellyfin-map-clear]")) {
+      const currentMapping = activeUsers.find(
+        (user) => user.jellyfin_user_id === row.dataset.jellyfinUserId
+      );
+      if (!currentMapping) {
+        throw new Error("This Jellyfin user is not currently mapped.");
+      }
+      await updateJellyfinMapping(currentMapping.user_id, null);
+    } else {
+      return;
+    }
+    await loadActiveUserProfiles();
+    await loadJellyfinAdmin();
+  } catch (error) {
+    jellyfinStatusText.textContent = `Mapping update failed: ${error.message}`;
+  }
+});
+
+jellyfinReconcileDryRun.addEventListener("click", async () => {
+  await runJellyfinReconciliation(true);
+});
+
+jellyfinReconcileRun.addEventListener("click", async () => {
+  await runJellyfinReconciliation(false);
+});
+
+jellyfinOpenActivity.addEventListener("click", async () => {
+  activitySource.value = "jellyfin";
+  activityOffset = 0;
+  setActiveAdminView("scrobbler");
+  await loadScrobbleActivity();
+});
+
 enrichmentApply.addEventListener("click", async () => {
   enrichmentLimit = Number.parseInt(enrichmentLimitSelect.value, 10);
   await loadMetadataEnrichment();
@@ -6319,6 +6547,8 @@ for (const button of navButtons) {
         await loadImportHistory();
       } else if (activeAdminView === "scrobbler") {
         await loadScrobbleActivity();
+      } else if (activeAdminView === "jellyfin") {
+        await loadJellyfinAdmin();
       } else if (activeAdminView === "enrichment") {
         await loadMetadataEnrichment();
       }
@@ -6334,6 +6564,8 @@ for (const button of adminNavButtons) {
       await loadImportHistory();
     } else if (targetAdminView === "scrobbler") {
       await loadScrobbleActivity();
+    } else if (targetAdminView === "jellyfin") {
+      await loadJellyfinAdmin();
     } else if (targetAdminView === "enrichment") {
       await loadMetadataEnrichment();
     }
@@ -6365,6 +6597,8 @@ for (const button of jumpButtons) {
         await loadImportHistory();
       } else if (targetAdminView === "scrobbler") {
         await loadScrobbleActivity();
+      } else if (targetAdminView === "jellyfin") {
+        await loadJellyfinAdmin();
       } else if (targetAdminView === "enrichment") {
         await loadMetadataEnrichment();
       }
