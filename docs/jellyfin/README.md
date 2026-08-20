@@ -50,3 +50,21 @@ cannot invent dates for older rewatches represented only by Jellyfin's
 informational because it is a lifetime counter and can include repeated playback
 starts. An `older_rewatch_dates_unavailable` row still imports the latest missing
 watch; only the older, undated rewatches are omitted.
+
+## Restore Jellyfin watched flags from Klug
+
+Use **Admin → Jellyfin → Restore Watched Flags From Klug** when Jellyfin user
+data has been lost or after rebuilding the server:
+
+1. Refresh the Jellyfin collection snapshot so Klug has current item IDs.
+2. Confirm the Klug user is mapped to the intended Jellyfin user.
+3. Run **Preview Restore** and review the movie and episode counts.
+4. Run a 10-item pilot batch and verify the flags in Jellyfin and Kodi.
+5. Increase the batch size and run **Restore Next Batch** until zero items remain.
+
+The restore is intentionally add-only. It selects completed, non-deleted Klug
+watches whose media is still present in the current Jellyfin collection, skips
+items Jellyfin already marks played, and uses the latest Klug watch timestamp as
+Jellyfin's played date. It never marks an item unplayed and does not touch Klug
+watches for media absent from Jellyfin. Re-running a batch is safe because each
+request reads the current Jellyfin state before choosing its next bounded batch.

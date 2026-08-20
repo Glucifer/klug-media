@@ -279,6 +279,13 @@ const jellyfinReconcileSummary = document.getElementById("jellyfin-reconcile-sum
 const jellyfinReconcileIssuesBody = document.getElementById(
   "jellyfin-reconcile-issues-body"
 );
+const jellyfinRestoreUser = document.getElementById("jellyfin-restore-user");
+const jellyfinRestoreBatchSize = document.getElementById("jellyfin-restore-batch-size");
+const jellyfinRestoreDryRun = document.getElementById("jellyfin-restore-dry-run");
+const jellyfinRestoreRun = document.getElementById("jellyfin-restore-run");
+const jellyfinRestoreStatus = document.getElementById("jellyfin-restore-status");
+const jellyfinRestoreSummary = document.getElementById("jellyfin-restore-summary");
+const jellyfinRestoreIssuesBody = document.getElementById("jellyfin-restore-issues-body");
 const navButtons = Array.from(document.querySelectorAll("[data-view-target]"));
 const viewPanels = Array.from(document.querySelectorAll(".view-panel[data-view]"));
 const adminNavButtons = Array.from(document.querySelectorAll("[data-admin-view-target]"));
@@ -4926,15 +4933,17 @@ async function loadScrobbleActivityDetail(playbackEventId) {
 }
 
 function populateJellyfinReconcileUsers() {
-  const selectedValue = jellyfinReconcileUser.value || activeUserId;
-  jellyfinReconcileUser.replaceChildren(new Option("Choose a Klug user...", ""));
-  for (const user of activeUsers) {
-    jellyfinReconcileUser.appendChild(new Option(user.username, user.user_id));
-  }
-  if (activeUsers.some((user) => user.user_id === selectedValue)) {
-    jellyfinReconcileUser.value = selectedValue;
-  } else if (activeUsers.length === 1) {
-    jellyfinReconcileUser.value = activeUsers[0].user_id;
+  for (const select of [jellyfinReconcileUser, jellyfinRestoreUser]) {
+    const selectedValue = select.value || activeUserId;
+    select.replaceChildren(new Option("Choose a Klug user...", ""));
+    for (const user of activeUsers) {
+      select.appendChild(new Option(user.username, user.user_id));
+    }
+    if (activeUsers.some((user) => user.user_id === selectedValue)) {
+      select.value = selectedValue;
+    } else if (activeUsers.length === 1) {
+      select.value = activeUsers[0].user_id;
+    }
   }
 }
 
@@ -5086,6 +5095,72 @@ async function runJellyfinReconciliation(dryRun) {
   } finally {
     jellyfinReconcileDryRun.disabled = false;
     jellyfinReconcileRun.disabled = false;
+  }
+}
+
+function renderJellyfinWatchRestoreResult(payload) {
+  const summary = { ...payload };
+  delete summary.issues;
+  jellyfinRestoreSummary.textContent = JSON.stringify(summary, null, 2);
+  jellyfinRestoreIssuesBody.innerHTML = "";
+  if (!payload.issues.length) {
+    jellyfinRestoreIssuesBody.innerHTML = '<tr><td colspan="3">No restore errors.</td></tr>';
+    return;
+  }
+  for (const issue of payload.issues) {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${escapeHtml(issue.title)}</td>
+      <td><span class="mono-text">${escapeHtml(issue.item_id)}</span></td>
+      <td>${escapeHtml(issue.reason)}</td>
+    `;
+    jellyfinRestoreIssuesBody.appendChild(row);
+  }
+}
+
+async function runJellyfinWatchRestore(dryRun) {
+  const klugUserId = jellyfinRestoreUser.value;
+  if (!klugUserId) {
+    jellyfinRestoreStatus.textContent = "Choose a Klug user first.";
+    return;
+  }
+  const batchSize = Number.parseInt(jellyfinRestoreBatchSize.value, 10);
+  if (
+    !dryRun &&
+    !window.confirm(
+      `Mark up to ${batchSize} currently-unwatched Jellyfin items as watched from Klug? This operation only adds watched flags.`
+    )
+  ) {
+    return;
+  }
+  jellyfinRestoreDryRun.disabled = true;
+  jellyfinRestoreRun.disabled = true;
+  jellyfinRestoreStatus.textContent = dryRun
+    ? "Comparing Klug watch history with current Jellyfin state..."
+    : `Restoring the next batch of up to ${batchSize} watched flags...`;
+  try {
+    const response = await api("/api/v1/integrations/jellyfin/watch-state/restore", {
+      method: "POST",
+      body: JSON.stringify({
+        klug_user_id: klugUserId,
+        dry_run: dryRun,
+        batch_size: batchSize,
+      }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || "Jellyfin watched-flag restore failed");
+    }
+    const payload = await response.json();
+    renderJellyfinWatchRestoreResult(payload);
+    jellyfinRestoreStatus.textContent = dryRun
+      ? `${payload.candidate_count} item(s) need restoration: ${payload.movie_candidate_count} movies and ${payload.episode_candidate_count} episodes. No changes made.`
+      : `Restored ${payload.restored_count} of ${payload.attempted_count} attempted item(s); ${payload.remaining_count} remain and ${payload.error_count} failed.`;
+  } catch (error) {
+    jellyfinRestoreStatus.textContent = `Restore failed: ${error.message}`;
+  } finally {
+    jellyfinRestoreDryRun.disabled = false;
+    jellyfinRestoreRun.disabled = false;
   }
 }
 
@@ -6419,6 +6494,14 @@ jellyfinReconcileDryRun.addEventListener("click", async () => {
 
 jellyfinReconcileRun.addEventListener("click", async () => {
   await runJellyfinReconciliation(false);
+});
+
+jellyfinRestoreDryRun.addEventListener("click", async () => {
+  await runJellyfinWatchRestore(true);
+});
+
+jellyfinRestoreRun.addEventListener("click", async () => {
+  await runJellyfinWatchRestore(false);
 });
 
 jellyfinOpenActivity.addEventListener("click", async () => {

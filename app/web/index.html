@@ -698,6 +698,23 @@
                 <p class="muted">Unmatched media, missing timestamps, and rewatches whose older dates Jellyfin cannot reconstruct.</p>
                 <table><thead><tr><th>Title</th><th>Last Played</th><th>Play Count</th><th>Reason</th></tr></thead><tbody id="jellyfin-reconcile-issues-body"></tbody></table>
               </section>
+
+              <section class="section-card">
+                <h3>Restore Watched Flags From Klug</h3>
+                <p class="muted">Add-only disaster recovery. Klug marks watched movies and episodes that are still present in Jellyfin; it never clears Jellyfin state or changes media outside the current library.</p>
+                <div class="toolbar-grid">
+                  <label for="jellyfin-restore-user">Klug User</label>
+                  <select id="jellyfin-restore-user"></select>
+                  <label for="jellyfin-restore-batch-size">Batch Size</label>
+                  <select id="jellyfin-restore-batch-size"><option value="10">10 (pilot)</option><option value="100">100</option><option value="250" selected>250</option><option value="500">500</option><option value="1000">1000</option></select>
+                  <button id="jellyfin-restore-dry-run" class="secondary" type="button">Preview Restore</button>
+                  <button id="jellyfin-restore-run" type="button">Restore Next Batch</button>
+                </div>
+                <p id="jellyfin-restore-status" class="muted">Run a preview before restoring watched flags.</p>
+                <pre id="jellyfin-restore-summary" class="code-block"></pre>
+                <h4>Restore Errors</h4>
+                <table><thead><tr><th>Title</th><th>Jellyfin Item</th><th>Reason</th></tr></thead><tbody id="jellyfin-restore-issues-body"><tr><td colspan="3">No restore errors.</td></tr></tbody></table>
+              </section>
             </section>
 
             <section class="admin-panel hidden" data-admin-view="enrichment">

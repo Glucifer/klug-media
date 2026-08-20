@@ -61,6 +61,8 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - `POST /api/v1/imports/watch-events/jellyfin/reconcile` provides dry-run/real reconciliation with a 90-day first-run lookback and incremental cursor overlap
   - reconciliation creates only the latest identifiable missing watch and reports older ambiguous play counts instead of inventing dates
   - integration status and user mapping endpoints live under `/api/v1/integrations/jellyfin/*`
+  - `POST /api/v1/integrations/jellyfin/watch-state/restore` provides add-only, bounded disaster recovery from completed Klug watches to watched flags for media still present in Jellyfin
+  - watched-flag restore supports full dry-run counts, resumable batches, latest-watch timestamps, per-item errors, and never clears Jellyfin state
 - Kodi playback ingestion endpoints:
   - `POST /api/v1/webhooks/kodi/events`
   - `POST /api/v1/webhooks/kodi/scrobble`
@@ -141,6 +143,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - import batch detail panel + JSON copy/export actions
   - scrobble activity operator view
   - Jellyfin connection status, user mapping, reconciliation controls, issue review, and filtered activity jump
+  - add-only Jellyfin watched-flag restore preview and bounded batch controls
   - metadata enrichment operator queue with chunked batch processing progress
 
 ## V1 Status

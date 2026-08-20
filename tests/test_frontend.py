@@ -72,6 +72,7 @@ def test_root_frontend_serves_index() -> None:
     assert "Jellyfin Watch Tracking" in response.text
     assert "Reconcile Watch State" in response.text
     assert "Open Jellyfin Activity" in response.text
+    assert "Restore Watched Flags From Klug" in response.text
     assert "API Health:" in response.text
     assert "Last Refresh:" in response.text
     assert "Active user" in response.text
@@ -102,4 +103,6 @@ def test_frontend_static_assets_are_served() -> None:
     assert "Back to Collection" in js_response.text
     assert "loadJellyfinAdmin" in js_response.text
     assert "/api/v1/imports/watch-events/jellyfin/reconcile" in js_response.text
+    assert "runJellyfinWatchRestore" in js_response.text
+    assert "/api/v1/integrations/jellyfin/watch-state/restore" in js_response.text
     assert "data-jellyfin-map-save" in js_response.text
