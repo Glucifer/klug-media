@@ -97,7 +97,9 @@ class WatchEventService:
         updated_by: str,
         update_reason: str | None,
     ) -> WatchEvent:
-        watch_event = WatchEventService._get_watch_event_or_raise(session, watch_id=watch_id)
+        watch_event = WatchEventService._get_watch_event_or_raise(
+            session, watch_id=watch_id
+        )
         normalized_updated_by = WatchEventService._normalize_updated_by(updated_by)
         normalized_reason = WatchEventService._normalize_update_reason(update_reason)
         now = datetime.now(UTC)
@@ -115,7 +117,9 @@ class WatchEventService:
         watch_event.rewatch = False
         watch_event.dedupe_hash = None
         try:
-            updated = watch_event_repository.update_watch_event(session, watch_event=watch_event)
+            updated = watch_event_repository.update_watch_event(
+                session, watch_event=watch_event
+            )
             WatchEventService._recompute_rewatch_for_media_timeline(
                 session,
                 user_id=updated.user_id,
@@ -126,7 +130,9 @@ class WatchEventService:
             return updated
         except IntegrityError as exc:
             session.rollback()
-            raise WatchEventConstraintError("Watch event failed database constraints") from exc
+            raise WatchEventConstraintError(
+                "Watch event failed database constraints"
+            ) from exc
 
     @staticmethod
     def restore_watch_event(
@@ -136,7 +142,9 @@ class WatchEventService:
         updated_by: str,
         update_reason: str | None,
     ) -> WatchEvent:
-        watch_event = WatchEventService._get_watch_event_or_raise(session, watch_id=watch_id)
+        watch_event = WatchEventService._get_watch_event_or_raise(
+            session, watch_id=watch_id
+        )
         normalized_updated_by = WatchEventService._normalize_updated_by(updated_by)
         normalized_reason = WatchEventService._normalize_update_reason(update_reason)
         now = datetime.now(UTC)
@@ -153,7 +161,9 @@ class WatchEventService:
         watch_event.update_reason = normalized_reason
         watch_event.dedupe_hash = None
         try:
-            updated = watch_event_repository.update_watch_event(session, watch_event=watch_event)
+            updated = watch_event_repository.update_watch_event(
+                session, watch_event=watch_event
+            )
             WatchEventService._recompute_rewatch_for_media_timeline(
                 session,
                 user_id=updated.user_id,
@@ -164,7 +174,9 @@ class WatchEventService:
             return updated
         except IntegrityError as exc:
             session.rollback()
-            raise WatchEventConstraintError("Watch event failed database constraints") from exc
+            raise WatchEventConstraintError(
+                "Watch event failed database constraints"
+            ) from exc
 
     @staticmethod
     def correct_watch_event(
@@ -178,7 +190,9 @@ class WatchEventService:
         completed: bool | None,
         rewatch: bool | None,
     ) -> WatchEvent:
-        watch_event = WatchEventService._get_watch_event_or_raise(session, watch_id=watch_id)
+        watch_event = WatchEventService._get_watch_event_or_raise(
+            session, watch_id=watch_id
+        )
         normalized_updated_by = WatchEventService._normalize_updated_by(updated_by)
         normalized_reason = WatchEventService._normalize_update_reason(update_reason)
 
@@ -197,7 +211,9 @@ class WatchEventService:
             else watch_event.watched_at
         )
         if media_item_id is not None:
-            media_item = MediaItemService.get_media_item(session, media_item_id=media_item_id)
+            media_item = MediaItemService.get_media_item(
+                session, media_item_id=media_item_id
+            )
             if media_item is None:
                 raise ValueError(f"Media item '{media_item_id}' not found")
             watch_event.media_item_id = media_item_id
@@ -221,14 +237,12 @@ class WatchEventService:
         watch_event.updated_at = now
         watch_event.updated_by = normalized_updated_by
         watch_event.update_reason = normalized_reason
-        if (
-            media_item_id is not None
-            or watched_at is not None
-            or completed is not None
-        ):
+        if media_item_id is not None or watched_at is not None or completed is not None:
             watch_event.dedupe_hash = None
         try:
-            updated = watch_event_repository.update_watch_event(session, watch_event=watch_event)
+            updated = watch_event_repository.update_watch_event(
+                session, watch_event=watch_event
+            )
 
             if media_item_id is not None or watched_at is not None:
                 WatchEventService._recompute_rewatch_for_media_timeline(
@@ -249,14 +263,18 @@ class WatchEventService:
                     media_item_id=updated.media_item_id,
                     watched_at=updated.watched_at,
                 )
-                updated = watch_event_repository.update_watch_event(session, watch_event=updated)
+                updated = watch_event_repository.update_watch_event(
+                    session, watch_event=updated
+                )
 
             HorrorfestService.sync_watch_event(session, watch_event=updated)
             session.commit()
             return updated
         except IntegrityError as exc:
             session.rollback()
-            raise WatchEventConstraintError("Watch event failed database constraints") from exc
+            raise WatchEventConstraintError(
+                "Watch event failed database constraints"
+            ) from exc
 
     @staticmethod
     def rate_watch_event(
@@ -267,7 +285,9 @@ class WatchEventService:
         update_reason: str | None,
         rating_value: int,
     ) -> WatchEvent:
-        watch_event = WatchEventService._get_watch_event_or_raise(session, watch_id=watch_id)
+        watch_event = WatchEventService._get_watch_event_or_raise(
+            session, watch_id=watch_id
+        )
         normalized_updated_by = WatchEventService._normalize_updated_by(updated_by)
         normalized_reason = WatchEventService._normalize_update_reason(update_reason)
         if watch_event.is_deleted:
@@ -281,12 +301,16 @@ class WatchEventService:
         watch_event.updated_by = normalized_updated_by
         watch_event.update_reason = normalized_reason
         try:
-            updated = watch_event_repository.update_watch_event(session, watch_event=watch_event)
+            updated = watch_event_repository.update_watch_event(
+                session, watch_event=watch_event
+            )
             session.commit()
             return updated
         except IntegrityError as exc:
             session.rollback()
-            raise WatchEventConstraintError("Watch event failed database constraints") from exc
+            raise WatchEventConstraintError(
+                "Watch event failed database constraints"
+            ) from exc
 
     @staticmethod
     def set_watch_event_version_override(
@@ -299,7 +323,9 @@ class WatchEventService:
         runtime_minutes: int | None,
         clear_override: bool,
     ) -> WatchEvent:
-        watch_event = WatchEventService._get_watch_event_or_raise(session, watch_id=watch_id)
+        watch_event = WatchEventService._get_watch_event_or_raise(
+            session, watch_id=watch_id
+        )
         normalized_updated_by = WatchEventService._normalize_updated_by(updated_by)
         normalized_reason = WatchEventService._normalize_update_reason(update_reason)
         if watch_event.is_deleted:
@@ -311,7 +337,9 @@ class WatchEventService:
         else:
             normalized_version_name = version_name.strip() if version_name else ""
             if not normalized_version_name:
-                raise ValueError("version_name must not be empty unless clearing override")
+                raise ValueError(
+                    "version_name must not be empty unless clearing override"
+                )
             watch_event.watch_version_name = normalized_version_name
             watch_event.watch_runtime_seconds = (
                 runtime_minutes * 60 if runtime_minutes is not None else None
@@ -322,12 +350,16 @@ class WatchEventService:
         watch_event.update_reason = normalized_reason
         watch_event.dedupe_hash = None
         try:
-            updated = watch_event_repository.update_watch_event(session, watch_event=watch_event)
+            updated = watch_event_repository.update_watch_event(
+                session, watch_event=watch_event
+            )
             session.commit()
             return updated
         except IntegrityError as exc:
             session.rollback()
-            raise WatchEventConstraintError("Watch event failed database constraints") from exc
+            raise WatchEventConstraintError(
+                "Watch event failed database constraints"
+            ) from exc
 
     @staticmethod
     def create_watch_event(
@@ -359,7 +391,9 @@ class WatchEventService:
         ).astimezone(UTC)
 
         normalized_rating_scale = rating_scale.strip() if rating_scale else None
-        normalized_source_event_id = source_event_id.strip() if source_event_id else None
+        normalized_source_event_id = (
+            source_event_id.strip() if source_event_id else None
+        )
         normalized_created_by = created_by.strip() if created_by else None
         normalized_origin_kind = origin_kind.strip()
         if not normalized_origin_kind:
@@ -572,7 +606,11 @@ class WatchEventService:
         if not title:
             raise ValueError("TMDB movie details did not include a title")
         release_date = details.get("release_date")
-        year = int(release_date[:4]) if isinstance(release_date, str) and len(release_date) >= 4 else None
+        year = (
+            int(release_date[:4])
+            if isinstance(release_date, str) and len(release_date) >= 4
+            else None
+        )
         imdb_id = details.get("imdb_id")
         media_item = MediaItemService.create_media_item(
             session,
@@ -600,7 +638,9 @@ class WatchEventService:
                 "Episode manual entry requires show_tmdb_id because TMDB cannot resolve episode details from episode id alone"
             )
         if season_number is None or episode_number is None:
-            raise ValueError("Episode manual entry requires season_number and episode_number")
+            raise ValueError(
+                "Episode manual entry requires season_number and episode_number"
+            )
 
         existing = MediaItemService.find_episode_media_item(
             session,
@@ -657,7 +697,9 @@ class WatchEventService:
             raise ValueError("TMDB episode details did not include a name")
         air_date = episode_details.get("air_date")
         episode_year = (
-            int(air_date[:4]) if isinstance(air_date, str) and len(air_date) >= 4 else None
+            int(air_date[:4])
+            if isinstance(air_date, str) and len(air_date) >= 4
+            else None
         )
         media_item = MediaItemService.create_media_item(
             session,

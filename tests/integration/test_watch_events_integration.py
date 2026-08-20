@@ -143,17 +143,21 @@ def test_watch_event_enriched_excludes_soft_deleted_rows(
     session.add_all([kept_event, deleted_event])
     session.commit()
 
-    rows = session.execute(
-        text(
-            """
+    rows = (
+        session.execute(
+            text(
+                """
             SELECT watch_id
             FROM app.watch_event_enriched
             WHERE user_id = :user_id
             ORDER BY watched_at
             """
-        ),
-        {"user_id": str(user.user_id)},
-    ).scalars().all()
+            ),
+            {"user_id": str(user.user_id)},
+        )
+        .scalars()
+        .all()
+    )
     session.close()
 
     assert rows == [kept_event.watch_id]

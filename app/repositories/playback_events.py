@@ -36,7 +36,9 @@ def list_playback_events(
         statement = statement.where(PlaybackEvent.decision_status == decision_status)
 
     statement = (
-        statement.order_by(PlaybackEvent.occurred_at.desc(), PlaybackEvent.created_at.desc())
+        statement.order_by(
+            PlaybackEvent.occurred_at.desc(), PlaybackEvent.created_at.desc()
+        )
         .offset(offset)
         .limit(limit)
     )

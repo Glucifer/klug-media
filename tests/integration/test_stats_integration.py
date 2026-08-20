@@ -21,7 +21,9 @@ def test_stats_summary_uses_effective_runtime_and_excludes_deleted(
     session = integration_session_factory()
     user = User(username=f"stats-user-{uuid4().hex[:8]}", timezone="America/Edmonton")
     movie = MediaItem(type="movie", title="Stats Movie", base_runtime_seconds=6000)
-    episode = MediaItem(type="episode", title="Stats Episode", season_number=1, episode_number=1)
+    episode = MediaItem(
+        type="episode", title="Stats Episode", season_number=1, episode_number=1
+    )
     session.add_all([user, movie, episode])
     session.flush()
     media_version = MediaVersion(
@@ -139,8 +141,12 @@ def test_stats_horrorfest_excludes_removed_and_deleted_watches(
         is_active=True,
     )
     movie = MediaItem(type="movie", title="Fest Movie", base_runtime_seconds=7200)
-    removed_movie = MediaItem(type="movie", title="Removed Fest Movie", base_runtime_seconds=5400)
-    deleted_movie = MediaItem(type="movie", title="Deleted Fest Movie", base_runtime_seconds=4800)
+    removed_movie = MediaItem(
+        type="movie", title="Removed Fest Movie", base_runtime_seconds=5400
+    )
+    deleted_movie = MediaItem(
+        type="movie", title="Deleted Fest Movie", base_runtime_seconds=4800
+    )
     session.add_all([user, year, movie, removed_movie, deleted_movie])
     session.flush()
     active_watch = WatchEvent(
@@ -196,7 +202,9 @@ def test_stats_horrorfest_excludes_removed_and_deleted_watches(
     session.commit()
     session.close()
 
-    response = integration_client.get(f"/api/v1/stats/horrorfest?user_id={user.user_id}")
+    response = integration_client.get(
+        f"/api/v1/stats/horrorfest?user_id={user.user_id}"
+    )
 
     assert response.status_code == 200
     payload = response.json()

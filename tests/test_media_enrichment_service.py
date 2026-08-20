@@ -51,7 +51,9 @@ def test_enrich_movie_resolves_tmdb_id_from_imdb(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         "app.services.media_enrichment.TmdbService.find_by_external_id",
-        lambda *_args, **_kwargs: SimpleNamespace(tmdb_id=348, media_type="movie", payload={}),
+        lambda *_args, **_kwargs: SimpleNamespace(
+            tmdb_id=348, media_type="movie", payload={}
+        ),
     )
     monkeypatch.setattr(
         "app.services.media_enrichment.TmdbService.get_movie_details",
@@ -138,7 +140,9 @@ def test_enrich_episode_resolves_show_tmdb_id_from_tvdb(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         "app.services.media_enrichment.MediaItemService.update_media_item_metadata",
-        lambda *_args, **kwargs: updated_item if kwargs["show_tmdb_id"] == 204154 else None,
+        lambda *_args, **kwargs: (
+            updated_item if kwargs["show_tmdb_id"] == 204154 else None
+        ),
     )
 
     result = MediaEnrichmentService.retry_media_item(
@@ -154,7 +158,9 @@ def test_enrich_episode_resolves_show_tmdb_id_from_tvdb(monkeypatch) -> None:
 def test_retry_marks_failure_without_breaking(monkeypatch) -> None:
     session = Mock()
     media_item = _make_media_item()
-    failed_item = _make_media_item(enrichment_status="failed", enrichment_error="tmdb_lookup_failed")
+    failed_item = _make_media_item(
+        enrichment_status="failed", enrichment_error="tmdb_lookup_failed"
+    )
 
     monkeypatch.setattr(
         "app.services.media_enrichment.MediaItemService.get_media_item",
@@ -192,7 +198,9 @@ def test_retry_marks_failure_without_breaking(monkeypatch) -> None:
     session.commit.assert_called_once()
 
 
-def test_retry_marks_tmdb_no_match_without_touching_metadata_timestamp(monkeypatch) -> None:
+def test_retry_marks_tmdb_no_match_without_touching_metadata_timestamp(
+    monkeypatch,
+) -> None:
     session = Mock()
     media_item = _make_media_item(metadata_updated_at=datetime(2026, 3, 31, tzinfo=UTC))
     failed_item = _make_media_item(
@@ -206,10 +214,14 @@ def test_retry_marks_tmdb_no_match_without_touching_metadata_timestamp(monkeypat
         "app.services.media_enrichment.MediaItemService.get_media_item",
         lambda *_args, **_kwargs: media_item,
     )
-    monkeypatch.setattr("app.services.media_enrichment.TmdbService.is_enabled", lambda: True)
+    monkeypatch.setattr(
+        "app.services.media_enrichment.TmdbService.is_enabled", lambda: True
+    )
     monkeypatch.setattr(
         "app.services.media_enrichment.TmdbService.find_by_external_id",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(TmdbLookupError("tmdb_no_match")),
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            TmdbLookupError("tmdb_no_match")
+        ),
     )
     update_metadata = Mock()
     monkeypatch.setattr(
@@ -221,7 +233,9 @@ def test_retry_marks_tmdb_no_match_without_touching_metadata_timestamp(monkeypat
         Mock(return_value=failed_item),
     )
 
-    result = MediaEnrichmentService.retry_media_item(session, media_item_id=media_item.media_item_id)
+    result = MediaEnrichmentService.retry_media_item(
+        session, media_item_id=media_item.media_item_id
+    )
 
     assert result.failure_code == "tmdb_no_match"
     assert result.media_item.metadata_updated_at == media_item.metadata_updated_at
@@ -241,7 +255,9 @@ def test_retry_marks_skipped_when_tmdb_is_unconfigured(monkeypatch) -> None:
         "app.services.media_enrichment.MediaItemService.get_media_item",
         lambda *_args, **_kwargs: media_item,
     )
-    monkeypatch.setattr("app.services.media_enrichment.TmdbService.is_enabled", lambda: False)
+    monkeypatch.setattr(
+        "app.services.media_enrichment.TmdbService.is_enabled", lambda: False
+    )
     update_metadata = Mock()
     monkeypatch.setattr(
         "app.services.media_enrichment.MediaItemService.update_media_item_metadata",
@@ -253,7 +269,9 @@ def test_retry_marks_skipped_when_tmdb_is_unconfigured(monkeypatch) -> None:
         record_attempt,
     )
 
-    result = MediaEnrichmentService.retry_media_item(session, media_item_id=media_item.media_item_id)
+    result = MediaEnrichmentService.retry_media_item(
+        session, media_item_id=media_item.media_item_id
+    )
 
     assert result.action == "skipped"
     assert result.failure_code == "enrichment_disabled_or_unconfigured"

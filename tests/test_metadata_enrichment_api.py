@@ -53,7 +53,9 @@ def test_list_metadata_enrichment_items_returns_rows(monkeypatch) -> None:
     monkeypatch.setattr(MediaEnrichmentService, "list_queue", fake_list_queue)
 
     client = TestClient(app)
-    response = client.get("/api/v1/metadata-enrichment/items?enrichment_status=pending&limit=10")
+    response = client.get(
+        "/api/v1/metadata-enrichment/items?enrichment_status=pending&limit=10"
+    )
 
     assert response.status_code == 200
     assert called["enrichment_status"] == "pending"
@@ -75,7 +77,9 @@ def test_process_pending_metadata_items_returns_batch(monkeypatch) -> None:
         "process_pending_items",
         fake_process_pending,
     )
-    monkeypatch.setattr(MediaEnrichmentService, "count_pending_items", lambda *_args, **_kwargs: 12)
+    monkeypatch.setattr(
+        MediaEnrichmentService, "count_pending_items", lambda *_args, **_kwargs: 12
+    )
 
     client = TestClient(app)
     response = client.post("/api/v1/metadata-enrichment/process-pending?limit=5")
@@ -93,6 +97,7 @@ def test_process_pending_metadata_items_returns_batch(monkeypatch) -> None:
 
 def test_retry_metadata_enrichment_returns_not_found(monkeypatch) -> None:
     _set_permissive_auth(monkeypatch)
+
     def fake_retry(_session, *, media_item_id):
         raise ValueError(f"Media item '{media_item_id}' not found")
 
@@ -111,7 +116,9 @@ def test_list_metadata_enrichment_items_include_failure_guidance(monkeypatch) ->
     item.enrichment_error = "tmdb_no_match"
     item.tmdb_id = None
 
-    monkeypatch.setattr(MediaEnrichmentService, "list_queue", lambda *_args, **_kwargs: [item])
+    monkeypatch.setattr(
+        MediaEnrichmentService, "list_queue", lambda *_args, **_kwargs: [item]
+    )
 
     client = TestClient(app)
     response = client.get("/api/v1/metadata-enrichment/items?enrichment_status=failed")

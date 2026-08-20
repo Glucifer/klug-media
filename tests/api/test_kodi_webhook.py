@@ -180,7 +180,7 @@ def test_kodi_episode_missing_show_metadata(monkeypatch) -> None:
     _set_auth(monkeypatch, api_key=None, auth_mode="write", app_env="dev")
     user_id = str(uuid4())
     client = TestClient(app)
-    
+
     def fake_process(*args, **kwargs):
         raise ValueError("Episode scrobble requires show title or tmdb_id/tvdb_id")
 
@@ -194,7 +194,7 @@ def test_kodi_episode_missing_show_metadata(monkeypatch) -> None:
             "title": "Unknown TV Show",
         },
     )
-    
+
     assert response.status_code == 422
     data = response.json()
     assert "require" in data["detail"].lower()

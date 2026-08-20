@@ -59,7 +59,9 @@ def test_run_horrorfest_import_returns_2_for_missing_file() -> None:
     assert exit_code == 2
 
 
-def test_run_horrorfest_import_writes_unmatched_report(monkeypatch, tmp_path: Path) -> None:
+def test_run_horrorfest_import_writes_unmatched_report(
+    monkeypatch, tmp_path: Path
+) -> None:
     input_path = tmp_path / "horrorfest.csv"
     report_path = tmp_path / "reports" / "unmatched.json"
     input_path.write_text(

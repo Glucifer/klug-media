@@ -68,7 +68,9 @@ def test_sync_watch_event_creates_auto_entry_for_qualifying_movie(monkeypatch) -
     assert created["source_kind"] == "auto_live"
 
 
-def test_sync_watch_event_removes_existing_entry_when_watch_no_longer_qualifies(monkeypatch) -> None:
+def test_sync_watch_event_removes_existing_entry_when_watch_no_longer_qualifies(
+    monkeypatch,
+) -> None:
     session = Mock()
     watch_event = Mock()
     watch_event.watch_id = uuid4()
@@ -96,7 +98,9 @@ def test_sync_watch_event_removes_existing_entry_when_watch_no_longer_qualifies(
     )
     monkeypatch.setattr(
         "app.services.horrorfest.HorrorfestService._normalize_year_orders",
-        lambda *_args, **kwargs: normalized.__setitem__("year", kwargs["horrorfest_year"]),
+        lambda *_args, **kwargs: normalized.__setitem__(
+            "year", kwargs["horrorfest_year"]
+        ),
     )
 
     HorrorfestService.sync_watch_event(session, watch_event=watch_event)
@@ -130,7 +134,9 @@ def test_include_watch_event_rejects_out_of_window_watch(monkeypatch) -> None:
         lambda *_args, **_kwargs: year_config,
     )
 
-    with pytest.raises(ValueError, match="must fall inside the configured Horrorfest year window"):
+    with pytest.raises(
+        ValueError, match="must fall inside the configured Horrorfest year window"
+    ):
         HorrorfestService.include_watch_event(
             session,
             watch_id=watch_id,

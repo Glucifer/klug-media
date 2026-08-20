@@ -90,7 +90,9 @@ def _show_item(*, source_item_id: str = "show-1") -> JellyfinCollectionItem:
     )
 
 
-def _episode_item(*, source_item_id: str = "episode-1", season_number: int | None = 1) -> JellyfinCollectionItem:
+def _episode_item(
+    *, source_item_id: str = "episode-1", season_number: int | None = 1
+) -> JellyfinCollectionItem:
     return JellyfinCollectionItem(
         source_item_id=source_item_id,
         item_type="episode",
@@ -180,7 +182,9 @@ def test_run_import_dry_run_counts_new_rows_and_missing_entries(monkeypatch) -> 
 
 def test_run_import_updates_existing_rows_and_marks_missing(monkeypatch) -> None:
     movie_media_item = SimpleNamespace(media_item_id=uuid4())
-    existing_entry = SimpleNamespace(media_item_id=movie_media_item.media_item_id, show_id=None)
+    existing_entry = SimpleNamespace(
+        media_item_id=movie_media_item.media_item_id, show_id=None
+    )
     batch_id = uuid4()
     client = DummyClient(
         libraries=[JellyfinLibrary("movies", "Movies", "movies")],
@@ -247,7 +251,9 @@ def test_run_import_updates_existing_rows_and_marks_missing(monkeypatch) -> None
     assert finish_calls["status"] == "completed"
 
 
-def test_run_import_logs_ambiguous_title_match_and_creates_new_movie(monkeypatch) -> None:
+def test_run_import_logs_ambiguous_title_match_and_creates_new_movie(
+    monkeypatch,
+) -> None:
     movie_media_item = SimpleNamespace(media_item_id=uuid4())
     batch_id = uuid4()
     client = DummyClient(
@@ -307,7 +313,9 @@ def test_run_import_logs_ambiguous_title_match_and_creates_new_movie(monkeypatch
     )
     monkeypatch.setattr(
         "app.services.collection_imports.import_batch_repository.get_import_batch",
-        lambda *_args, **_kwargs: SimpleNamespace(import_batch_id=batch_id, errors_count=0),
+        lambda *_args, **_kwargs: SimpleNamespace(
+            import_batch_id=batch_id, errors_count=0
+        ),
     )
     monkeypatch.setattr(
         "app.services.collection_imports.import_batch_repository.create_import_batch_error",
@@ -370,12 +378,19 @@ def test_run_import_skips_invalid_episode_rows(monkeypatch) -> None:
     assert recorded_errors[0]["entity_ref"] == "episode-1"
 
 
-def test_run_import_item_errors_do_not_rollback_successful_outer_work(monkeypatch) -> None:
+def test_run_import_item_errors_do_not_rollback_successful_outer_work(
+    monkeypatch,
+) -> None:
     batch_id = uuid4()
     created_entries: list[str] = []
     client = DummyClient(
         libraries=[JellyfinLibrary("movies", "Movies", "movies")],
-        items_by_library={"movies": [_movie_item(source_item_id="movie-ok"), _movie_item(source_item_id="movie-bad")]},
+        items_by_library={
+            "movies": [
+                _movie_item(source_item_id="movie-ok"),
+                _movie_item(source_item_id="movie-bad"),
+            ]
+        },
     )
     session_obj = DummySession()
 

@@ -24,7 +24,9 @@ def list_scrobble_activity(
     limit: int,
     offset: int,
 ) -> list[dict[str, Any]]:
-    statement: Select[tuple[PlaybackEvent, str | None, UUID | None, str | None, str | None]] = (
+    statement: Select[
+        tuple[PlaybackEvent, str | None, UUID | None, str | None, str | None]
+    ] = (
         select(
             PlaybackEvent,
             User.username,
@@ -66,14 +68,23 @@ def list_scrobble_activity(
         statement = statement.where(PlaybackEvent.watch_id.is_not(None))
 
     statement = (
-        statement.order_by(PlaybackEvent.occurred_at.desc(), PlaybackEvent.created_at.desc())
+        statement.order_by(
+            PlaybackEvent.occurred_at.desc(), PlaybackEvent.created_at.desc()
+        )
         .offset(offset)
         .limit(limit)
     )
     rows = session.execute(statement).all()
 
     payload: list[dict[str, Any]] = []
-    for playback_event, username, media_item_id, origin_kind, matched_title, matched_media_type in rows:
+    for (
+        playback_event,
+        username,
+        media_item_id,
+        origin_kind,
+        matched_title,
+        matched_media_type,
+    ) in rows:
         payload.append(
             {
                 "playback_event_id": playback_event.playback_event_id,
@@ -100,7 +111,8 @@ def list_scrobble_activity(
                 "matched_title": matched_title,
                 "matched_media_type": matched_media_type,
                 "result_label": _result_label(playback_event.decision_status),
-                "is_unmatched": playback_event.watch_id is None or media_item_id is None,
+                "is_unmatched": playback_event.watch_id is None
+                or media_item_id is None,
             }
         )
     return payload

@@ -15,18 +15,50 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("watch_event", sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True), schema=APP_SCHEMA)
-    op.add_column("watch_event", sa.Column("updated_by", sa.String(), nullable=True), schema=APP_SCHEMA)
-    op.add_column("watch_event", sa.Column("update_reason", sa.String(), nullable=True), schema=APP_SCHEMA)
     op.add_column(
         "watch_event",
-        sa.Column("is_deleted", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         schema=APP_SCHEMA,
     )
-    op.add_column("watch_event", sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True), schema=APP_SCHEMA)
-    op.add_column("watch_event", sa.Column("deleted_by", sa.String(), nullable=True), schema=APP_SCHEMA)
-    op.add_column("watch_event", sa.Column("deleted_reason", sa.String(), nullable=True), schema=APP_SCHEMA)
-    op.create_index("ix_watch_event_is_deleted", "watch_event", ["is_deleted"], unique=False, schema=APP_SCHEMA)
+    op.add_column(
+        "watch_event",
+        sa.Column("updated_by", sa.String(), nullable=True),
+        schema=APP_SCHEMA,
+    )
+    op.add_column(
+        "watch_event",
+        sa.Column("update_reason", sa.String(), nullable=True),
+        schema=APP_SCHEMA,
+    )
+    op.add_column(
+        "watch_event",
+        sa.Column(
+            "is_deleted", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
+        schema=APP_SCHEMA,
+    )
+    op.add_column(
+        "watch_event",
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
+        schema=APP_SCHEMA,
+    )
+    op.add_column(
+        "watch_event",
+        sa.Column("deleted_by", sa.String(), nullable=True),
+        schema=APP_SCHEMA,
+    )
+    op.add_column(
+        "watch_event",
+        sa.Column("deleted_reason", sa.String(), nullable=True),
+        schema=APP_SCHEMA,
+    )
+    op.create_index(
+        "ix_watch_event_is_deleted",
+        "watch_event",
+        ["is_deleted"],
+        unique=False,
+        schema=APP_SCHEMA,
+    )
 
     op.execute(
         """
@@ -66,7 +98,9 @@ def upgrade() -> None:
         """
     )
 
-    op.execute("DROP TRIGGER IF EXISTS trg_watch_event_set_dedupe_hash ON app.watch_event")
+    op.execute(
+        "DROP TRIGGER IF EXISTS trg_watch_event_set_dedupe_hash ON app.watch_event"
+    )
     op.execute(
         """
         CREATE TRIGGER trg_watch_event_set_dedupe_hash
@@ -77,7 +111,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("DROP TRIGGER IF EXISTS trg_watch_event_set_dedupe_hash ON app.watch_event")
+    op.execute(
+        "DROP TRIGGER IF EXISTS trg_watch_event_set_dedupe_hash ON app.watch_event"
+    )
     op.execute(
         """
         CREATE TRIGGER trg_watch_event_set_dedupe_hash
@@ -120,7 +156,9 @@ def downgrade() -> None:
         FROM per_show;
         """
     )
-    op.drop_index("ix_watch_event_is_deleted", table_name="watch_event", schema=APP_SCHEMA)
+    op.drop_index(
+        "ix_watch_event_is_deleted", table_name="watch_event", schema=APP_SCHEMA
+    )
     op.drop_column("watch_event", "deleted_reason", schema=APP_SCHEMA)
     op.drop_column("watch_event", "deleted_by", schema=APP_SCHEMA)
     op.drop_column("watch_event", "deleted_at", schema=APP_SCHEMA)

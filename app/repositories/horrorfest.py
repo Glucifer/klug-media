@@ -67,7 +67,9 @@ def _horrorfest_analytics_base_statement(
         .join(WatchEvent, WatchEvent.watch_id == HorrorfestEntry.watch_id)
         .join(User, User.user_id == WatchEvent.user_id)
         .join(MediaItem, MediaItem.media_item_id == WatchEvent.media_item_id)
-        .outerjoin(MediaVersion, MediaVersion.media_version_id == WatchEvent.media_version_id)
+        .outerjoin(
+            MediaVersion, MediaVersion.media_version_id == WatchEvent.media_version_id
+        )
         .where(
             HorrorfestEntry.is_removed.is_(False),
             WatchEvent.is_deleted.is_(False),
@@ -96,9 +98,9 @@ def _build_analytics_summary(row: object) -> dict[str, object]:
         "total_runtime_hours": (
             Decimal(total_runtime_seconds) / Decimal("3600")
         ).quantize(Decimal("0.01")),
-        "average_watches_per_day": (
-            Decimal(watch_count) / watch_days_decimal
-        ).quantize(Decimal("0.01")),
+        "average_watches_per_day": (Decimal(watch_count) / watch_days_decimal).quantize(
+            Decimal("0.01")
+        ),
         "average_runtime_hours_per_day": (
             Decimal(total_runtime_seconds) / Decimal("3600") / watch_days_decimal
         ).quantize(Decimal("0.01")),
@@ -162,16 +164,21 @@ def _build_comparison_delta(
     right_summary: dict[str, object],
 ) -> dict[str, object]:
     return {
-        "watch_count": int(left_summary["watch_count"]) - int(right_summary["watch_count"]),
-        "watch_days": int(left_summary["watch_days"]) - int(right_summary["watch_days"]),
-        "new_watch_count": int(left_summary["new_watch_count"]) - int(right_summary["new_watch_count"]),
-        "rewatch_count": int(left_summary["rewatch_count"]) - int(right_summary["rewatch_count"]),
-        "total_runtime_seconds": int(left_summary["total_runtime_seconds"]) - int(
-            right_summary["total_runtime_seconds"]
-        ),
+        "watch_count": int(left_summary["watch_count"])
+        - int(right_summary["watch_count"]),
+        "watch_days": int(left_summary["watch_days"])
+        - int(right_summary["watch_days"]),
+        "new_watch_count": int(left_summary["new_watch_count"])
+        - int(right_summary["new_watch_count"]),
+        "rewatch_count": int(left_summary["rewatch_count"])
+        - int(right_summary["rewatch_count"]),
+        "total_runtime_seconds": int(left_summary["total_runtime_seconds"])
+        - int(right_summary["total_runtime_seconds"]),
         "total_runtime_hours": _quantize_decimal(left_summary["total_runtime_hours"])
         - _quantize_decimal(right_summary["total_runtime_hours"]),
-        "average_watches_per_day": _quantize_decimal(left_summary["average_watches_per_day"])
+        "average_watches_per_day": _quantize_decimal(
+            left_summary["average_watches_per_day"]
+        )
         - _quantize_decimal(right_summary["average_watches_per_day"]),
         "average_runtime_hours_per_day": _quantize_decimal(
             left_summary["average_runtime_hours_per_day"]
@@ -188,9 +195,8 @@ def _build_comparison_delta(
             or right_summary.get("average_rating_value") is not None
             else None
         ),
-        "rated_watch_count": int(left_summary["rated_watch_count"]) - int(
-            right_summary["rated_watch_count"]
-        ),
+        "rated_watch_count": int(left_summary["rated_watch_count"])
+        - int(right_summary["rated_watch_count"]),
     }
 
 
@@ -204,7 +210,9 @@ def _collect_title_year_history(
     latest_year = years[-1] if years else None
     rows: list[dict[str, object]] = []
     for row in payload["rows"]:
-        year_counts = {int(year): int(count) for year, count in row["year_counts"].items()}
+        year_counts = {
+            int(year): int(count) for year, count in row["year_counts"].items()
+        }
         years_present = sorted(year for year, count in year_counts.items() if count > 0)
         if not years_present:
             continue
@@ -404,9 +412,9 @@ def list_horrorfest_analytics_years(
             func.sum(case((analytics_rows.c.rewatch.is_(True), 1), else_=0)).label(
                 "rewatch_count"
             ),
-            func.coalesce(func.sum(analytics_rows.c.effective_runtime_seconds), 0).label(
-                "total_runtime_seconds"
-            ),
+            func.coalesce(
+                func.sum(analytics_rows.c.effective_runtime_seconds), 0
+            ).label("total_runtime_seconds"),
             func.avg(analytics_rows.c.rating_value).label("average_rating_value"),
             func.sum(
                 case((analytics_rows.c.rating_value.is_not(None), 1), else_=0)
@@ -535,9 +543,9 @@ def get_horrorfest_analytics_year_detail(
         select(
             analytics_rows.c.watch_date,
             func.count().label("watch_count"),
-            func.coalesce(func.sum(analytics_rows.c.effective_runtime_seconds), 0).label(
-                "total_runtime_seconds"
-            ),
+            func.coalesce(
+                func.sum(analytics_rows.c.effective_runtime_seconds), 0
+            ).label("total_runtime_seconds"),
             func.avg(analytics_rows.c.rating_value).label("average_rating_value"),
         )
         .group_by(analytics_rows.c.watch_date)
@@ -547,9 +555,9 @@ def get_horrorfest_analytics_year_detail(
         select(
             analytics_rows.c.playback_source,
             func.count().label("watch_count"),
-            func.coalesce(func.sum(analytics_rows.c.effective_runtime_seconds), 0).label(
-                "total_runtime_seconds"
-            ),
+            func.coalesce(
+                func.sum(analytics_rows.c.effective_runtime_seconds), 0
+            ).label("total_runtime_seconds"),
             func.avg(analytics_rows.c.rating_value).label("average_rating_value"),
         )
         .group_by(analytics_rows.c.playback_source)
@@ -987,7 +995,9 @@ def _list_horrorfest_entry_rows(
             MediaItem.year < decade_start + 10,
         )
     if watch_date is not None:
-        local_watch_date = func.date(func.timezone(User.timezone, WatchEvent.watched_at))
+        local_watch_date = func.date(
+            func.timezone(User.timezone, WatchEvent.watched_at)
+        )
         statement = statement.where(local_watch_date == watch_date)
     if playback_source is not None:
         statement = statement.where(WatchEvent.playback_source == playback_source)

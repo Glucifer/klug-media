@@ -443,7 +443,9 @@ def test_list_horrorfest_analytics_title_entries_returns_rows(monkeypatch) -> No
     )
 
     client = TestClient(app)
-    response = client.get(f"/api/v1/horrorfest/analytics/titles/{media_item_id}/entries")
+    response = client.get(
+        f"/api/v1/horrorfest/analytics/titles/{media_item_id}/entries"
+    )
 
     assert response.status_code == 200
     payload = response.json()
@@ -489,7 +491,9 @@ def test_list_horrorfest_analytics_decade_entries_returns_rows(monkeypatch) -> N
     )
 
     client = TestClient(app)
-    response = client.get("/api/v1/horrorfest/analytics/decades/1970/entries?horrorfest_year=2024")
+    response = client.get(
+        "/api/v1/horrorfest/analytics/decades/1970/entries?horrorfest_year=2024"
+    )
 
     assert response.status_code == 200
     payload = response.json()
@@ -605,7 +609,9 @@ def test_get_horrorfest_analytics_comparison_returns_payload(monkeypatch) -> Non
     )
 
     client = TestClient(app)
-    response = client.get("/api/v1/horrorfest/analytics/compare?left_year=2025&right_year=2024")
+    response = client.get(
+        "/api/v1/horrorfest/analytics/compare?left_year=2025&right_year=2024"
+    )
 
     assert response.status_code == 200
     payload = response.json()
@@ -614,7 +620,9 @@ def test_get_horrorfest_analytics_comparison_returns_payload(monkeypatch) -> Non
     assert payload["source_rows"][0]["playback_source"] == "kodi"
 
 
-def test_get_horrorfest_repeated_titles_leaderboard_returns_payload(monkeypatch) -> None:
+def test_get_horrorfest_repeated_titles_leaderboard_returns_payload(
+    monkeypatch,
+) -> None:
     _set_permissive_auth(monkeypatch)
     monkeypatch.setattr(
         HorrorfestService,
@@ -689,7 +697,9 @@ def test_get_horrorfest_curation_dormant_passes_window(monkeypatch) -> None:
     )
 
     client = TestClient(app)
-    response = client.get("/api/v1/horrorfest/analytics/curation/dormant?dormant_year_window=4")
+    response = client.get(
+        "/api/v1/horrorfest/analytics/curation/dormant?dormant_year_window=4"
+    )
 
     assert response.status_code == 200
     assert captured["dormant_year_window"] == 4
@@ -725,7 +735,10 @@ def test_export_horrorfest_analytics_years_returns_csv(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/csv")
-    assert "attachment; filename=\"horrorfest_year_summary.csv\"" == response.headers["content-disposition"]
+    assert (
+        'attachment; filename="horrorfest_year_summary.csv"'
+        == response.headers["content-disposition"]
+    )
     assert "horrorfest_year,watch_count" in response.text
 
 
@@ -773,7 +786,9 @@ def test_export_horrorfest_comparison_returns_csv(monkeypatch) -> None:
     )
 
     client = TestClient(app)
-    response = client.get("/api/v1/horrorfest/analytics/export/compare?left_year=2025&right_year=2024")
+    response = client.get(
+        "/api/v1/horrorfest/analytics/export/compare?left_year=2025&right_year=2024"
+    )
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/csv")

@@ -4,7 +4,13 @@ from uuid import UUID
 from sqlalchemy import Integer, case, cast, func, select
 from sqlalchemy.orm import Session
 
-from app.db.models.entities import HorrorfestEntry, MediaItem, MediaVersion, User, WatchEvent
+from app.db.models.entities import (
+    HorrorfestEntry,
+    MediaItem,
+    MediaVersion,
+    User,
+    WatchEvent,
+)
 
 
 def _effective_runtime_seconds_expr():
@@ -35,7 +41,10 @@ def get_summary_stats(
             func.sum(
                 case(
                     (
-                        (WatchEvent.completed.is_(True) & WatchEvent.rating_value.is_(None)),
+                        (
+                            WatchEvent.completed.is_(True)
+                            & WatchEvent.rating_value.is_(None)
+                        ),
                         1,
                     ),
                     else_=0,
@@ -45,7 +54,9 @@ def get_summary_stats(
         .select_from(WatchEvent)
         .join(User, WatchEvent.user_id == User.user_id)
         .join(MediaItem, WatchEvent.media_item_id == MediaItem.media_item_id)
-        .outerjoin(MediaVersion, WatchEvent.media_version_id == MediaVersion.media_version_id)
+        .outerjoin(
+            MediaVersion, WatchEvent.media_version_id == MediaVersion.media_version_id
+        )
         .where(WatchEvent.is_deleted.is_(False))
     )
     if user_id is not None:
@@ -94,7 +105,9 @@ def list_monthly_stats(
         .select_from(WatchEvent)
         .join(User, WatchEvent.user_id == User.user_id)
         .join(MediaItem, WatchEvent.media_item_id == MediaItem.media_item_id)
-        .outerjoin(MediaVersion, WatchEvent.media_version_id == MediaVersion.media_version_id)
+        .outerjoin(
+            MediaVersion, WatchEvent.media_version_id == MediaVersion.media_version_id
+        )
         .where(WatchEvent.is_deleted.is_(False))
         .group_by(local_year, local_month)
         .order_by(local_year.desc(), local_month.desc())
@@ -143,7 +156,9 @@ def list_horrorfest_stats(
         .join(WatchEvent, WatchEvent.watch_id == HorrorfestEntry.watch_id)
         .join(User, WatchEvent.user_id == User.user_id)
         .join(MediaItem, WatchEvent.media_item_id == MediaItem.media_item_id)
-        .outerjoin(MediaVersion, WatchEvent.media_version_id == MediaVersion.media_version_id)
+        .outerjoin(
+            MediaVersion, WatchEvent.media_version_id == MediaVersion.media_version_id
+        )
         .where(
             HorrorfestEntry.is_removed.is_(False),
             WatchEvent.is_deleted.is_(False),

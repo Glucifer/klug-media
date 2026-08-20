@@ -55,9 +55,11 @@ class WebhookService:
 
         should_create_watch_event = WebhookService._should_create_watch_event(payload)
         if not should_create_watch_event:
-            should_create_watch_event = WebhookService._should_create_watch_event_from_session(
-                session,
-                payload=payload,
+            should_create_watch_event = (
+                WebhookService._should_create_watch_event_from_session(
+                    session,
+                    payload=payload,
+                )
             )
         if not should_create_watch_event:
             playback_event = PlaybackEventService.update_playback_event_decision(
@@ -91,13 +93,16 @@ class WebhookService:
                 reason="Watch event already exists for this source event",
             )
 
-        if payload.session_key and PlaybackEventService.session_has_prior_scrobble_candidate(
-            session,
-            collector="node_red",
-            playback_source=payload.playback_source,
-            user_id=payload.user_id,
-            session_key=payload.session_key,
-            exclude_playback_event_id=playback_event.playback_event_id,
+        if (
+            payload.session_key
+            and PlaybackEventService.session_has_prior_scrobble_candidate(
+                session,
+                collector="node_red",
+                playback_source=payload.playback_source,
+                user_id=payload.user_id,
+                session_key=payload.session_key,
+                exclude_playback_event_id=playback_event.playback_event_id,
+            )
         ):
             playback_event = PlaybackEventService.update_playback_event_decision(
                 session,
@@ -226,7 +231,10 @@ class WebhookService:
         )
         if max_progress is None:
             return False
-        return Decimal(str(max_progress)) >= WebhookService._scrobble_min_progress_percent()
+        return (
+            Decimal(str(max_progress))
+            >= WebhookService._scrobble_min_progress_percent()
+        )
 
     @staticmethod
     def _effective_completion_ratio(payload: KodiPlaybackEventPayload) -> Decimal:

@@ -234,18 +234,20 @@ def test_import_legacy_source_watch_events_upload_endpoint(monkeypatch) -> None:
 
     monkeypatch.setattr(
         "app.api.imports.import_watch_events_script._build_mapped_rows_from_legacy_backup",
-        lambda _rows, *, user_id, dry_run, naive_datetime_timezone="UTC": LegacyBackupPreprocessResult(
-            mapped_rows=[
-                {
-                    "user_id": str(user_id),
-                    "media_item_id": str(uuid4()),
-                    "watched_at": datetime.now(UTC).isoformat(),
-                    "player": "legacy_backup",
-                }
-            ],
-            rejected_rows=[],
-            media_items_created=0,
-            shows_created=0,
+        lambda _rows, *, user_id, dry_run, naive_datetime_timezone="UTC": (
+            LegacyBackupPreprocessResult(
+                mapped_rows=[
+                    {
+                        "user_id": str(user_id),
+                        "media_item_id": str(uuid4()),
+                        "watched_at": datetime.now(UTC).isoformat(),
+                        "player": "legacy_backup",
+                    }
+                ],
+                rejected_rows=[],
+                media_items_created=0,
+                shows_created=0,
+            )
         ),
     )
 

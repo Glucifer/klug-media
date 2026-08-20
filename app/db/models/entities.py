@@ -216,7 +216,9 @@ class MediaItem(Base):
 class CollectionEntry(Base):
     __tablename__ = "collection_entry"
     __table_args__ = (
-        UniqueConstraint("source", "source_item_id", name="uq_collection_entry_source_item"),
+        UniqueConstraint(
+            "source", "source_item_id", name="uq_collection_entry_source_item"
+        ),
         Index("ix_collection_entry_present", "source", "is_present"),
         Index("ix_collection_entry_library", "source", "library_id"),
         CheckConstraint(
@@ -267,7 +269,9 @@ class CollectionEntry(Base):
     )
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    media_item: Mapped[MediaItem | None] = relationship(back_populates="collection_entries")
+    media_item: Mapped[MediaItem | None] = relationship(
+        back_populates="collection_entries"
+    )
     show: Mapped[Show | None] = relationship(back_populates="collection_entries")
 
 
@@ -349,7 +353,9 @@ class HorrorfestYear(Base):
     )
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    entries: Mapped[list["HorrorfestEntry"]] = relationship(back_populates="year_config")
+    entries: Mapped[list["HorrorfestEntry"]] = relationship(
+        back_populates="year_config"
+    )
 
 
 class TmdbMetadataCache(Base):
@@ -404,7 +410,9 @@ class PlaybackEvent(Base):
             postgresql_where=text("source_event_id IS NOT NULL"),
         ),
         Index("ix_playback_event_user_time", "user_id", text("occurred_at DESC")),
-        Index("ix_playback_event_source_time", "playback_source", text("occurred_at DESC")),
+        Index(
+            "ix_playback_event_source_time", "playback_source", text("occurred_at DESC")
+        ),
         {"schema": APP_SCHEMA},
     )
 
@@ -519,7 +527,9 @@ class WatchEvent(Base):
     )
     origin_playback_event_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
-        ForeignKey(f"{APP_SCHEMA}.playback_event.playback_event_id", ondelete="SET NULL"),
+        ForeignKey(
+            f"{APP_SCHEMA}.playback_event.playback_event_id", ondelete="SET NULL"
+        ),
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
@@ -614,7 +624,9 @@ class HorrorfestEntry(Base):
     )
     horrorfest_year: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey(f"{APP_SCHEMA}.horrorfest_year.horrorfest_year", ondelete="RESTRICT"),
+        ForeignKey(
+            f"{APP_SCHEMA}.horrorfest_year.horrorfest_year", ondelete="RESTRICT"
+        ),
         nullable=False,
     )
     watch_order: Mapped[int | None] = mapped_column(Integer)

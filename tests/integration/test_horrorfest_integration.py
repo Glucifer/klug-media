@@ -3,7 +3,13 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.db.models.entities import HorrorfestEntry, HorrorfestYear, MediaItem, User, WatchEvent
+from app.db.models.entities import (
+    HorrorfestEntry,
+    HorrorfestYear,
+    MediaItem,
+    User,
+    WatchEvent,
+)
 
 
 def test_horrorfest_title_drilldown_excludes_removed_and_deleted_and_orders_rows(
@@ -12,7 +18,9 @@ def test_horrorfest_title_drilldown_excludes_removed_and_deleted_and_orders_rows
 ) -> None:
     session = integration_session_factory()
     user = User(username=f"horrorfest-title-{uuid4().hex[:8]}")
-    movie = MediaItem(type="movie", title="The Thing", year=1982, base_runtime_seconds=6540)
+    movie = MediaItem(
+        type="movie", title="The Thing", year=1982, base_runtime_seconds=6540
+    )
     session.add_all(
         [
             user,
@@ -144,9 +152,15 @@ def test_horrorfest_decade_drilldown_honors_year_and_decade_scope(
 ) -> None:
     session = integration_session_factory()
     user = User(username=f"horrorfest-decade-{uuid4().hex[:8]}")
-    eighties_movie = MediaItem(type="movie", title="The Blob", year=1988, base_runtime_seconds=5700)
-    seventies_movie = MediaItem(type="movie", title="Halloween", year=1978, base_runtime_seconds=5460)
-    nineties_movie = MediaItem(type="movie", title="Candyman", year=1992, base_runtime_seconds=5940)
+    eighties_movie = MediaItem(
+        type="movie", title="The Blob", year=1988, base_runtime_seconds=5700
+    )
+    seventies_movie = MediaItem(
+        type="movie", title="Halloween", year=1978, base_runtime_seconds=5460
+    )
+    nineties_movie = MediaItem(
+        type="movie", title="Candyman", year=1992, base_runtime_seconds=5940
+    )
     session.add_all(
         [
             user,
@@ -273,8 +287,12 @@ def test_horrorfest_selected_year_drilldown_filters_by_date_source_and_rating(
     integration_session_factory: sessionmaker[Session],
 ) -> None:
     session = integration_session_factory()
-    user = User(username=f"horrorfest-year-{uuid4().hex[:8]}", timezone="America/Edmonton")
-    movie = MediaItem(type="movie", title="Creepshow", year=1982, base_runtime_seconds=7200)
+    user = User(
+        username=f"horrorfest-year-{uuid4().hex[:8]}", timezone="America/Edmonton"
+    )
+    movie = MediaItem(
+        type="movie", title="Creepshow", year=1982, base_runtime_seconds=7200
+    )
     session.add_all(
         [
             user,
@@ -414,7 +432,9 @@ def test_horrorfest_comparison_returns_deltas_and_repeated_titles(
 ) -> None:
     session = integration_session_factory()
     user = User(username=f"horrorfest-compare-{uuid4().hex[:8]}")
-    movie = MediaItem(type="movie", title="The Thing", year=1982, base_runtime_seconds=6540)
+    movie = MediaItem(
+        type="movie", title="The Thing", year=1982, base_runtime_seconds=6540
+    )
     session.add_all(
         [
             user,
@@ -469,9 +489,24 @@ def test_horrorfest_comparison_returns_deltas_and_repeated_titles(
     session.flush()
     session.add_all(
         [
-            HorrorfestEntry(watch_id=watch_2024.watch_id, horrorfest_year=2024, watch_order=1, source_kind="manual"),
-            HorrorfestEntry(watch_id=watch_2025_first.watch_id, horrorfest_year=2025, watch_order=1, source_kind="manual"),
-            HorrorfestEntry(watch_id=watch_2025_second.watch_id, horrorfest_year=2025, watch_order=2, source_kind="manual"),
+            HorrorfestEntry(
+                watch_id=watch_2024.watch_id,
+                horrorfest_year=2024,
+                watch_order=1,
+                source_kind="manual",
+            ),
+            HorrorfestEntry(
+                watch_id=watch_2025_first.watch_id,
+                horrorfest_year=2025,
+                watch_order=1,
+                source_kind="manual",
+            ),
+            HorrorfestEntry(
+                watch_id=watch_2025_second.watch_id,
+                horrorfest_year=2025,
+                watch_order=2,
+                source_kind="manual",
+            ),
         ]
     )
     session.commit()
@@ -494,8 +529,12 @@ def test_horrorfest_repeated_titles_leaderboard_and_export_return_sorted_rows(
 ) -> None:
     session = integration_session_factory()
     user = User(username=f"horrorfest-repeats-{uuid4().hex[:8]}")
-    repeated_movie = MediaItem(type="movie", title="Halloween", year=1978, base_runtime_seconds=5460)
-    single_movie = MediaItem(type="movie", title="Candyman", year=1992, base_runtime_seconds=5940)
+    repeated_movie = MediaItem(
+        type="movie", title="Halloween", year=1978, base_runtime_seconds=5460
+    )
+    single_movie = MediaItem(
+        type="movie", title="Candyman", year=1992, base_runtime_seconds=5940
+    )
     session.add_all(
         [
             user,
@@ -544,9 +583,24 @@ def test_horrorfest_repeated_titles_leaderboard_and_export_return_sorted_rows(
     session.flush()
     session.add_all(
         [
-            HorrorfestEntry(watch_id=repeated_2024.watch_id, horrorfest_year=2024, watch_order=1, source_kind="manual"),
-            HorrorfestEntry(watch_id=repeated_2025.watch_id, horrorfest_year=2025, watch_order=1, source_kind="manual"),
-            HorrorfestEntry(watch_id=single_2025.watch_id, horrorfest_year=2025, watch_order=2, source_kind="manual"),
+            HorrorfestEntry(
+                watch_id=repeated_2024.watch_id,
+                horrorfest_year=2024,
+                watch_order=1,
+                source_kind="manual",
+            ),
+            HorrorfestEntry(
+                watch_id=repeated_2025.watch_id,
+                horrorfest_year=2025,
+                watch_order=1,
+                source_kind="manual",
+            ),
+            HorrorfestEntry(
+                watch_id=single_2025.watch_id,
+                horrorfest_year=2025,
+                watch_order=2,
+                source_kind="manual",
+            ),
         ]
     )
     session.commit()
@@ -574,8 +628,12 @@ def test_horrorfest_curation_reports_return_expected_repeat_patterns(
 ) -> None:
     session = integration_session_factory()
     user = User(username=f"horrorfest-curation-{uuid4().hex[:8]}")
-    halloween = MediaItem(type="movie", title="Halloween", year=1978, base_runtime_seconds=5460)
-    blob = MediaItem(type="movie", title="The Blob", year=1988, base_runtime_seconds=5700)
+    halloween = MediaItem(
+        type="movie", title="Halloween", year=1978, base_runtime_seconds=5460
+    )
+    blob = MediaItem(
+        type="movie", title="The Blob", year=1988, base_runtime_seconds=5700
+    )
     session.add_all(
         [
             user,

@@ -83,6 +83,7 @@ def test_create_media_item_returns_201(monkeypatch) -> None:
 
 def test_create_media_item_duplicate_returns_409(monkeypatch) -> None:
     _set_permissive_auth(monkeypatch)
+
     def fake_create_media_item(_session, **_kwargs):
         raise MediaItemAlreadyExistsError("Duplicate media reference")
 

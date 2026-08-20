@@ -275,7 +275,9 @@ def test_ingest_kodi_stop_uses_prior_session_progress_to_create_watch_event(
     assert result.watch_event is created_watch_event
 
 
-def test_ingest_kodi_stop_uses_duration_ratio_when_progress_missing(monkeypatch) -> None:
+def test_ingest_kodi_stop_uses_duration_ratio_when_progress_missing(
+    monkeypatch,
+) -> None:
     session = Mock()
     recorded_event = Mock()
     recorded_event.playback_event_id = uuid4()

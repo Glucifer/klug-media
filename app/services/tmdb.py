@@ -109,7 +109,9 @@ class TmdbService:
             first = tv_episode_results[0]
             episode_tmdb_id = first.get("id")
             show_tmdb_id = first.get("show_id")
-            if not isinstance(episode_tmdb_id, int) or not isinstance(show_tmdb_id, int):
+            if not isinstance(episode_tmdb_id, int) or not isinstance(
+                show_tmdb_id, int
+            ):
                 raise TmdbLookupError(
                     "tmdb_lookup_failed",
                     "TMDB /find tv episode result did not include integer episode/show ids",
@@ -219,7 +221,9 @@ class TmdbService:
                     "TMDB response payload was not valid JSON",
                 ) from exc
 
-        expires_at = now + timedelta(hours=max(1, settings.klug_metadata_cache_ttl_hours))
+        expires_at = now + timedelta(
+            hours=max(1, settings.klug_metadata_cache_ttl_hours)
+        )
         tmdb_cache_repository.upsert_cache_entry(
             session,
             tmdb_type=tmdb_type,

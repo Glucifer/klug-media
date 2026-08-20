@@ -101,7 +101,9 @@ def downgrade() -> None:
         table_name="playback_event",
         schema="app",
     )
-    op.drop_index("ix_playback_event_user_time", table_name="playback_event", schema="app")
+    op.drop_index(
+        "ix_playback_event_user_time", table_name="playback_event", schema="app"
+    )
     op.drop_index(
         "ix_playback_event_source_time",
         table_name="playback_event",

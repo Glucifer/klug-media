@@ -107,10 +107,14 @@ def list_library_movies(
     if year is not None:
         statement = statement.where(MediaItem.year == year)
 
-    statement = statement.order_by(
-        watch_stats.c.latest_watched_at.desc(),
-        MediaItem.title.asc(),
-    ).offset(offset).limit(limit)
+    statement = (
+        statement.order_by(
+            watch_stats.c.latest_watched_at.desc(),
+            MediaItem.title.asc(),
+        )
+        .offset(offset)
+        .limit(limit)
+    )
 
     rows = session.execute(statement).mappings().all()
     return [dict(row) for row in rows]
@@ -164,12 +168,16 @@ def list_library_episodes(
     if enrichment_status:
         statement = statement.where(MediaItem.enrichment_status == enrichment_status)
 
-    statement = statement.order_by(
-        Show.title.asc().nulls_last(),
-        MediaItem.season_number.asc().nulls_last(),
-        MediaItem.episode_number.asc().nulls_last(),
-        MediaItem.title.asc(),
-    ).offset(offset).limit(limit)
+    statement = (
+        statement.order_by(
+            Show.title.asc().nulls_last(),
+            MediaItem.season_number.asc().nulls_last(),
+            MediaItem.episode_number.asc().nulls_last(),
+            MediaItem.title.asc(),
+        )
+        .offset(offset)
+        .limit(limit)
+    )
 
     rows = session.execute(statement).mappings().all()
     return [dict(row) for row in rows]
@@ -224,7 +232,9 @@ def list_library_shows(
             show_media_subquery,
             show_media_subquery.c.show_id == Show.show_id,
         )
-        .group_by(Show.show_id, show_media_subquery.c.media_item_id, Show.title, Show.year)
+        .group_by(
+            Show.show_id, show_media_subquery.c.media_item_id, Show.title, Show.year
+        )
         .having(func.count(distinct(watched_episode_case)) > 0)
     )
 
@@ -233,10 +243,14 @@ def list_library_shows(
     if query:
         statement = statement.where(Show.title.ilike(f"%{query}%"))
 
-    statement = statement.order_by(
-        func.count(distinct(watched_episode_case)).desc(),
-        Show.title.asc(),
-    ).offset(offset).limit(limit)
+    statement = (
+        statement.order_by(
+            func.count(distinct(watched_episode_case)).desc(),
+            Show.title.asc(),
+        )
+        .offset(offset)
+        .limit(limit)
+    )
 
     rows = session.execute(statement).mappings().all()
     payload: list[dict] = []
@@ -244,9 +258,7 @@ def list_library_shows(
         watched_episodes = int(row["watched_episodes"] or 0)
         total_episodes = int(row["total_episodes"] or 0)
         watched_percent = (
-            round((watched_episodes / total_episodes) * 100, 2)
-            if total_episodes
-            else 0
+            round((watched_episodes / total_episodes) * 100, 2) if total_episodes else 0
         )
         payload.append(
             {

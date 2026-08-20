@@ -109,7 +109,11 @@ class HorrorfestImportService:
         created = 0
         for watch_year, year_rows in by_year.items():
             existing = next(
-                (item for item in HorrorfestService.list_years(session) if item["horrorfest_year"] == watch_year),
+                (
+                    item
+                    for item in HorrorfestService.list_years(session)
+                    if item["horrorfest_year"] == watch_year
+                ),
                 None,
             )
             if existing is not None:
@@ -145,11 +149,13 @@ class HorrorfestImportService:
         if matched is not None:
             return matched
 
-        fallback_rows = watch_event_repository.list_user_movie_watch_events_by_tmdb_and_local_date(
-            session,
-            user_id=user_id,
-            tmdb_id=row.tmdb_id,
-            local_date=row.watched_at,
+        fallback_rows = (
+            watch_event_repository.list_user_movie_watch_events_by_tmdb_and_local_date(
+                session,
+                user_id=user_id,
+                tmdb_id=row.tmdb_id,
+                local_date=row.watched_at,
+            )
         )
         if len(fallback_rows) == 1:
             return fallback_rows[0]
@@ -200,10 +206,12 @@ class HorrorfestImportService:
         user_id: UUID,
         row: HorrorfestPreserveRow,
     ):
-        year_watch_events = watch_event_repository.list_user_movie_watch_events_by_local_year(
-            session,
-            user_id=user_id,
-            local_year=row.watch_year,
+        year_watch_events = (
+            watch_event_repository.list_user_movie_watch_events_by_local_year(
+                session,
+                user_id=user_id,
+                local_year=row.watch_year,
+            )
         )
         target_index = row.watch_order - 1
         if target_index < 0 or target_index >= len(year_watch_events):
@@ -235,7 +243,9 @@ class HorrorfestImportService:
             watch_event.updated_at = datetime.now(UTC)
             changed = True
 
-        version_name, runtime_minutes = HorrorfestImportService._map_version_override(row)
+        version_name, runtime_minutes = HorrorfestImportService._map_version_override(
+            row
+        )
         if version_name is not None or runtime_minutes is not None:
             watch_event.watch_version_name = version_name
             watch_event.watch_runtime_seconds = (
@@ -273,7 +283,9 @@ class HorrorfestImportService:
         if alt in {"", "std"}:
             return None, None
         runtime_minutes = row.runtime_used
-        return HorrorfestImportService.VERSION_NAME_MAP.get(alt, "Alternate Version"), runtime_minutes
+        return HorrorfestImportService.VERSION_NAME_MAP.get(
+            alt, "Alternate Version"
+        ), runtime_minutes
 
     @staticmethod
     def _build_error_row(

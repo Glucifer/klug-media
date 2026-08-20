@@ -87,12 +87,16 @@ class JellyfinClient:
                 JellyfinLibrary(
                     library_id=library_id,
                     name=name,
-                    collection_type=collection_type if isinstance(collection_type, str) else None,
+                    collection_type=collection_type
+                    if isinstance(collection_type, str)
+                    else None,
                 )
             )
         return libraries
 
-    def list_collection_items(self, *, library: JellyfinLibrary) -> list[JellyfinCollectionItem]:
+    def list_collection_items(
+        self, *, library: JellyfinLibrary
+    ) -> list[JellyfinCollectionItem]:
         items: list[JellyfinCollectionItem] = []
         start_index = 0
         page_size = 200
@@ -111,12 +115,15 @@ class JellyfinClient:
             )
             raw_items = payload.get("Items")
             if not isinstance(raw_items, list):
-                raise JellyfinClientError("Jellyfin items response did not include Items")
+                raise JellyfinClientError(
+                    "Jellyfin items response did not include Items"
+                )
 
             parsed_items = [
                 item
                 for item in (
-                    self._parse_collection_item(raw, library=library) for raw in raw_items
+                    self._parse_collection_item(raw, library=library)
+                    for raw in raw_items
                 )
                 if item is not None
             ]
@@ -139,7 +146,9 @@ class JellyfinClient:
         }
         with httpx.Client(timeout=float(self._timeout_seconds)) as client:
             try:
-                response = client.get(f"{self._base_url}{path}", params=params, headers=headers)
+                response = client.get(
+                    f"{self._base_url}{path}", params=params, headers=headers
+                )
                 response.raise_for_status()
                 payload = response.json()
             except httpx.HTTPStatusError as exc:
@@ -151,7 +160,9 @@ class JellyfinClient:
                     f"Jellyfin request failed: {exc.__class__.__name__}"
                 ) from exc
             except ValueError as exc:
-                raise JellyfinClientError("Jellyfin response was not valid JSON") from exc
+                raise JellyfinClientError(
+                    "Jellyfin response was not valid JSON"
+                ) from exc
 
         if not isinstance(payload, dict):
             raise JellyfinClientError("Jellyfin response payload must be an object")
@@ -171,7 +182,9 @@ class JellyfinClient:
         if item_type not in {"Movie", "Series", "Episode"}:
             return None
 
-        provider_ids = raw.get("ProviderIds") if isinstance(raw.get("ProviderIds"), dict) else {}
+        provider_ids = (
+            raw.get("ProviderIds") if isinstance(raw.get("ProviderIds"), dict) else {}
+        )
         added_at = _parse_datetime(raw.get("DateCreated"))
         runtime_ticks = raw.get("RunTimeTicks")
         runtime_seconds = (
@@ -180,10 +193,14 @@ class JellyfinClient:
 
         return JellyfinCollectionItem(
             source_item_id=source_item_id,
-            item_type={"Movie": "movie", "Series": "show", "Episode": "episode"}[item_type],
+            item_type={"Movie": "movie", "Series": "show", "Episode": "episode"}[
+                item_type
+            ],
             library_id=library.library_id,
             library_name=library.name,
-            title=title.strip() if isinstance(title, str) and title.strip() else source_item_id,
+            title=title.strip()
+            if isinstance(title, str) and title.strip()
+            else source_item_id,
             year=_coerce_year(raw.get("ProductionYear"), raw.get("PremiereDate")),
             tmdb_id=_parse_int(provider_ids.get("Tmdb")),
             imdb_id=_parse_text(provider_ids.get("Imdb")),

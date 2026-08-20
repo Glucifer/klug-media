@@ -6,7 +6,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.datetime_utils import ensure_timezone_aware
-from app.db.models.entities import HorrorfestEntry, HorrorfestYear, MediaItem, WatchEvent
+from app.db.models.entities import (
+    HorrorfestEntry,
+    HorrorfestYear,
+    MediaItem,
+    WatchEvent,
+)
 from app.repositories import horrorfest as horrorfest_repository
 from app.repositories import watch_events as watch_event_repository
 
@@ -303,7 +308,9 @@ class HorrorfestService:
         user_id: UUID | None = None,
     ) -> list[dict[str, object]]:
         HorrorfestService._get_year_or_raise(session, horrorfest_year=horrorfest_year)
-        normalized_playback_source = HorrorfestService._normalize_optional_text(playback_source)
+        normalized_playback_source = HorrorfestService._normalize_optional_text(
+            playback_source
+        )
         if rating_value is not None and rating_value < 0:
             raise ValueError("rating_value must be zero or greater")
         return horrorfest_repository.list_horrorfest_year_entries(
@@ -345,7 +352,10 @@ class HorrorfestService:
         source_kind = HorrorfestService.AUTO_SOURCE_KINDS.get(
             watch_event.origin_kind, "manual"
         )
-        if existing_active is not None and existing_active.horrorfest_year == year_config.horrorfest_year:
+        if (
+            existing_active is not None
+            and existing_active.horrorfest_year == year_config.horrorfest_year
+        ):
             HorrorfestService._rebuild_year_orders_by_watched_at(
                 session,
                 horrorfest_year=year_config.horrorfest_year,
@@ -731,7 +741,9 @@ class HorrorfestService:
                 "Only non-deleted completed movie watch events can be included in Horrorfest"
             )
         if not (
-            year_config.window_start_at <= watch_event.watched_at <= year_config.window_end_at
+            year_config.window_start_at
+            <= watch_event.watched_at
+            <= year_config.window_end_at
         ):
             raise ValueError(
                 "Watch event watched_at must fall inside the configured Horrorfest year window"

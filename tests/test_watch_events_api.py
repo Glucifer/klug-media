@@ -307,7 +307,9 @@ def test_create_manual_watch_event_returns_201(monkeypatch) -> None:
     assert response.json()["watch_id"] == str(event.watch_id)
 
 
-def test_create_manual_watch_event_rejects_episode_without_show_tmdb_id(monkeypatch) -> None:
+def test_create_manual_watch_event_rejects_episode_without_show_tmdb_id(
+    monkeypatch,
+) -> None:
     _set_permissive_auth(monkeypatch)
     client = TestClient(app)
     response = client.post(

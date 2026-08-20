@@ -7,7 +7,10 @@ from sqlalchemy.orm import Session
 from app.core.auth import require_request_auth
 from app.db.session import get_db_session
 from app.schemas.playback_events import PlaybackEventRead
-from app.services.playback_events import PlaybackEventNotFoundError, PlaybackEventService
+from app.services.playback_events import (
+    PlaybackEventNotFoundError,
+    PlaybackEventService,
+)
 
 router = APIRouter(
     prefix="/playback-events",
@@ -41,7 +44,10 @@ def list_playback_events(
         limit=limit,
         offset=offset,
     )
-    return [PlaybackEventRead.model_validate(playback_event) for playback_event in playback_events]
+    return [
+        PlaybackEventRead.model_validate(playback_event)
+        for playback_event in playback_events
+    ]
 
 
 @router.get("/{playback_event_id}", response_model=PlaybackEventRead)

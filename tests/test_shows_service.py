@@ -60,11 +60,15 @@ def test_get_show_detail_returns_show_progress_and_episodes(monkeypatch) -> None
     )
     monkeypatch.setattr(
         "app.services.shows.show_repository.list_show_progress",
-        lambda _session, *, user_id, show_id: [{"show_id": show_id, "user_id": user_id}],
+        lambda _session, *, user_id, show_id: [
+            {"show_id": show_id, "user_id": user_id}
+        ],
     )
     monkeypatch.setattr(
         "app.services.shows.show_repository.list_show_episodes",
-        lambda _session, *, show_id, user_id: [{"media_item_id": uuid4(), "title": "Ep"}],
+        lambda _session, *, show_id, user_id: [
+            {"media_item_id": uuid4(), "title": "Ep"}
+        ],
     )
 
     result = ShowService.get_show_detail(session, show_id=show.show_id, user_id=user_id)

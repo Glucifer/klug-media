@@ -43,7 +43,9 @@ class PlaybackEventService:
             playback_source.strip() if playback_source is not None else None
         )
         normalized_collector = collector.strip() if collector is not None else None
-        normalized_session_key = session_key.strip() if session_key is not None else None
+        normalized_session_key = (
+            session_key.strip() if session_key is not None else None
+        )
         normalized_event_type = event_type.strip() if event_type is not None else None
         normalized_media_type = media_type.strip() if media_type is not None else None
         normalized_decision_status = (
@@ -105,7 +107,9 @@ class PlaybackEventService:
         normalized_playback_source = playback_source.strip()
         normalized_event_type = event_type.strip()
         normalized_title = title.strip()
-        normalized_source_event_id = source_event_id.strip() if source_event_id else None
+        normalized_source_event_id = (
+            source_event_id.strip() if source_event_id else None
+        )
         normalized_session_key = session_key.strip() if session_key else None
         normalized_imdb_id = imdb_id.strip() if imdb_id else None
         normalized_occurred_at = ensure_timezone_aware(
@@ -153,8 +157,12 @@ class PlaybackEventService:
                 getattr(exc.orig, "diag", None), "constraint_name", None
             )
             if constraint_name == "ux_playback_event_source_event":
-                raise PlaybackEventDuplicateError("Playback event already exists") from exc
-            raise PlaybackEventConstraintError("Failed to record playback event") from exc
+                raise PlaybackEventDuplicateError(
+                    "Playback event already exists"
+                ) from exc
+            raise PlaybackEventConstraintError(
+                "Failed to record playback event"
+            ) from exc
 
     @staticmethod
     def update_playback_event_decision(

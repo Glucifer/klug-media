@@ -418,7 +418,9 @@ def list_user_movie_watch_events_by_tmdb_and_local_year(
     tmdb_id: int,
     local_year: int,
 ) -> list[WatchEvent]:
-    local_watch_year = extract("year", func.timezone(User.timezone, WatchEvent.watched_at))
+    local_watch_year = extract(
+        "year", func.timezone(User.timezone, WatchEvent.watched_at)
+    )
     statement = (
         select(WatchEvent)
         .join(User, WatchEvent.user_id == User.user_id)
@@ -441,7 +443,9 @@ def list_user_movie_watch_events_by_local_year(
     user_id: UUID,
     local_year: int,
 ) -> list[WatchEvent]:
-    local_watch_year = extract("year", func.timezone(User.timezone, WatchEvent.watched_at))
+    local_watch_year = extract(
+        "year", func.timezone(User.timezone, WatchEvent.watched_at)
+    )
     statement = (
         select(WatchEvent)
         .join(User, WatchEvent.user_id == User.user_id)
@@ -496,7 +500,9 @@ def list_unrated_watch_events(
     )
     if user_id is not None:
         statement = statement.where(WatchEvent.user_id == user_id)
-    statement = statement.order_by(WatchEvent.watched_at.desc()).offset(offset).limit(limit)
+    statement = (
+        statement.order_by(WatchEvent.watched_at.desc()).offset(offset).limit(limit)
+    )
     rows = session.execute(statement).all()
     payload: list[dict[str, object]] = []
     for (
@@ -514,7 +520,9 @@ def list_unrated_watch_events(
     ) in rows:
         normalized_user_timezone = user_timezone or "UTC"
         try:
-            watched_at_local = watch_event.watched_at.astimezone(ZoneInfo(normalized_user_timezone))
+            watched_at_local = watch_event.watched_at.astimezone(
+                ZoneInfo(normalized_user_timezone)
+            )
         except ZoneInfoNotFoundError:
             watched_at_local = watch_event.watched_at
         payload.append(

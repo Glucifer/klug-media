@@ -110,7 +110,9 @@ class MediaEnrichmentService:
         *,
         media_item_id: UUID,
     ) -> MediaEnrichmentResult:
-        media_item = MediaItemService.get_media_item(session, media_item_id=media_item_id)
+        media_item = MediaItemService.get_media_item(
+            session, media_item_id=media_item_id
+        )
         if media_item is None:
             raise ValueError(f"Media item '{media_item_id}' not found")
 
@@ -123,7 +125,9 @@ class MediaEnrichmentService:
             )
 
         try:
-            updated = MediaEnrichmentService._enrich_with_tmdb(session, media_item=media_item)
+            updated = MediaEnrichmentService._enrich_with_tmdb(
+                session, media_item=media_item
+            )
             session.commit()
             return MediaEnrichmentResult(
                 media_item=updated,
@@ -132,7 +136,9 @@ class MediaEnrichmentService:
             )
         except (TmdbLookupError, TmdbHttpError, TmdbConfigurationError) as exc:
             session.rollback()
-            media_item = MediaItemService.get_media_item(session, media_item_id=media_item_id)
+            media_item = MediaItemService.get_media_item(
+                session, media_item_id=media_item_id
+            )
             assert media_item is not None
             return MediaEnrichmentService._finalize_attempt(
                 session,
@@ -142,7 +148,9 @@ class MediaEnrichmentService:
             )
         except Exception:
             session.rollback()
-            media_item = MediaItemService.get_media_item(session, media_item_id=media_item_id)
+            media_item = MediaItemService.get_media_item(
+                session, media_item_id=media_item_id
+            )
             assert media_item is not None
             return MediaEnrichmentService._finalize_attempt(
                 session,
@@ -158,8 +166,12 @@ class MediaEnrichmentService:
         if media_item.type == "show":
             return MediaEnrichmentService._enrich_show(session, media_item=media_item)
         if media_item.type == "episode":
-            return MediaEnrichmentService._enrich_episode(session, media_item=media_item)
-        raise TmdbLookupError("unsupported_media_type", f"Unsupported media type '{media_item.type}'")
+            return MediaEnrichmentService._enrich_episode(
+                session, media_item=media_item
+            )
+        raise TmdbLookupError(
+            "unsupported_media_type", f"Unsupported media type '{media_item.type}'"
+        )
 
     @staticmethod
     def _enrich_movie(session: Session, *, media_item: MediaItem) -> MediaItem:
@@ -180,16 +192,21 @@ class MediaEnrichmentService:
             session,
             media_item=media_item,
             title=details.get("title") or media_item.title,
-            year=MediaEnrichmentService._extract_year(details.get("release_date")) or media_item.year,
+            year=MediaEnrichmentService._extract_year(details.get("release_date"))
+            or media_item.year,
             summary=details.get("overview") or None,
             poster_url=MediaEnrichmentService._poster_url(details.get("poster_path")),
-            release_date=MediaEnrichmentService._parse_date(details.get("release_date")),
+            release_date=MediaEnrichmentService._parse_date(
+                details.get("release_date")
+            ),
             tmdb_id=tmdb_id,
             imdb_id=media_item.imdb_id,
             tvdb_id=media_item.tvdb_id,
             show_tmdb_id=media_item.show_tmdb_id,
             show_id=media_item.show_id,
-            base_runtime_seconds=MediaEnrichmentService._runtime_seconds(details.get("runtime")),
+            base_runtime_seconds=MediaEnrichmentService._runtime_seconds(
+                details.get("runtime")
+            ),
             metadata_source="tmdb",
             enrichment_status="enriched",
             enrichment_error=None,
@@ -223,7 +240,8 @@ class MediaEnrichmentService:
             session,
             tmdb_id=show_tmdb_id,
             title=details.get("name") or media_item.title,
-            year=MediaEnrichmentService._extract_year(details.get("first_air_date")) or media_item.year,
+            year=MediaEnrichmentService._extract_year(details.get("first_air_date"))
+            or media_item.year,
             tvdb_id=media_item.tvdb_id,
             imdb_id=media_item.imdb_id,
         )
@@ -231,16 +249,21 @@ class MediaEnrichmentService:
             session,
             media_item=media_item,
             title=details.get("name") or media_item.title,
-            year=MediaEnrichmentService._extract_year(details.get("first_air_date")) or media_item.year,
+            year=MediaEnrichmentService._extract_year(details.get("first_air_date"))
+            or media_item.year,
             summary=details.get("overview") or None,
             poster_url=MediaEnrichmentService._poster_url(details.get("poster_path")),
-            release_date=MediaEnrichmentService._parse_date(details.get("first_air_date")),
+            release_date=MediaEnrichmentService._parse_date(
+                details.get("first_air_date")
+            ),
             tmdb_id=show_tmdb_id,
             imdb_id=media_item.imdb_id,
             tvdb_id=media_item.tvdb_id,
             show_tmdb_id=media_item.show_tmdb_id,
             show_id=show.show_id,
-            base_runtime_seconds=MediaEnrichmentService._runtime_seconds_from_list(details.get("episode_run_time")),
+            base_runtime_seconds=MediaEnrichmentService._runtime_seconds_from_list(
+                details.get("episode_run_time")
+            ),
             metadata_source="tmdb",
             enrichment_status="enriched",
             enrichment_error=None,
@@ -274,7 +297,10 @@ class MediaEnrichmentService:
             session,
             tmdb_id=show_tmdb_id,
             title=show_details.get("name") or media_item.title,
-            year=MediaEnrichmentService._extract_year(show_details.get("first_air_date")) or media_item.year,
+            year=MediaEnrichmentService._extract_year(
+                show_details.get("first_air_date")
+            )
+            or media_item.year,
             tvdb_id=media_item.tvdb_id,
             imdb_id=media_item.imdb_id,
         )
@@ -282,16 +308,23 @@ class MediaEnrichmentService:
             session,
             media_item=media_item,
             title=episode_details.get("name") or media_item.title,
-            year=MediaEnrichmentService._extract_year(episode_details.get("air_date")) or media_item.year,
+            year=MediaEnrichmentService._extract_year(episode_details.get("air_date"))
+            or media_item.year,
             summary=episode_details.get("overview") or None,
-            poster_url=MediaEnrichmentService._poster_url(episode_details.get("still_path")),
-            release_date=MediaEnrichmentService._parse_date(episode_details.get("air_date")),
+            poster_url=MediaEnrichmentService._poster_url(
+                episode_details.get("still_path")
+            ),
+            release_date=MediaEnrichmentService._parse_date(
+                episode_details.get("air_date")
+            ),
             tmdb_id=media_item.tmdb_id,
             imdb_id=media_item.imdb_id,
             tvdb_id=media_item.tvdb_id,
             show_tmdb_id=show_tmdb_id,
             show_id=show.show_id,
-            base_runtime_seconds=MediaEnrichmentService._runtime_seconds(episode_details.get("runtime")),
+            base_runtime_seconds=MediaEnrichmentService._runtime_seconds(
+                episode_details.get("runtime")
+            ),
             metadata_source="tmdb",
             enrichment_status="enriched",
             enrichment_error=None,

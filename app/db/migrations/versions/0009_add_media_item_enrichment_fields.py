@@ -13,9 +13,15 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("media_item", sa.Column("summary", sa.Text(), nullable=True), schema="app")
-    op.add_column("media_item", sa.Column("poster_url", sa.Text(), nullable=True), schema="app")
-    op.add_column("media_item", sa.Column("release_date", sa.Date(), nullable=True), schema="app")
+    op.add_column(
+        "media_item", sa.Column("summary", sa.Text(), nullable=True), schema="app"
+    )
+    op.add_column(
+        "media_item", sa.Column("poster_url", sa.Text(), nullable=True), schema="app"
+    )
+    op.add_column(
+        "media_item", sa.Column("release_date", sa.Date(), nullable=True), schema="app"
+    )
     op.add_column(
         "media_item",
         sa.Column(
@@ -77,7 +83,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_media_item_enrichment_status", table_name="media_item", schema="app")
+    op.drop_index(
+        "ix_media_item_enrichment_status", table_name="media_item", schema="app"
+    )
     op.drop_column("media_item", "enrichment_attempted_at", schema="app")
     op.drop_column("media_item", "enrichment_error", schema="app")
     op.drop_column("media_item", "enrichment_status", schema="app")

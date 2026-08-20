@@ -15,7 +15,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.alter_column("shows", "tmdb_id", schema="app", existing_type=sa.Integer(), nullable=True)
+    op.alter_column(
+        "shows", "tmdb_id", schema="app", existing_type=sa.Integer(), nullable=True
+    )
 
     op.create_table(
         "collection_entry",
@@ -43,7 +45,9 @@ def upgrade() -> None:
         sa.Column("show_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("library_id", sa.String(), nullable=False),
         sa.Column("library_name", sa.String(), nullable=True),
-        sa.Column("is_present", sa.Boolean(), server_default=sa.text("true"), nullable=False),
+        sa.Column(
+            "is_present", sa.Boolean(), server_default=sa.text("true"), nullable=False
+        ),
         sa.Column(
             "first_seen_at",
             sa.DateTime(timezone=True),
@@ -94,7 +98,9 @@ def upgrade() -> None:
             ondelete="SET NULL",
         ),
         sa.PrimaryKeyConstraint("collection_entry_id", name="collection_entry_pkey"),
-        sa.UniqueConstraint("source", "source_item_id", name="uq_collection_entry_source_item"),
+        sa.UniqueConstraint(
+            "source", "source_item_id", name="uq_collection_entry_source_item"
+        ),
         schema="app",
     )
     op.create_index(
@@ -112,7 +118,13 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_collection_entry_library", table_name="collection_entry", schema="app")
-    op.drop_index("ix_collection_entry_present", table_name="collection_entry", schema="app")
+    op.drop_index(
+        "ix_collection_entry_library", table_name="collection_entry", schema="app"
+    )
+    op.drop_index(
+        "ix_collection_entry_present", table_name="collection_entry", schema="app"
+    )
     op.drop_table("collection_entry", schema="app")
-    op.alter_column("shows", "tmdb_id", schema="app", existing_type=sa.Integer(), nullable=False)
+    op.alter_column(
+        "shows", "tmdb_id", schema="app", existing_type=sa.Integer(), nullable=False
+    )

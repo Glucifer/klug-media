@@ -5,7 +5,12 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import require_request_auth
 from app.db.session import get_db_session
-from app.schemas.shows import ShowDetailRead, ShowEpisodeRead, ShowProgressRead, ShowRead
+from app.schemas.shows import (
+    ShowDetailRead,
+    ShowEpisodeRead,
+    ShowProgressRead,
+    ShowRead,
+)
 from app.services.shows import ShowNotFoundError, ShowService
 
 router = APIRouter(

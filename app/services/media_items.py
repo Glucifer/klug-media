@@ -114,7 +114,9 @@ class MediaItemService:
 
     @staticmethod
     def get_media_item(session: Session, *, media_item_id: UUID) -> MediaItem | None:
-        return media_item_repository.get_media_item(session, media_item_id=media_item_id)
+        return media_item_repository.get_media_item(
+            session, media_item_id=media_item_id
+        )
 
     @staticmethod
     def get_media_item_detail(
@@ -242,7 +244,7 @@ class MediaItemService:
         enrichment_status: str,
         enrichment_error: str | None,
         jellyfin_item_id: str | None = None,
-        ) -> MediaItem:
+    ) -> MediaItem:
         now = datetime.now(UTC)
         return media_item_repository.update_media_item(
             session,
@@ -312,7 +314,9 @@ class MediaItemService:
         show_tmdb_id: int | None,
     ) -> MediaItemEnrichmentState:
         if not get_settings().klug_metadata_enrichment_enabled:
-            return MediaItemEnrichmentState(status="skipped", error="enrichment_disabled")
+            return MediaItemEnrichmentState(
+                status="skipped", error="enrichment_disabled"
+            )
 
         if media_type == "movie":
             if tmdb_id is not None or imdb_id:
@@ -338,4 +342,6 @@ class MediaItemService:
                 error="missing_supported_external_id",
             )
 
-        return MediaItemEnrichmentState(status="skipped", error="unsupported_media_type")
+        return MediaItemEnrichmentState(
+            status="skipped", error="unsupported_media_type"
+        )

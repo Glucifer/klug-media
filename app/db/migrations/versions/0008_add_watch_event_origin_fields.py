@@ -67,7 +67,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_watch_event_origin_playback", table_name="watch_event", schema="app")
+    op.drop_index(
+        "ix_watch_event_origin_playback", table_name="watch_event", schema="app"
+    )
     op.drop_constraint(
         "watch_event_origin_playback_event_id_fkey",
         "watch_event",

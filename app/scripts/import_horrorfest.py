@@ -18,7 +18,9 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Import preserved Horrorfest overlay data onto existing watch history."
     )
-    parser.add_argument("--input", required=True, help="Path to Horrorfest preserve CSV")
+    parser.add_argument(
+        "--input", required=True, help="Path to Horrorfest preserve CSV"
+    )
     parser.add_argument("--user-id", required=True, help="Klug user UUID")
     parser.add_argument(
         "--updated-by",
@@ -41,7 +43,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def _load_csv_rows(file_path: Path) -> list[dict[str, Any]]:
     with file_path.open("r", encoding="utf-8", newline="") as file:
         reader = csv.DictReader(file)
-        return [{key: value for key, value in row.items() if key is not None} for row in reader]
+        return [
+            {key: value for key, value in row.items() if key is not None}
+            for row in reader
+        ]
 
 
 def _write_error_report(path: Path, unmatched_rows: list[dict[str, Any]]) -> None:

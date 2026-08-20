@@ -185,7 +185,9 @@ def test_run_preserve_import_falls_back_to_year_watch_order(monkeypatch) -> None
     assert result.error_count == 0
 
 
-def test_run_preserve_import_records_apply_failure_without_aborting(monkeypatch) -> None:
+def test_run_preserve_import_records_apply_failure_without_aborting(
+    monkeypatch,
+) -> None:
     session = Mock()
     watch_event = Mock(watch_id=uuid4())
 
@@ -201,7 +203,9 @@ def test_run_preserve_import_records_apply_failure_without_aborting(monkeypatch)
         HorrorfestImportService,
         "_apply_preserved_horrorfest_metadata",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            ValueError("Watch event watched_at must fall inside the configured Horrorfest year window")
+            ValueError(
+                "Watch event watched_at must fall inside the configured Horrorfest year window"
+            )
         ),
     )
 
@@ -222,7 +226,9 @@ def test_run_preserve_import_records_apply_failure_without_aborting(monkeypatch)
     session.rollback.assert_called_once()
 
 
-def test_run_preserve_import_creates_missing_year_configs_in_dry_run(monkeypatch) -> None:
+def test_run_preserve_import_creates_missing_year_configs_in_dry_run(
+    monkeypatch,
+) -> None:
     session = Mock()
 
     monkeypatch.setattr(
@@ -255,7 +261,9 @@ def test_run_preserve_import_creates_missing_year_configs_in_dry_run(monkeypatch
 
 
 def test_map_version_override_handles_alt_and_std() -> None:
-    assert HorrorfestImportService._map_version_override(_row(alternate_version="std")) == (
+    assert HorrorfestImportService._map_version_override(
+        _row(alternate_version="std")
+    ) == (
         None,
         None,
     )

@@ -13,7 +13,11 @@ from app.repositories import media_items as media_item_repository
 from app.repositories import shows as show_repository
 from app.schemas.collection import JellyfinCollectionImportRequest
 from app.services.import_batches import ImportBatchService
-from app.services.jellyfin import JellyfinClient, JellyfinCollectionItem, JellyfinLibrary
+from app.services.jellyfin import (
+    JellyfinClient,
+    JellyfinCollectionItem,
+    JellyfinLibrary,
+)
 from app.services.media_items import MediaItemService
 
 
@@ -77,7 +81,13 @@ class JellyfinCollectionImportService:
         for library in selected_libraries:
             items.extend(jellyfin_client.list_collection_items(library=library))
 
-        items.sort(key=lambda item: (_type_order(item.item_type), item.library_name, item.title))
+        items.sort(
+            key=lambda item: (
+                _type_order(item.item_type),
+                item.library_name,
+                item.title,
+            )
+        )
         seen_at = datetime.now(UTC)
         counters = _SyncCounters()
         seen_source_item_ids: set[str] = set()
@@ -95,11 +105,13 @@ class JellyfinCollectionImportService:
                     import_batch_id=None,
                     dry_run=True,
                 )
-            counters.missing_marked_count = collection_repository.count_entries_to_mark_missing(
-                session,
-                source=JellyfinCollectionImportService.SOURCE,
-                library_ids=[library.library_id for library in selected_libraries],
-                seen_source_item_ids=seen_source_item_ids,
+            counters.missing_marked_count = (
+                collection_repository.count_entries_to_mark_missing(
+                    session,
+                    source=JellyfinCollectionImportService.SOURCE,
+                    library_ids=[library.library_id for library in selected_libraries],
+                    seen_source_item_ids=seen_source_item_ids,
+                )
             )
             return JellyfinCollectionImportResult(
                 import_batch_id=UUID("00000000-0000-0000-0000-000000000000"),
@@ -116,7 +128,9 @@ class JellyfinCollectionImportService:
                 collection_entries_created=counters.collection_entries_created,
             )
 
-        source_detail = ",".join(sorted(library.library_id for library in selected_libraries))
+        source_detail = ",".join(
+            sorted(library.library_id for library in selected_libraries)
+        )
         batch = ImportBatchService.start_import_batch(
             session,
             source=JellyfinCollectionImportService.SOURCE,
@@ -215,10 +229,16 @@ class JellyfinCollectionImportService:
         requested_ids: list[str] | None,
     ) -> list[JellyfinLibrary]:
         if requested_ids:
-            selected = [library for library in libraries if library.library_id in requested_ids]
-            missing_ids = sorted(set(requested_ids) - {library.library_id for library in selected})
+            selected = [
+                library for library in libraries if library.library_id in requested_ids
+            ]
+            missing_ids = sorted(
+                set(requested_ids) - {library.library_id for library in selected}
+            )
             if missing_ids:
-                raise ValueError(f"Unknown Jellyfin library ids: {', '.join(missing_ids)}")
+                raise ValueError(
+                    f"Unknown Jellyfin library ids: {', '.join(missing_ids)}"
+                )
             return selected
 
         selected = [
@@ -247,10 +267,12 @@ class JellyfinCollectionImportService:
 
         try:
             with session.begin_nested():
-                existing_entry = collection_repository.find_collection_entry_by_source_item(
-                    session,
-                    source=JellyfinCollectionImportService.SOURCE,
-                    source_item_id=item.source_item_id,
+                existing_entry = (
+                    collection_repository.find_collection_entry_by_source_item(
+                        session,
+                        source=JellyfinCollectionImportService.SOURCE,
+                        source_item_id=item.source_item_id,
+                    )
                 )
                 media_item_id = None
                 show_id = None
@@ -266,16 +288,20 @@ class JellyfinCollectionImportService:
                     )
                     show_cache[item.source_item_id] = resolved_show
                     show_id = (
-                        resolved_show.show.show_id if resolved_show.show is not None else None
+                        resolved_show.show.show_id
+                        if resolved_show.show is not None
+                        else None
                     )
                 elif item.item_type == "movie":
-                    resolved_media_item = JellyfinCollectionImportService._resolve_movie(
-                        session,
-                        item=item,
-                        existing_entry=existing_entry,
-                        counters=counters,
-                        import_batch_id=import_batch_id,
-                        dry_run=dry_run,
+                    resolved_media_item = (
+                        JellyfinCollectionImportService._resolve_movie(
+                            session,
+                            item=item,
+                            existing_entry=existing_entry,
+                            counters=counters,
+                            import_batch_id=import_batch_id,
+                            dry_run=dry_run,
+                        )
                     )
                     media_item_id = (
                         resolved_media_item.media_item.media_item_id
@@ -283,14 +309,16 @@ class JellyfinCollectionImportService:
                         else None
                     )
                 elif item.item_type == "episode":
-                    resolved_media_item = JellyfinCollectionImportService._resolve_episode(
-                        session,
-                        item=item,
-                        existing_entry=existing_entry,
-                        counters=counters,
-                        show_cache=show_cache,
-                        import_batch_id=import_batch_id,
-                        dry_run=dry_run,
+                    resolved_media_item = (
+                        JellyfinCollectionImportService._resolve_episode(
+                            session,
+                            item=item,
+                            existing_entry=existing_entry,
+                            counters=counters,
+                            show_cache=show_cache,
+                            import_batch_id=import_batch_id,
+                            dry_run=dry_run,
+                        )
                     )
                     media_item_id = (
                         resolved_media_item.media_item.media_item_id
@@ -369,7 +397,9 @@ class JellyfinCollectionImportService:
     ) -> _ResolvedShow:
         existing_show = None
         if existing_entry is not None and existing_entry.show_id is not None:
-            existing_show = show_repository.find_show_by_id(session, show_id=existing_entry.show_id)
+            existing_show = show_repository.find_show_by_id(
+                session, show_id=existing_entry.show_id
+            )
         if existing_show is None:
             existing_show = show_repository.find_show_by_external_ids(
                 session,
@@ -454,13 +484,15 @@ class JellyfinCollectionImportService:
                 tvdb_id=item.tvdb_id,
             )
         if existing_media_item is None:
-            existing_media_item = JellyfinCollectionImportService._resolve_media_item_by_title_year(
-                session,
-                media_type="movie",
-                title=item.title,
-                year=item.year,
-                import_batch_id=import_batch_id,
-                source_item_id=item.source_item_id,
+            existing_media_item = (
+                JellyfinCollectionImportService._resolve_media_item_by_title_year(
+                    session,
+                    media_type="movie",
+                    title=item.title,
+                    year=item.year,
+                    import_batch_id=import_batch_id,
+                    source_item_id=item.source_item_id,
+                )
             )
 
         if existing_media_item is not None:
@@ -567,11 +599,13 @@ class JellyfinCollectionImportService:
                 media_item_id=existing_entry.media_item_id,
             )
         if existing_media_item is None and resolved_show.show is not None:
-            existing_media_item = media_item_repository.find_episode_media_item_by_show_id(
-                session,
-                show_id=resolved_show.show.show_id,
-                season_number=item.season_number,
-                episode_number=item.episode_number,
+            existing_media_item = (
+                media_item_repository.find_episode_media_item_by_show_id(
+                    session,
+                    show_id=resolved_show.show.show_id,
+                    season_number=item.season_number,
+                    episode_number=item.episode_number,
+                )
             )
         if existing_media_item is None and item.show_tmdb_id is not None:
             existing_media_item = media_item_repository.find_episode_media_item(
@@ -607,7 +641,9 @@ class JellyfinCollectionImportService:
                     tmdb_id=safe_ids["tmdb_id"],
                     imdb_id=safe_ids["imdb_id"],
                     tvdb_id=safe_ids["tvdb_id"],
-                    show_tmdb_id=resolved_show.show.tmdb_id if resolved_show.show else item.show_tmdb_id,
+                    show_tmdb_id=resolved_show.show.tmdb_id
+                    if resolved_show.show
+                    else item.show_tmdb_id,
                 )
                 media_item_repository.update_media_item(
                     session,
@@ -617,7 +653,9 @@ class JellyfinCollectionImportService:
                     tmdb_id=safe_ids["tmdb_id"],
                     imdb_id=safe_ids["imdb_id"],
                     tvdb_id=safe_ids["tvdb_id"],
-                    show_tmdb_id=resolved_show.show.tmdb_id if resolved_show.show else item.show_tmdb_id,
+                    show_tmdb_id=resolved_show.show.tmdb_id
+                    if resolved_show.show
+                    else item.show_tmdb_id,
                     season_number=item.season_number,
                     episode_number=item.episode_number,
                     show_id=resolved_show.show.show_id if resolved_show.show else None,
@@ -649,7 +687,9 @@ class JellyfinCollectionImportService:
             tmdb_id=safe_ids["tmdb_id"],
             imdb_id=safe_ids["imdb_id"],
             tvdb_id=safe_ids["tvdb_id"],
-            show_tmdb_id=resolved_show.show.tmdb_id if resolved_show.show else item.show_tmdb_id,
+            show_tmdb_id=resolved_show.show.tmdb_id
+            if resolved_show.show
+            else item.show_tmdb_id,
         )
         created_media_item = media_item_repository.create_media_item(
             session,
@@ -659,7 +699,9 @@ class JellyfinCollectionImportService:
             tmdb_id=safe_ids["tmdb_id"],
             imdb_id=safe_ids["imdb_id"],
             tvdb_id=safe_ids["tvdb_id"],
-            show_tmdb_id=resolved_show.show.tmdb_id if resolved_show.show else item.show_tmdb_id,
+            show_tmdb_id=resolved_show.show.tmdb_id
+            if resolved_show.show
+            else item.show_tmdb_id,
             season_number=item.season_number,
             episode_number=item.episode_number,
             show_id=resolved_show.show.show_id if resolved_show.show else None,
@@ -685,7 +727,8 @@ class JellyfinCollectionImportService:
             return show_cache[item.show_source_item_id]
 
         synthetic_show = JellyfinCollectionItem(
-            source_item_id=item.show_source_item_id or f"synthetic:{item.source_item_id}",
+            source_item_id=item.show_source_item_id
+            or f"synthetic:{item.source_item_id}",
             item_type="show",
             library_id=item.library_id,
             library_name=item.library_name,
@@ -737,7 +780,9 @@ class JellyfinCollectionImportService:
     ) -> Show | None:
         if year is None:
             return None
-        matches = show_repository.find_shows_by_title_and_year(session, title=title, year=year)
+        matches = show_repository.find_shows_by_title_and_year(
+            session, title=title, year=year
+        )
         if len(matches) == 1:
             return matches[0]
         if len(matches) > 1 and import_batch_id is not None:
@@ -772,7 +817,9 @@ class JellyfinCollectionImportService:
                 media_type=media_type,
                 tmdb_id=tmdb_id,
             )
-            if claimed is not None and (media_item is None or claimed.media_item_id != media_item.media_item_id):
+            if claimed is not None and (
+                media_item is None or claimed.media_item_id != media_item.media_item_id
+            ):
                 safe_tmdb_id = media_item.tmdb_id if media_item is not None else None
                 JellyfinCollectionImportService._log_id_conflict(
                     session,
@@ -791,7 +838,9 @@ class JellyfinCollectionImportService:
                 media_type=media_type,
                 imdb_id=imdb_id,
             )
-            if claimed is not None and (media_item is None or claimed.media_item_id != media_item.media_item_id):
+            if claimed is not None and (
+                media_item is None or claimed.media_item_id != media_item.media_item_id
+            ):
                 safe_imdb_id = media_item.imdb_id if media_item is not None else None
                 JellyfinCollectionImportService._log_id_conflict(
                     session,
@@ -810,7 +859,9 @@ class JellyfinCollectionImportService:
                 media_type=media_type,
                 tvdb_id=tvdb_id,
             )
-            if claimed is not None and (media_item is None or claimed.media_item_id != media_item.media_item_id):
+            if claimed is not None and (
+                media_item is None or claimed.media_item_id != media_item.media_item_id
+            ):
                 safe_tvdb_id = media_item.tvdb_id if media_item is not None else None
                 JellyfinCollectionImportService._log_id_conflict(
                     session,

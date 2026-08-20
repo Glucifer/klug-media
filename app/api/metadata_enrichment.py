@@ -46,7 +46,9 @@ def process_pending_metadata_items(
     session: Session = Depends(get_db_session),
 ) -> MetadataEnrichmentBatchResult:
     results = MediaEnrichmentService.process_pending_items(session, limit=limit)
-    items = [MediaEnrichmentService.build_queue_item(result.media_item) for result in results]
+    items = [
+        MediaEnrichmentService.build_queue_item(result.media_item) for result in results
+    ]
     enriched_count = sum(1 for result in results if result.action == "enriched")
     failed_count = sum(1 for result in results if result.action == "failed")
     skipped_count = sum(1 for result in results if result.action == "skipped")

@@ -340,7 +340,9 @@ def test_create_manual_movie_watch_reuses_existing_media_item(monkeypatch) -> No
     session = Mock()
     media_item_id = uuid4()
     watch_event = Mock()
-    create_watch = Mock(return_value=WatchEventCreateResult(watch_event=watch_event, created=True))
+    create_watch = Mock(
+        return_value=WatchEventCreateResult(watch_event=watch_event, created=True)
+    )
 
     monkeypatch.setattr(
         "app.services.watch_events.MediaItemService.find_media_item_by_external_ids",
@@ -421,11 +423,15 @@ def test_create_manual_movie_watch_creates_media_item_from_tmdb(monkeypatch) -> 
     assert result.created is True
 
 
-def test_create_manual_episode_watch_creates_episode_from_show_tmdb(monkeypatch) -> None:
+def test_create_manual_episode_watch_creates_episode_from_show_tmdb(
+    monkeypatch,
+) -> None:
     session = Mock()
     media_item_id = uuid4()
     show_id = uuid4()
-    create_watch = Mock(return_value=WatchEventCreateResult(watch_event=Mock(), created=True))
+    create_watch = Mock(
+        return_value=WatchEventCreateResult(watch_event=Mock(), created=True)
+    )
 
     monkeypatch.setattr(
         "app.services.watch_events.MediaItemService.find_episode_media_item",
@@ -437,7 +443,11 @@ def test_create_manual_episode_watch_creates_episode_from_show_tmdb(monkeypatch)
     )
     monkeypatch.setattr(
         "app.services.watch_events.TmdbService.get_episode_details",
-        lambda *_args, **_kwargs: {"id": 456, "name": "Pilot", "air_date": "2008-09-09"},
+        lambda *_args, **_kwargs: {
+            "id": 456,
+            "name": "Pilot",
+            "air_date": "2008-09-09",
+        },
     )
     monkeypatch.setattr(
         "app.services.watch_events.ShowService.get_or_create_show",
@@ -473,7 +483,9 @@ def test_create_manual_episode_watch_creates_episode_from_show_tmdb(monkeypatch)
     assert create_watch.call_args.kwargs["media_item_id"] == media_item_id
 
 
-def test_create_manual_episode_watch_rejects_tmdb_episode_id_mismatch(monkeypatch) -> None:
+def test_create_manual_episode_watch_rejects_tmdb_episode_id_mismatch(
+    monkeypatch,
+) -> None:
     session = Mock()
 
     monkeypatch.setattr(
@@ -486,7 +498,11 @@ def test_create_manual_episode_watch_rejects_tmdb_episode_id_mismatch(monkeypatc
     )
     monkeypatch.setattr(
         "app.services.watch_events.TmdbService.get_episode_details",
-        lambda *_args, **_kwargs: {"id": 999, "name": "Pilot", "air_date": "2008-09-09"},
+        lambda *_args, **_kwargs: {
+            "id": 999,
+            "name": "Pilot",
+            "air_date": "2008-09-09",
+        },
     )
 
     with pytest.raises(ValueError, match="tmdb_episode_id does not match"):
@@ -622,7 +638,9 @@ def test_restore_watch_event_clears_deleted_fields(monkeypatch) -> None:
     session.commit.assert_called_once()
 
 
-def test_correct_watch_event_reassigns_media_item_and_clears_invalid_media_version(monkeypatch) -> None:
+def test_correct_watch_event_reassigns_media_item_and_clears_invalid_media_version(
+    monkeypatch,
+) -> None:
     session = Mock()
     old_media_item_id = uuid4()
     new_media_item_id = uuid4()

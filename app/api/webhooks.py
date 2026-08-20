@@ -36,9 +36,13 @@ def ingest_kodi_playback_event(
             payload=payload,
         )
     except PlaybackEventDuplicateError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     except (PlaybackEventConstraintError, WatchEventConstraintError) as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -76,9 +80,13 @@ def scrobble_from_kodi(
             payload=payload,
         )
     except PlaybackEventDuplicateError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     except (PlaybackEventConstraintError, WatchEventConstraintError) as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

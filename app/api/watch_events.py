@@ -114,7 +114,9 @@ def create_watch_event(
     return WatchEventRead.model_validate(result.watch_event)
 
 
-@router.post("/manual", response_model=WatchEventRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/manual", response_model=WatchEventRead, status_code=status.HTTP_201_CREATED
+)
 def create_manual_watch_event(
     payload: ManualWatchEventCreate,
     session: Session = Depends(get_db_session),
@@ -170,7 +172,9 @@ def delete_watch_event(
         )
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
     except WatchEventConstraintError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     return WatchEventRead.model_validate(watch_event)
 
 
@@ -195,7 +199,9 @@ def restore_watch_event(
         )
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
     except WatchEventConstraintError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     return WatchEventRead.model_validate(watch_event)
 
 
@@ -224,7 +230,9 @@ def correct_watch_event(
         )
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
     except WatchEventConstraintError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     return WatchEventRead.model_validate(watch_event)
 
 
@@ -250,7 +258,9 @@ def rate_watch_event(
         )
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
     except WatchEventConstraintError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     return WatchEventRead.model_validate(watch_event)
 
 
@@ -278,5 +288,7 @@ def set_watch_event_version_override(
         )
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
     except WatchEventConstraintError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     return WatchEventRead.model_validate(watch_event)

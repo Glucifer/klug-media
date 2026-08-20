@@ -15,8 +15,16 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("watch_event", sa.Column("watch_version_name", sa.String(), nullable=True), schema=APP_SCHEMA)
-    op.add_column("watch_event", sa.Column("watch_runtime_seconds", sa.Integer(), nullable=True), schema=APP_SCHEMA)
+    op.add_column(
+        "watch_event",
+        sa.Column("watch_version_name", sa.String(), nullable=True),
+        schema=APP_SCHEMA,
+    )
+    op.add_column(
+        "watch_event",
+        sa.Column("watch_runtime_seconds", sa.Integer(), nullable=True),
+        schema=APP_SCHEMA,
+    )
 
     op.execute(
         """

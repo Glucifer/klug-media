@@ -64,6 +64,7 @@ def get_horrorfest_analytics_title_matrix(
         HorrorfestService.get_analytics_title_matrix(session, user_id=user_id)
     )
 
+
 def _csv_response(
     rows: list[dict[str, object]],
     *,
@@ -198,7 +199,11 @@ def get_horrorfest_analytics_curation_staples(
     session: Session = Depends(get_db_session),
 ) -> HorrorfestAnalyticsCurationReportRead:
     return HorrorfestAnalyticsCurationReportRead.model_validate(
-        {"rows": HorrorfestService.get_analytics_curation_staples(session, user_id=user_id)}
+        {
+            "rows": HorrorfestService.get_analytics_curation_staples(
+                session, user_id=user_id
+            )
+        }
     )
 
 
@@ -211,7 +216,11 @@ def get_horrorfest_analytics_curation_streaks(
     session: Session = Depends(get_db_session),
 ) -> HorrorfestAnalyticsCurationReportRead:
     return HorrorfestAnalyticsCurationReportRead.model_validate(
-        {"rows": HorrorfestService.get_analytics_curation_streaks(session, user_id=user_id)}
+        {
+            "rows": HorrorfestService.get_analytics_curation_streaks(
+                session, user_id=user_id
+            )
+        }
     )
 
 
@@ -224,7 +233,11 @@ def get_horrorfest_analytics_curation_gaps(
     session: Session = Depends(get_db_session),
 ) -> HorrorfestAnalyticsCurationReportRead:
     return HorrorfestAnalyticsCurationReportRead.model_validate(
-        {"rows": HorrorfestService.get_analytics_curation_gaps(session, user_id=user_id)}
+        {
+            "rows": HorrorfestService.get_analytics_curation_gaps(
+                session, user_id=user_id
+            )
+        }
     )
 
 
@@ -289,7 +302,9 @@ def get_horrorfest_analytics_year_detail(
             user_id=user_id,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     return HorrorfestAnalyticsYearDetailRead.model_validate(detail)
 
 
@@ -340,7 +355,9 @@ def export_horrorfest_analytics_years(
             "total_runtime_hours": row["total_runtime_hours"],
             "average_watches_per_day": row["average_watches_per_day"],
             "average_runtime_hours_per_day": row["average_runtime_hours_per_day"],
-            "average_runtime_minutes_per_watch": row["average_runtime_minutes_per_watch"],
+            "average_runtime_minutes_per_watch": row[
+                "average_runtime_minutes_per_watch"
+            ],
             "average_rating_value": row["average_rating_value"],
             "first_watch_at": row["first_watch_at"],
             "latest_watch_at": row["latest_watch_at"],
@@ -380,7 +397,9 @@ def export_horrorfest_analytics_year_daily(
             user_id=user_id,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     return _csv_response(
         detail["daily_rows"],
         fieldnames=[
@@ -407,7 +426,9 @@ def export_horrorfest_analytics_year_sources(
             user_id=user_id,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     return _csv_response(
         detail["source_rows"],
         fieldnames=[
@@ -434,7 +455,9 @@ def export_horrorfest_analytics_year_ratings(
             user_id=user_id,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     return _csv_response(
         detail["rating_rows"],
         fieldnames=["rating_value", "watch_count"],
@@ -458,7 +481,9 @@ def export_horrorfest_title_matrix(
         }
         for row in payload["rows"]
     ]
-    return _csv_response(rows, fieldnames=fieldnames, filename="horrorfest_title_matrix.csv")
+    return _csv_response(
+        rows, fieldnames=fieldnames, filename="horrorfest_title_matrix.csv"
+    )
 
 
 @router.get("/analytics/export/decades")
@@ -477,7 +502,9 @@ def export_horrorfest_decade_matrix(
         }
         for row in payload["rows"]
     ]
-    return _csv_response(rows, fieldnames=fieldnames, filename="horrorfest_decade_matrix.csv")
+    return _csv_response(
+        rows, fieldnames=fieldnames, filename="horrorfest_decade_matrix.csv"
+    )
 
 
 @router.get("/analytics/export/compare")
@@ -697,7 +724,12 @@ def export_horrorfest_highest_rated_leaderboard(
     )
     return _csv_response(
         rows,
-        fieldnames=["title", "total_count", "average_rating_value", "rated_watch_count"],
+        fieldnames=[
+            "title",
+            "total_count",
+            "average_rating_value",
+            "rated_watch_count",
+        ],
         filename="horrorfest_highest_rated_titles.csv",
     )
 
@@ -839,7 +871,9 @@ def upsert_horrorfest_year(
     return HorrorfestYearRead.model_validate(selected)
 
 
-@router.get("/years/{horrorfest_year}/entries", response_model=list[HorrorfestEntryRead])
+@router.get(
+    "/years/{horrorfest_year}/entries", response_model=list[HorrorfestEntryRead]
+)
 def list_horrorfest_entries(
     horrorfest_year: int,
     include_removed: bool = Query(default=False),
@@ -852,7 +886,9 @@ def list_horrorfest_entries(
             include_removed=include_removed,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     return [HorrorfestEntryRead.model_validate(item) for item in rows]
 
 
@@ -876,7 +912,11 @@ def include_watch_event_in_horrorfest(
             horrorfest_year=payload.horrorfest_year,
             include_removed=True,
         )
-        selected = next(item for item in rows if item["watch_id"] == watch_id and not item["is_removed"])
+        selected = next(
+            item
+            for item in rows
+            if item["watch_id"] == watch_id and not item["is_removed"]
+        )
     except ValueError as exc:
         status_code = (
             status.HTTP_404_NOT_FOUND
@@ -885,11 +925,15 @@ def include_watch_event_in_horrorfest(
         )
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
     except HorrorfestConstraintError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     return HorrorfestEntryRead.model_validate(selected)
 
 
-@router.post("/entries/{horrorfest_entry_id}/remove", response_model=HorrorfestEntryRead)
+@router.post(
+    "/entries/{horrorfest_entry_id}/remove", response_model=HorrorfestEntryRead
+)
 def remove_horrorfest_entry(
     horrorfest_entry_id: UUID,
     payload: HorrorfestEntryMutation,
@@ -910,17 +954,25 @@ def remove_horrorfest_entry(
         )
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
     except HorrorfestConstraintError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     rows = HorrorfestService.list_entries(
         session,
         horrorfest_year=entry.horrorfest_year,
         include_removed=True,
     )
-    selected = next(item for item in rows if item["horrorfest_entry_id"] == entry.horrorfest_entry_id)
+    selected = next(
+        item
+        for item in rows
+        if item["horrorfest_entry_id"] == entry.horrorfest_entry_id
+    )
     return HorrorfestEntryRead.model_validate(selected)
 
 
-@router.post("/entries/{horrorfest_entry_id}/restore", response_model=HorrorfestEntryRead)
+@router.post(
+    "/entries/{horrorfest_entry_id}/restore", response_model=HorrorfestEntryRead
+)
 def restore_horrorfest_entry(
     horrorfest_entry_id: UUID,
     payload: HorrorfestEntryMutation,
@@ -941,13 +993,19 @@ def restore_horrorfest_entry(
         )
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
     except HorrorfestConstraintError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     rows = HorrorfestService.list_entries(
         session,
         horrorfest_year=entry.horrorfest_year,
         include_removed=True,
     )
-    selected = next(item for item in rows if item["horrorfest_entry_id"] == entry.horrorfest_entry_id)
+    selected = next(
+        item
+        for item in rows
+        if item["horrorfest_entry_id"] == entry.horrorfest_entry_id
+    )
     return HorrorfestEntryRead.model_validate(selected)
 
 
@@ -973,11 +1031,17 @@ def move_horrorfest_entry(
         )
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
     except HorrorfestConstraintError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     rows = HorrorfestService.list_entries(
         session,
         horrorfest_year=entry.horrorfest_year,
         include_removed=True,
     )
-    selected = next(item for item in rows if item["horrorfest_entry_id"] == entry.horrorfest_entry_id)
+    selected = next(
+        item
+        for item in rows
+        if item["horrorfest_entry_id"] == entry.horrorfest_entry_id
+    )
     return HorrorfestEntryRead.model_validate(selected)

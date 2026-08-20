@@ -291,7 +291,9 @@ def list_media_items_for_enrichment(
             MediaItem.tmdb_id.is_(None),
             or_(MediaItem.imdb_id.is_(None), MediaItem.tvdb_id.is_(None)),
         )
-    statement = statement.order_by(MediaItem.created_at.desc()).limit(limit).offset(offset)
+    statement = (
+        statement.order_by(MediaItem.created_at.desc()).limit(limit).offset(offset)
+    )
     return list(session.scalars(statement))
 
 

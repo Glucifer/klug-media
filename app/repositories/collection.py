@@ -180,11 +180,15 @@ def list_collection_movies(
     if query:
         statement = statement.where(MediaItem.title.ilike(f"%{query}%"))
     statement = _present_filter(statement, present=present)
-    statement = statement.order_by(
-        desc(CollectionEntry.is_present),
-        asc(MediaItem.title),
-        asc(CollectionEntry.collection_entry_id),
-    ).limit(limit).offset(offset)
+    statement = (
+        statement.order_by(
+            desc(CollectionEntry.is_present),
+            asc(MediaItem.title),
+            asc(CollectionEntry.collection_entry_id),
+        )
+        .limit(limit)
+        .offset(offset)
+    )
     return [dict(row) for row in session.execute(statement).mappings().all()]
 
 
@@ -223,11 +227,15 @@ def list_collection_shows(
     if query:
         statement = statement.where(Show.title.ilike(f"%{query}%"))
     statement = _present_filter(statement, present=present)
-    statement = statement.order_by(
-        desc(CollectionEntry.is_present),
-        asc(Show.title),
-        asc(CollectionEntry.collection_entry_id),
-    ).limit(limit).offset(offset)
+    statement = (
+        statement.order_by(
+            desc(CollectionEntry.is_present),
+            asc(Show.title),
+            asc(CollectionEntry.collection_entry_id),
+        )
+        .limit(limit)
+        .offset(offset)
+    )
     return [dict(row) for row in session.execute(statement).mappings().all()]
 
 
@@ -274,11 +282,15 @@ def list_collection_episodes(
             or_(MediaItem.title.ilike(pattern), Show.title.ilike(pattern))
         )
     statement = _present_filter(statement, present=present)
-    statement = statement.order_by(
-        desc(CollectionEntry.is_present),
-        asc(Show.title).nulls_last(),
-        asc(MediaItem.season_number).nulls_last(),
-        asc(MediaItem.episode_number).nulls_last(),
-        asc(MediaItem.title),
-    ).limit(limit).offset(offset)
+    statement = (
+        statement.order_by(
+            desc(CollectionEntry.is_present),
+            asc(Show.title).nulls_last(),
+            asc(MediaItem.season_number).nulls_last(),
+            asc(MediaItem.episode_number).nulls_last(),
+            asc(MediaItem.title),
+        )
+        .limit(limit)
+        .offset(offset)
+    )
     return [dict(row) for row in session.execute(statement).mappings().all()]

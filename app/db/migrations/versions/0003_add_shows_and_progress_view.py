@@ -53,7 +53,9 @@ def upgrade() -> None:
         sa.Column("show_id", postgresql.UUID(as_uuid=True), nullable=True),
         schema=APP_SCHEMA,
     )
-    op.create_index("ix_media_item_show_id", "media_item", ["show_id"], schema=APP_SCHEMA)
+    op.create_index(
+        "ix_media_item_show_id", "media_item", ["show_id"], schema=APP_SCHEMA
+    )
     op.create_index(
         "ix_media_item_show_tmdb", "media_item", ["show_tmdb_id"], schema=APP_SCHEMA
     )
