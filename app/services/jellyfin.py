@@ -75,6 +75,19 @@ class JellyfinCollectionItem:
     source_data: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class JellyfinPlayedUpdate:
+    item_id: str
+    date_played: datetime
+
+
+@dataclass(frozen=True)
+class JellyfinPlayedUpdateResult:
+    item_id: str
+    succeeded: bool
+    error: str | None = None
+
+
 class JellyfinClient:
     def __init__(self, *, base_url: str, api_key: str, timeout_seconds: int) -> None:
         self._base_url = base_url.rstrip("/")
@@ -224,6 +237,57 @@ class JellyfinClient:
             start_index += page_size
 
         return items
+
+    def mark_items_played(
+        self,
+        *,
+        user_id: UUID,
+        updates: list[JellyfinPlayedUpdate],
+    ) -> list[JellyfinPlayedUpdateResult]:
+        headers = {
+            "X-Emby-Token": self._api_key,
+            "Accept": "application/json",
+        }
+        results: list[JellyfinPlayedUpdateResult] = []
+        with httpx.Client(timeout=float(self._timeout_seconds)) as client:
+            for update in updates:
+                try:
+                    response = client.post(
+                        f"{self._base_url}/UserPlayedItems/{update.item_id}",
+                        params={
+                            "userId": user_id.hex,
+                            "datePlayed": _format_datetime(update.date_played),
+                        },
+                        headers=headers,
+                    )
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as exc:
+                    results.append(
+                        JellyfinPlayedUpdateResult(
+                            item_id=update.item_id,
+                            succeeded=False,
+                            error=(
+                                "Jellyfin request failed with status "
+                                f"{exc.response.status_code}"
+                            ),
+                        )
+                    )
+                except httpx.RequestError as exc:
+                    results.append(
+                        JellyfinPlayedUpdateResult(
+                            item_id=update.item_id,
+                            succeeded=False,
+                            error=f"Jellyfin request failed: {exc.__class__.__name__}",
+                        )
+                    )
+                else:
+                    results.append(
+                        JellyfinPlayedUpdateResult(
+                            item_id=update.item_id,
+                            succeeded=True,
+                        )
+                    )
+        return results
 
     def _request_json(
         self,

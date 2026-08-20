@@ -1,9 +1,54 @@
 from datetime import UTC, datetime
+from uuid import UUID
 
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.db.models.entities import MediaItem, Show, WatchEvent
+from app.db.models.entities import CollectionEntry, MediaItem, Show, WatchEvent
+
+
+def list_present_jellyfin_watched_items(
+    session: Session,
+    *,
+    user_id: UUID,
+) -> list[dict[str, object]]:
+    latest_watched_at = func.max(WatchEvent.watched_at)
+    statement = (
+        select(
+            MediaItem.jellyfin_item_id,
+            MediaItem.title,
+            MediaItem.type,
+            latest_watched_at.label("last_watched_at"),
+        )
+        .join(WatchEvent, WatchEvent.media_item_id == MediaItem.media_item_id)
+        .join(
+            CollectionEntry,
+            CollectionEntry.media_item_id == MediaItem.media_item_id,
+        )
+        .where(
+            WatchEvent.user_id == user_id,
+            WatchEvent.completed.is_(True),
+            WatchEvent.is_deleted.is_(False),
+            MediaItem.jellyfin_item_id.is_not(None),
+            CollectionEntry.source == "jellyfin",
+            CollectionEntry.is_present.is_(True),
+        )
+        .group_by(
+            MediaItem.jellyfin_item_id,
+            MediaItem.title,
+            MediaItem.type,
+        )
+        .order_by(latest_watched_at.asc(), MediaItem.jellyfin_item_id.asc())
+    )
+    return [
+        {
+            "item_id": item_id,
+            "title": title,
+            "media_type": media_type,
+            "last_watched_at": last_watched_at,
+        }
+        for item_id, title, media_type, last_watched_at in session.execute(statement)
+    ]
 
 
 def list_media_items(session: Session) -> list[MediaItem]:

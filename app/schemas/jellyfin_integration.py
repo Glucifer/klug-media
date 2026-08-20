@@ -115,6 +115,35 @@ class JellyfinReconcileRead(KlugBaseModel):
     issues: list[JellyfinReconcileIssue]
 
 
+class JellyfinWatchRestoreRequest(KlugBaseModel):
+    klug_user_id: UUID
+    dry_run: bool = True
+    batch_size: int = Field(default=250, ge=1, le=1000)
+    notes: str | None = Field(default=None, max_length=1000)
+
+
+class JellyfinWatchRestoreIssue(KlugBaseModel):
+    item_id: str
+    title: str
+    reason: str
+
+
+class JellyfinWatchRestoreRead(KlugBaseModel):
+    import_batch_id: UUID
+    status: str
+    dry_run: bool
+    eligible_count: int
+    already_played_count: int
+    candidate_count: int
+    attempted_count: int
+    restored_count: int
+    remaining_count: int
+    movie_candidate_count: int
+    episode_candidate_count: int
+    error_count: int
+    issues: list[JellyfinWatchRestoreIssue]
+
+
 def ticks_to_seconds(ticks: int | None) -> int | None:
     return ticks // 10_000_000 if ticks is not None else None
 

@@ -9,9 +9,12 @@ from app.schemas.jellyfin_integration import (
     JellyfinIntegrationStatusRead,
     JellyfinUserMappingRead,
     JellyfinUserMappingUpdate,
+    JellyfinWatchRestoreRead,
+    JellyfinWatchRestoreRequest,
 )
 from app.services.jellyfin import JellyfinClientError, JellyfinConfigurationError
 from app.services.jellyfin_integration import JellyfinIntegrationService
+from app.services.jellyfin_watch_restore import JellyfinWatchRestoreService
 from app.services.users import JellyfinUserAlreadyMappedError, UserService
 
 
@@ -77,3 +80,27 @@ def update_jellyfin_user_mapping(
             detail=str(exc),
         ) from exc
     return JellyfinUserMappingUpdate(jellyfin_user_id=user.jellyfin_user_id)
+
+
+@router.post("/watch-state/restore", response_model=JellyfinWatchRestoreRead)
+def restore_jellyfin_watch_state(
+    payload: JellyfinWatchRestoreRequest,
+    session: Session = Depends(get_db_session),
+) -> JellyfinWatchRestoreRead:
+    try:
+        return JellyfinWatchRestoreService.run(session, payload=payload)
+    except JellyfinConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+    except JellyfinClientError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
