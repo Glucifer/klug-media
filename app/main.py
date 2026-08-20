@@ -1,8 +1,7 @@
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 
 from app.api.collection import router as collection_router
-from app.api.frontend import WEB_ROOT, router as frontend_router
+from app.api.frontend import FrontendStaticFiles, WEB_ROOT, router as frontend_router
 from app.api.health import router as health_router
 from app.api.horrorfest import router as horrorfest_router
 from app.api.imports import router as imports_router
@@ -29,7 +28,7 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
     )
-    app.mount("/web", StaticFiles(directory=WEB_ROOT), name="web")
+    app.mount("/web", FrontendStaticFiles(directory=WEB_ROOT), name="web")
     app.include_router(frontend_router)
     app.include_router(health_router, prefix=settings.api_v1_prefix)
     app.include_router(horrorfest_router, prefix=settings.api_v1_prefix)

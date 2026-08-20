@@ -956,26 +956,36 @@ function saveManualWatchPreferences() {
 async function checkSession() {
   authStatus.textContent = "Checking session...";
   await loadOpsHealth();
+  let payload;
   try {
     const response = await api("/api/v1/session/me");
     if (!response.ok) {
       opsAuthMode.textContent = "Auth Mode: unavailable";
       setAuthenticatedUI(false, "Session check failed");
-      return;
+      return false;
     }
-    const payload = await response.json();
-    opsAuthMode.textContent = `Auth Mode: ${payload.auth_mode}`;
-    if (payload.authenticated) {
-      setAuthenticatedUI(true, "Authenticated");
-      await loadActiveUserProfiles();
-      await loadDashboardData();
-    } else {
-      setAuthenticatedUI(false, "Not authenticated");
-    }
+    payload = await response.json();
   } catch (_error) {
     opsAuthMode.textContent = "Auth Mode: unavailable";
     setAuthenticatedUI(false, "Session check failed");
+    return false;
   }
+
+  opsAuthMode.textContent = `Auth Mode: ${payload.auth_mode}`;
+  if (!payload.authenticated) {
+    setAuthenticatedUI(false, "Not authenticated");
+    return false;
+  }
+
+  setAuthenticatedUI(true, "Authenticated");
+  try {
+    await loadActiveUserProfiles();
+    await loadDashboardData();
+  } catch (error) {
+    authStatus.textContent = "Authenticated; some dashboard data failed to load.";
+    console.error("Authenticated UI initialization failed", error);
+  }
+  return true;
 }
 
 async function loadDashboardData() {
@@ -4952,7 +4962,11 @@ loginForm.addEventListener("submit", async (event) => {
     loginError.textContent = "Login failed";
     return;
   }
-  await checkSession();
+  const authenticated = await checkSession();
+  if (!authenticated) {
+    loginError.textContent =
+      "Password accepted, but the browser session was not retained. Reload the page and try again.";
+  }
 });
 
 refreshData.addEventListener("click", async () => {

@@ -140,6 +140,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - continues past per-row year-window failures and reports them instead of aborting the full run
 - The minimal frontend is sufficient for v1 operations, including:
   - an active user profile selector that auto-selects the sole user, remembers an explicit choice, and supplies the user identity for manual watch entry without exposing UUIDs
+  - browser-facing HTML, JavaScript, and CSS responses require cache revalidation so deployments do not leave mismatched frontend assets in long-lived browser caches
   - import review
   - watch correction
   - manual entry

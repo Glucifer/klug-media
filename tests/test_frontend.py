@@ -8,6 +8,7 @@ def test_root_frontend_serves_index() -> None:
     response = client.get("/")
 
     assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-cache"
     assert "Klug Media" in response.text
     assert "Library" in response.text
     assert "Collection" in response.text
@@ -81,9 +82,16 @@ def test_frontend_static_assets_are_served() -> None:
     js_response = client.get("/web/app.js")
 
     assert css_response.status_code == 200
+    assert css_response.headers["cache-control"] == "no-cache"
     assert ":root" in css_response.text
     assert js_response.status_code == 200
+    assert js_response.headers["cache-control"] == "no-cache"
     assert "checkSession();" in js_response.text
+    assert (
+        "Password accepted, but the browser session was not retained."
+        in js_response.text
+    )
     assert "loadActiveUserProfiles" in js_response.text
     assert "user_id: activeUserId" in js_response.text
+    assert "Authenticated; some dashboard data failed to load." in js_response.text
     assert "Back to Collection" in js_response.text
