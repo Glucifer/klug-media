@@ -26,7 +26,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title="Klug Media API",
-        version="0.1.0",
+        version="1.1.0",
         docs_url="/docs",
         redoc_url="/redoc",
     )

@@ -8,7 +8,8 @@ disabled; stop notifications already include the final position and runtime.
 
 - Klug must have `KLUG_JELLYFIN_BASE_URL`, `KLUG_JELLYFIN_API_KEY`, and
   `KLUG_API_KEY` configured.
-- Run the Jellyfin collection snapshot import before enabling playback delivery.
+- Run the repeatable Jellyfin collection snapshot import before enabling
+  playback delivery and after significant library changes.
 - Install version 18 or newer of the official Jellyfin Webhook plugin. The
   bundled template uses its `json_encode` helper.
 
@@ -45,4 +46,7 @@ repository.
 
 Reconciliation can recover the most recent `LastPlayedDate` for an item. It
 cannot invent dates for older rewatches represented only by Jellyfin's
-`PlayCount`; those are reported for operator review.
+`PlayCount`; those are reported for operator review. `PlayCount` is treated as
+informational because it is a lifetime counter and can include repeated playback
+starts. An `older_rewatch_dates_unavailable` row still imports the latest missing
+watch; only the older, undated rewatches are omitted.

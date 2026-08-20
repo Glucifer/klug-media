@@ -137,6 +137,12 @@ Purpose: quick rehydration file after context compaction so work can resume with
 
 ## V1 Status
 - Klug Media is now at a personal-use v1 milestone.
+- Version `1.1.0` is prepared as the next personal release checkpoint; create the
+  Git tag only after the seven-day Jellyfin/Kodi shadow period succeeds.
+- The Jellyfin collection was refreshed after a multi-month gap, adding more than
+  1,000 owned items, and the 90-day watch reconciliation completed successfully.
+- Recent history now contains the recovered Jellyfin-sourced watches; Jellyfin and
+  Kodi delivery remain active together for shadow validation.
 - Real history CSV import has been validated against the user's merged export and now:
   - handles BOM-prefixed headers
   - treats flat CSV naive timestamps as user-local time
@@ -164,7 +170,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Owned-media `Collection` API support now exists for Jellyfin snapshot imports and browse, but frontend/operator UX is still minimal.
 - Planned external sync integrations (metadata/webhooks/automation connectors) are not fully implemented.
 - Metadata enrichment exists in a first operator-focused form, but there is not yet a polished end-user metadata UI.
-- Jellyfin is now the primary planned playback source; live deployment/plugin verification and the seven-day Kodi shadow cutover remain operational work.
+- Jellyfin is now the deployed primary playback source; the seven-day Kodi shadow cutover remains operational work.
 - Hardening items likely still needed over time: broader integration coverage, stricter operational docs, and deployment polish.
 
 ## Naming Conventions and Guardrails

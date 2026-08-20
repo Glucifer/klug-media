@@ -9,7 +9,9 @@
 > Klug Media is built specifically for my local home server environment (Unraid, PostgreSQL, Node-RED). It is currently under active, messy development. I am sharing the code for transparency and inspiration, but I do **not** provide support, installation guides, or guarantees that it will work for anyone else.
 >
 > **Non-goal:** this is not a supported drop-in replacement for any third-party tracking service.
-> There are no releases, no migration guarantees, and no backward-compatibility promise.
+> Releases are personal deployment checkpoints, not a support or
+> backward-compatibility promise. Review migrations and release notes before
+> updating an existing installation.
 
 Klug Media is a self-hosted media tracking and analytics platform.
 The goal is complete ownership of watch history, metadata, analytics, and integrations.
@@ -33,7 +35,7 @@ The current system is usable for day-to-day tracking without direct database edi
 Core v1 workflows now include:
 
 - full watch-history import from legacy JSON/CSV exports
-- one-time Jellyfin collection snapshot import for owned movies/shows/episodes
+- repeatable, operator-triggered Jellyfin collection snapshots for owned movies/shows/episodes
 - primary Jellyfin watch tracking for Kodi and native Jellyfin clients
 - temporary Kodi/Node-RED shadow collection during the Jellyfin cutover
 - manual watch entry for off-Kodi viewing
@@ -66,13 +68,13 @@ The repository currently includes:
 - `app/db/` for database session and models
 - `app/schemas/` for request/response DTOs
 
-## Planned / Post-v1 Integrations
+## Planned / Later Work
 
-- TMDB metadata sync
-- Jellyfin playback reporting and reconciliation hardening
+- Admin controls and health visibility for Jellyfin collection refreshes
+- completion of the seven-day Jellyfin/Kodi shadow cutover
 - Radarr/Sonarr import
-- One-time external watch-history export import workflow
-- Horrorfest annual watch tracking and stats
+- portable watch-history export and backup workflows
+- continued browsing and operator UX polish
 
 ## Naming Note
 
@@ -304,14 +306,14 @@ Write mode example:
 uv run python -m app.scripts.backfill_episode_shows
 ```
 
-11. Run a Jellyfin collection snapshot import after configuring Jellyfin env vars:
+11. Run a Jellyfin collection snapshot import after configuring Jellyfin env vars. Snapshot imports are safe to rerun; absent entries are marked missing rather than deleted:
 ```bash
-curl -X POST http://172.20.1.10:8010/api/v1/imports/collection/jellyfin -H "Content-Type: application/json" -H "X-API-Key: <your-api-key>" -d '{"dry_run":true}'
+curl -X POST http://172.20.1.20:8010/api/v1/imports/collection/jellyfin -H "Content-Type: application/json" -H "X-API-Key: <your-api-key>" -d '{"dry_run":true}'
 ```
 
 Real import example:
 ```bash
-curl -X POST http://172.20.1.10:8010/api/v1/imports/collection/jellyfin -H "Content-Type: application/json" -H "X-API-Key: <your-api-key>" -d '{}'
+curl -X POST http://172.20.1.20:8010/api/v1/imports/collection/jellyfin -H "Content-Type: application/json" -H "X-API-Key: <your-api-key>" -d '{"dry_run":false}'
 ```
 
 ## API Smoke Checks

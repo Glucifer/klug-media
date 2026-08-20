@@ -10,6 +10,7 @@ def test_root_frontend_serves_index() -> None:
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-cache"
     assert "Klug Media" in response.text
+    assert "v1.1 Control Center" in response.text
     assert "Library" in response.text
     assert "Collection" in response.text
     assert "Watched Media Index" in response.text
