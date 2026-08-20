@@ -209,6 +209,9 @@ Purpose: quick rehydration file after context compaction so work can resume with
 - Local Codex MCP setup:
   - A local `postgres` MCP server is configured in Codex and verified working against `klug_local`.
   - Prefer the MCP database tools for schema inspection and query work when available in-session.
+  - A global `nodered` MCP server is configured with pinned `@gmag11/nodered-mcp-server@1.1.0` through `/home/travis/.local/bin/klug-nodered-mcp` and verified against the live Node-RED instance at `172.20.1.20:1880`.
+  - Node-RED `adminAuth` is enabled with an interactive `travis` editor account and a separate bearer token for Codex; credentials are owner-only files under `/home/travis/.local/state/nodered-auth` and are not stored in this repository or Codex's TOML config.
+  - The pre-auth Node-RED settings backup is `/data/settings.js.klug-pre-auth-2026-08-20T05-44-58-294Z`; a separate flow export is stored outside the repo under `/home/travis/.local/state/nodered-mcp-backups`.
 - Previous Windows-native local network topology for historical reference:
   - Klug API ran on the Windows host at `172.20.1.10`
   - PostgreSQL, Home Assistant, and Node-RED run on `172.20.1.20`
