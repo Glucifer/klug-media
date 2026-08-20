@@ -139,6 +139,7 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - uses deterministic fallback matching beyond exact source-event/date matches
   - continues past per-row year-window failures and reports them instead of aborting the full run
 - The minimal frontend is sufficient for v1 operations, including:
+  - an active user profile selector that auto-selects the sole user, remembers an explicit choice, and supplies the user identity for manual watch entry without exposing UUIDs
   - import review
   - watch correction
   - manual entry
@@ -177,7 +178,8 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - stage changes
   - run tests/checks as appropriate
   - run `git status` before commit
-  - attempt commit when user requests commit
+  - automatically commit completed changes after their tests/checks pass
+  - do not push unless the user explicitly requests it
   - run `git status` after commit attempt so hook failures can be pasted verbatim
   - show `git log -1 --oneline` after successful commit
 - If pre-commit/hooks fail, report exact failure and wait for user-provided output if needed.

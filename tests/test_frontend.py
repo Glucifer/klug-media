@@ -69,6 +69,9 @@ def test_root_frontend_serves_index() -> None:
     assert "completed_with_errors" in response.text
     assert "API Health:" in response.text
     assert "Last Refresh:" in response.text
+    assert "Active user" in response.text
+    assert 'id="active-user-select"' in response.text
+    assert 'id="manual-watch-user-id"' not in response.text
 
 
 def test_frontend_static_assets_are_served() -> None:
@@ -81,4 +84,6 @@ def test_frontend_static_assets_are_served() -> None:
     assert ":root" in css_response.text
     assert js_response.status_code == 200
     assert "checkSession();" in js_response.text
+    assert "loadActiveUserProfiles" in js_response.text
+    assert "user_id: activeUserId" in js_response.text
     assert "Back to Collection" in js_response.text

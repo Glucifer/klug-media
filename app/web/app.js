@@ -8,6 +8,8 @@ const opsHealth = document.getElementById("ops-health");
 const opsAuthMode = document.getElementById("ops-auth-mode");
 const opsSession = document.getElementById("ops-session");
 const opsLastRefresh = document.getElementById("ops-last-refresh");
+const activeUserSelect = document.getElementById("active-user-select");
+const activeUserStatus = document.getElementById("active-user-status");
 const showList = document.getElementById("show-list");
 const showsStatus = document.getElementById("shows-status");
 const statsStatus = document.getElementById("stats-status");
@@ -29,7 +31,6 @@ const importSummary = document.getElementById("import-summary");
 const importErrorsStatus = document.getElementById("import-errors-status");
 const importErrorsList = document.getElementById("import-errors-list");
 const manualWatchForm = document.getElementById("manual-watch-form");
-const manualWatchUserId = document.getElementById("manual-watch-user-id");
 const manualWatchWatchedAt = document.getElementById("manual-watch-watched-at");
 const manualWatchPlaybackSource = document.getElementById("manual-watch-playback-source");
 const manualWatchMediaType = document.getElementById("manual-watch-media-type");
@@ -287,12 +288,12 @@ const IMPORT_PREF_KEYS = {
   importHistoryStatusFilter: "klug.import_history_status_filter",
 };
 const MANUAL_WATCH_PREF_KEYS = {
-  userId: "klug.manual_watch_user_id",
   playbackSource: "klug.manual_watch_playback_source",
   createdBy: "klug.manual_watch_created_by",
 };
 const UI_PREF_KEYS = {
   theme: "klug.ui_theme",
+  activeUserId: "klug.active_user_id",
   activeView: "klug.active_view",
   activeAdminView: "klug.active_admin_view",
   historyQuery: "klug.history_query",
@@ -318,6 +319,8 @@ const IMPORT_UPLOAD_MAX_MB = 25;
 const IMPORT_UPLOAD_MAX_BYTES = IMPORT_UPLOAD_MAX_MB * 1024 * 1024;
 
 let historyOffset = 0;
+let activeUsers = [];
+let activeUserId = "";
 let historyLimit = Number.parseInt(historyLimitSelect.value, 10);
 let historyRows = [];
 let libraryOffset = 0;
@@ -864,9 +867,71 @@ function toggleManualWatchInputs() {
   manualWatchEpisodeNumber.disabled = isMovie;
 }
 
+function setActiveUser(userId, persist = true) {
+  const selectedUser = activeUsers.find((user) => user.user_id === userId) || null;
+  activeUserId = selectedUser?.user_id || "";
+  activeUserSelect.value = activeUserId;
+  activeUserStatus.textContent = selectedUser
+    ? `Profile: ${selectedUser.username}`
+    : "Profile: choose a user";
+
+  if (persist) {
+    if (activeUserId) {
+      window.localStorage.setItem(UI_PREF_KEYS.activeUserId, activeUserId);
+    } else {
+      window.localStorage.removeItem(UI_PREF_KEYS.activeUserId);
+    }
+  }
+
+  if (activeUserId && !importUserId.value.trim()) {
+    importUserId.value = activeUserId;
+  }
+}
+
+async function loadActiveUserProfiles() {
+  activeUserSelect.disabled = true;
+  activeUserSelect.replaceChildren(new Option("Loading users...", ""));
+  activeUserStatus.textContent = "Profile: loading...";
+
+  try {
+    const response = await api("/api/v1/users");
+    if (!response.ok) {
+      throw new Error("User profiles could not be loaded");
+    }
+    activeUsers = await response.json();
+  } catch (_error) {
+    activeUsers = [];
+    activeUserId = "";
+    activeUserSelect.replaceChildren(new Option("Users unavailable", ""));
+    activeUserStatus.textContent = "Profile: unavailable";
+    return;
+  }
+
+  if (activeUsers.length === 0) {
+    activeUserId = "";
+    activeUserSelect.replaceChildren(new Option("No users available", ""));
+    activeUserStatus.textContent = "Profile: create a user first";
+    return;
+  }
+
+  const promptOption = new Option("Choose a user...", "");
+  activeUserSelect.replaceChildren(promptOption);
+  for (const user of activeUsers) {
+    activeUserSelect.appendChild(new Option(user.username, user.user_id));
+  }
+  activeUserSelect.disabled = false;
+
+  const savedUserId = window.localStorage.getItem(UI_PREF_KEYS.activeUserId) || "";
+  const savedUserExists = activeUsers.some((user) => user.user_id === savedUserId);
+  const initialUserId = savedUserExists
+    ? savedUserId
+    : activeUsers.length === 1
+      ? activeUsers[0].user_id
+      : "";
+  setActiveUser(initialUserId);
+}
+
 function loadManualWatchPreferences() {
-  manualWatchUserId.value =
-    localStorage.getItem(MANUAL_WATCH_PREF_KEYS.userId) || importUserId.value || "";
   manualWatchPlaybackSource.value =
     localStorage.getItem(MANUAL_WATCH_PREF_KEYS.playbackSource) || "streaming";
   manualWatchCreatedBy.value =
@@ -881,7 +946,6 @@ function loadManualWatchPreferences() {
 }
 
 function saveManualWatchPreferences() {
-  localStorage.setItem(MANUAL_WATCH_PREF_KEYS.userId, manualWatchUserId.value.trim());
   localStorage.setItem(
     MANUAL_WATCH_PREF_KEYS.playbackSource,
     manualWatchPlaybackSource.value.trim()
@@ -903,6 +967,7 @@ async function checkSession() {
     opsAuthMode.textContent = `Auth Mode: ${payload.auth_mode}`;
     if (payload.authenticated) {
       setAuthenticatedUI(true, "Authenticated");
+      await loadActiveUserProfiles();
       await loadDashboardData();
     } else {
       setAuthenticatedUI(false, "Not authenticated");
@@ -2665,12 +2730,17 @@ function formatManualWatchDetail(payload) {
 
 async function submitManualWatch(event) {
   event.preventDefault();
+  if (!activeUserId) {
+    manualWatchStatus.textContent = "Choose an active user before adding a watch.";
+    manualWatchDetail.textContent = "";
+    return;
+  }
   saveManualWatchPreferences();
   manualWatchStatus.textContent = "Submitting manual watch...";
   manualWatchDetail.textContent = "";
 
   const payload = {
-    user_id: manualWatchUserId.value.trim(),
+    user_id: activeUserId,
     watched_at: new Date(manualWatchWatchedAt.value).toISOString(),
     playback_source: manualWatchPlaybackSource.value.trim(),
     media_type: manualWatchMediaType.value,
@@ -6293,10 +6363,8 @@ manualWatchMediaType.addEventListener("change", () => {
   toggleManualWatchInputs();
 });
 
-importUserId.addEventListener("change", () => {
-  if (!manualWatchUserId.value.trim()) {
-    manualWatchUserId.value = importUserId.value.trim();
-  }
+activeUserSelect.addEventListener("change", () => {
+  setActiveUser(activeUserSelect.value);
 });
 
 importUseLatestCursor.addEventListener("click", () => {

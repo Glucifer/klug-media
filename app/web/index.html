@@ -39,6 +39,11 @@
             <button class="nav-link" data-view-target="admin" type="button">Admin</button>
           </nav>
           <div class="sidebar-footer">
+            <label for="active-user-select">Active user</label>
+            <select id="active-user-select" disabled>
+              <option value="">Loading users...</option>
+            </select>
+            <span id="active-user-status" class="muted">Profile: loading...</span>
             <button id="theme-toggle" class="secondary" type="button">Switch Theme</button>
             <span id="ops-auth-mode" class="muted">Auth Mode: unknown</span>
             <span id="ops-session" class="muted">Session: unknown</span>
@@ -624,7 +629,6 @@
               <div class="section-card">
                 <h3>Manual Watch Add</h3>
                 <form id="manual-watch-form">
-                  <input id="manual-watch-user-id" type="text" placeholder="User UUID" required />
                   <input id="manual-watch-watched-at" type="datetime-local" required />
                   <input id="manual-watch-playback-source" type="text" placeholder="blu_ray, theatre, streaming" required />
                   <select id="manual-watch-media-type"><option value="movie">Movie</option><option value="episode">Episode</option></select>
