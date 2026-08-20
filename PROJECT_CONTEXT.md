@@ -195,6 +195,13 @@ Purpose: quick rehydration file after context compaction so work can resume with
   - `compose.unraid.yml`
   - `docker/entrypoint.sh`
   - `docker/klug-media.env.example`
+- Container publishing:
+  - `.github/workflows/publish-container.yml` runs the test suite before publishing `linux/amd64` images to `ghcr.io/glucifer/klug-media` with `GITHUB_TOKEN` and GitHub Actions caching
+  - pushes to `main` publish mutable `main` plus an immutable full commit-SHA tag
+  - semantic Git tags such as `v1.2.3` publish `1.2.3`, `1.2`, `1`, and `latest`
+  - the GHCR package must be made public after its first publish for credential-free Unraid pulls; a private package requires a `read:packages` token on Unraid
+  - `compose.unraid.yml` pulls `ghcr.io/glucifer/klug-media:main`; update with Compose `pull` then `up -d`, and roll back with a full-SHA image tag
+  - `.env` and application secrets stay on the server and are not included in the workflow or Docker build context
 - Prefer guidance that remains valid across sessions; update temporary goal notes when they materially change.
 - If adding temporary session notes here, keep them short and remove or refresh them once they become stale.
 - Local Codex MCP setup:

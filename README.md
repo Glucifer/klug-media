@@ -107,14 +107,50 @@ DATABASE_URL=postgresql+psycopg://username:password@172.20.1.20:5432/klug_media
 The Godzilla LAN example sets `KLUG_SESSION_COOKIE_SECURE=false` because the app is served over plain HTTP at `http://172.20.1.20:8010`.
 Set it to `true` or remove the override when serving Klug behind HTTPS.
 
-Build and start the container from the repository root:
+Pull and start the published container from the repository root:
 
 ```bash
-docker compose -f compose.unraid.yml up -d --build
+docker compose -f compose.unraid.yml pull
+docker compose -f compose.unraid.yml up -d
 ```
 
 The compose file runs Alembic migrations on container startup by default.
 Set `KLUG_RUN_MIGRATIONS=false` in `compose.unraid.yml` if you want migrations to be a manual step.
+
+### Container publishing and updates
+
+GitHub Actions tests every push to `main` before building and publishing a `linux/amd64` image to GitHub Container Registry. A successful `main` build publishes both:
+
+- `ghcr.io/glucifer/klug-media:main`
+- `ghcr.io/glucifer/klug-media:<full-commit-sha>`
+
+Pushing a semantic Git tag such as `v1.2.3` publishes `1.2.3`, `1.2`, `1`, and `latest`. The workflow authenticates with its short-lived `GITHUB_TOKEN`; no application secrets or `.env` files are used by the workflow or copied into the image.
+
+GHCR packages are private by default when first created. After the first successful workflow run, open the `klug-media` package settings on GitHub, choose **Change visibility**, and make the package public. This lets Unraid pull it without registry credentials. If it must remain private, log in on Unraid with a classic personal access token that has `read:packages`; do not use an application secret:
+
+```bash
+echo "$GHCR_READ_TOKEN" | docker login ghcr.io -u glucifer --password-stdin
+```
+
+To update the running `main` deployment after the workflow succeeds:
+
+```bash
+git pull --ff-only
+docker compose -f compose.unraid.yml pull
+docker compose -f compose.unraid.yml up -d
+curl http://172.20.1.20:8010/api/v1/health
+```
+
+The immutable full-SHA tag makes rollback possible even after `main` moves. Replace `<known-good-full-sha>` below with a tag shown in the GHCR package, then retag it locally as `main` and recreate without pulling:
+
+```bash
+docker pull ghcr.io/glucifer/klug-media:<known-good-full-sha>
+docker tag ghcr.io/glucifer/klug-media:<known-good-full-sha> ghcr.io/glucifer/klug-media:main
+docker compose -f compose.unraid.yml up -d --force-recreate --pull never
+curl http://172.20.1.20:8010/api/v1/health
+```
+
+Run the normal update commands later to leave the rollback and return to the current `main` image. For a more conservative deployment, change the Compose `image:` tag from `main` to a tested semantic version and update it deliberately.
 
 Useful Docker commands:
 

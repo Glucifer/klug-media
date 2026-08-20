@@ -2,10 +2,7 @@ name: klug-media
 
 services:
   klug-media:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: klug-media:latest
+    image: ghcr.io/glucifer/klug-media:main
     container_name: klug-media
     restart: unless-stopped
     env_file:
